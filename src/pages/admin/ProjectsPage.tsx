@@ -47,6 +47,7 @@ const ProjectsPage = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -61,8 +62,27 @@ const ProjectsPage = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchUserCompany();
+  }, [user]);
+
+  useEffect(() => {
+    if (userCompanyId) {
+      fetchData();
+    }
+  }, [userCompanyId]);
+
+  const fetchUserCompany = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('company_members')
+      .select('company_id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle();
+    if (data) {
+      setUserCompanyId(data.company_id);
+    }
+  };
 
   const fetchData = async () => {
     const [{ data: projectsData }, { data: clientsData }] = await Promise.all([
@@ -133,6 +153,7 @@ const ProjectsPage = () => {
       budget: formData.budget ? parseFloat(formData.budget) : null,
       notes: formData.notes || null,
       created_by: user?.id,
+      company_id: userCompanyId,
     };
 
     if (editingProject) {
