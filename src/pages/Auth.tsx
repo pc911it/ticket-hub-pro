@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Ticket, ArrowLeft, Mail, Lock, User } from 'lucide-react';
+import { Ticket, ArrowLeft, Mail, Lock, User, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -15,6 +16,8 @@ const Auth = () => {
   const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isFirstUser, setIsFirstUser] = useState(false);
+  const [checkingFirstUser, setCheckingFirstUser] = useState(true);
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -25,12 +28,33 @@ const Auth = () => {
     }
   }, [user, navigate]);
 
+  // Check if this is the first user (no super_admin exists)
+  useEffect(() => {
+    const checkFirstUser = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('user_roles')
+          .select('*', { count: 'exact', head: true })
+          .eq('role', 'super_admin');
+        
+        if (error) throw error;
+        setIsFirstUser(count === 0);
+      } catch (err) {
+        console.error('Error checking first user:', err);
+        setIsFirstUser(false);
+      } finally {
+        setCheckingFirstUser(false);
+      }
+    };
+    checkFirstUser();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      if (isSignUp) {
+      if (isSignUp && isFirstUser) {
         const { error } = await signUp(email, password, fullName);
         if (error) {
           toast({
@@ -40,10 +64,11 @@ const Auth = () => {
           });
         } else {
           toast({
-            title: 'Account created!',
+            title: 'Super Admin account created!',
             description: 'You can now sign in with your credentials.',
           });
           setIsSignUp(false);
+          setIsFirstUser(false);
         }
       } else {
         const { error } = await signIn(email, password);
@@ -72,6 +97,14 @@ const Auth = () => {
     }
   };
 
+  if (checkingFirstUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--gradient-hero)' }}>
+        <div className="animate-pulse text-primary-foreground">Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--gradient-hero)' }}>
       <div className="absolute inset-0 overflow-hidden">
@@ -91,20 +124,24 @@ const Auth = () => {
         <Card className="animate-scale-in shadow-xl border-0">
           <CardHeader className="space-y-1 text-center">
             <div className="mx-auto w-12 h-12 bg-primary rounded-xl flex items-center justify-center mb-2">
-              <Ticket className="h-6 w-6 text-primary-foreground" />
+              {isSignUp && isFirstUser ? (
+                <Shield className="h-6 w-6 text-primary-foreground" />
+              ) : (
+                <Ticket className="h-6 w-6 text-primary-foreground" />
+              )}
             </div>
             <CardTitle className="text-2xl font-display">
-              {isSignUp ? 'Create account' : 'Welcome back'}
+              {isSignUp && isFirstUser ? 'Setup Super Admin' : 'Welcome back'}
             </CardTitle>
             <CardDescription>
-              {isSignUp 
-                ? 'Enter your details to create an account' 
+              {isSignUp && isFirstUser
+                ? 'Create the platform administrator account' 
                 : 'Enter your credentials to access your account'}
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
-              {isSignUp && (
+              {isSignUp && isFirstUser && (
                 <div className="space-y-2">
                   <Label htmlFor="fullName">Full Name</Label>
                   <div className="relative">
@@ -160,15 +197,22 @@ const Auth = () => {
                 size="lg"
                 disabled={isLoading}
               >
-                {isLoading ? 'Please wait...' : isSignUp ? 'Create Account' : 'Sign In'}
+                {isLoading ? 'Please wait...' : isSignUp && isFirstUser ? 'Create Super Admin' : 'Sign In'}
               </Button>
-              <button
-                type="button"
-                onClick={() => setIsSignUp(!isSignUp)}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-              </button>
+              {isFirstUser && (
+                <button
+                  type="button"
+                  onClick={() => setIsSignUp(!isSignUp)}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {isSignUp ? 'Already have an account? Sign in' : 'First time? Setup Super Admin'}
+                </button>
+              )}
+              {!isFirstUser && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Contact your administrator if you need an account.
+                </p>
+              )}
             </CardFooter>
           </form>
         </Card>
