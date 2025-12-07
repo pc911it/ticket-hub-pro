@@ -17,7 +17,8 @@ import {
   UserCircle,
   Plus,
   Shield,
-  CreditCard
+  CreditCard,
+  Settings
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -35,6 +36,7 @@ const navigation = [
   { name: 'Tickets', href: '/admin/tickets', icon: Ticket },
   { name: 'Users', href: '/admin/users', icon: Shield },
   { name: 'Billing', href: '/admin/billing', icon: CreditCard },
+  { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
 const AdminLayout = ({ children }: AdminLayoutProps) => {
