@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Plus, 
@@ -16,7 +18,8 @@ import {
   Edit2, 
   User,
   Signal,
-  SignalZero
+  SignalZero,
+  UserPlus
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -32,37 +35,96 @@ interface Agent {
   current_location_lng: number | null;
   last_location_update: string | null;
   created_at: string;
+  user_id: string;
+  company_id: string;
+}
+
+interface CompanyUser {
+  user_id: string;
+  profiles: {
+    full_name: string | null;
+    email: string | null;
+  } | null;
 }
 
 const EmployeesPage = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [companyUsers, setCompanyUsers] = useState<CompanyUser[]>([]);
+  const [companyId, setCompanyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [formData, setFormData] = useState({
     full_name: '',
     phone: '',
     vehicle_info: '',
   });
+  const [addFormData, setAddFormData] = useState({
+    user_id: '',
+    full_name: '',
+    phone: '',
+    vehicle_info: '',
+  });
 
   useEffect(() => {
-    fetchAgents();
-    setupRealtimeSubscription();
-  }, []);
+    if (user) {
+      fetchCompanyAndAgents();
+    }
+  }, [user]);
 
-  const fetchAgents = async () => {
+  const fetchCompanyAndAgents = async () => {
     try {
-      const { data, error } = await supabase
-        .from('agents')
-        .select('*')
-        .order('full_name');
+      // Get user's company
+      const { data: memberData } = await supabase
+        .from('company_members')
+        .select('company_id')
+        .eq('user_id', user?.id)
+        .maybeSingle();
 
-      if (error) throw error;
-      setAgents(data || []);
+      if (memberData?.company_id) {
+        setCompanyId(memberData.company_id);
+        
+        // Fetch agents for this company
+        const { data: agentsData, error } = await supabase
+          .from('agents')
+          .select('*')
+          .eq('company_id', memberData.company_id)
+          .order('full_name');
+
+        if (error) throw error;
+        setAgents(agentsData || []);
+
+        // Fetch company members who are not already agents
+        const { data: membersData } = await supabase
+          .from('company_members')
+          .select('user_id')
+          .eq('company_id', memberData.company_id);
+
+        if (membersData && membersData.length > 0) {
+          // Get profiles for these users
+          const userIds = membersData.map(m => m.user_id);
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('user_id, full_name, email')
+            .in('user_id', userIds);
+
+          // Filter out users who are already agents
+          const agentUserIds = (agentsData || []).map(a => a.user_id);
+          const availableUsers = (profilesData || [])
+            .filter(p => !agentUserIds.includes(p.user_id))
+            .map(p => ({
+              user_id: p.user_id,
+              profiles: { full_name: p.full_name, email: p.email }
+            }));
+          setCompanyUsers(availableUsers);
+        }
+      }
     } catch (error) {
-      console.error('Error fetching agents:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
@@ -75,7 +137,7 @@ const EmployeesPage = () => {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'agents' },
         () => {
-          fetchAgents();
+          fetchCompanyAndAgents();
         }
       )
       .subscribe();
@@ -84,6 +146,12 @@ const EmployeesPage = () => {
       supabase.removeChannel(channel);
     };
   };
+
+  useEffect(() => {
+    if (companyId) {
+      return setupRealtimeSubscription();
+    }
+  }, [companyId]);
 
   const handleOpenDialog = (agent?: Agent) => {
     if (agent) {
@@ -121,9 +189,48 @@ const EmployeesPage = () => {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to update agent.' });
       } else {
         toast({ title: 'Success', description: 'Agent updated successfully.' });
-        fetchAgents();
+        fetchCompanyAndAgents();
         setIsDialogOpen(false);
       }
+    }
+  };
+
+  const handleAddAgent = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!companyId) {
+      toast({ variant: 'destructive', title: 'Error', description: 'No company found.' });
+      return;
+    }
+
+    if (!addFormData.full_name.trim()) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please enter a name.' });
+      return;
+    }
+
+    // If no user selected, we need a user_id - for now require selection
+    if (!addFormData.user_id) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please select a user to add as agent.' });
+      return;
+    }
+
+    const { error } = await supabase
+      .from('agents')
+      .insert({
+        company_id: companyId,
+        user_id: addFormData.user_id,
+        full_name: addFormData.full_name,
+        phone: addFormData.phone || null,
+        vehicle_info: addFormData.vehicle_info || null,
+      });
+
+    if (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to add agent.' });
+    } else {
+      toast({ title: 'Success', description: 'Agent added successfully.' });
+      fetchCompanyAndAgents();
+      setIsAddDialogOpen(false);
+      setAddFormData({ user_id: '', full_name: '', phone: '', vehicle_info: '' });
     }
   };
 
@@ -153,6 +260,89 @@ const EmployeesPage = () => {
             {onlineCount} online, {availableCount} available of {agents.length} total agents.
           </p>
         </div>
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="gap-2">
+              <UserPlus className="h-4 w-4" />
+              Add Agent
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="font-display">Add New Agent</DialogTitle>
+              <DialogDescription>Add a company member as a field agent.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleAddAgent} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="user">Select User *</Label>
+                <Select 
+                  value={addFormData.user_id} 
+                  onValueChange={(value) => {
+                    const selectedUser = companyUsers.find(u => u.user_id === value);
+                    setAddFormData({ 
+                      ...addFormData, 
+                      user_id: value,
+                      full_name: selectedUser?.profiles?.full_name || ''
+                    });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a user" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companyUsers.length === 0 ? (
+                      <SelectItem value="none" disabled>No available users</SelectItem>
+                    ) : (
+                      companyUsers.map((u) => (
+                        <SelectItem key={u.user_id} value={u.user_id}>
+                          {u.profiles?.full_name || u.profiles?.email || 'Unknown User'}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                {companyUsers.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    All company members are already agents, or no users exist yet.
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="addName">Full Name *</Label>
+                <Input
+                  id="addName"
+                  value={addFormData.full_name}
+                  onChange={(e) => setAddFormData({ ...addFormData, full_name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="addPhone">Phone</Label>
+                <Input
+                  id="addPhone"
+                  value={addFormData.phone}
+                  onChange={(e) => setAddFormData({ ...addFormData, phone: e.target.value })}
+                  placeholder="+1 (555) 000-0000"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="addVehicle">Vehicle Info</Label>
+                <Input
+                  id="addVehicle"
+                  value={addFormData.vehicle_info}
+                  onChange={(e) => setAddFormData({ ...addFormData, vehicle_info: e.target.value })}
+                  placeholder="e.g., White Ford F-150"
+                />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={companyUsers.length === 0}>Add Agent</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Search */}
