@@ -457,6 +457,48 @@ export type Database = {
         }
         Relationships: []
       }
+      project_agents: {
+        Row: {
+          agent_id: string
+          assigned_at: string
+          assigned_by: string | null
+          id: string
+          project_id: string
+          role: string | null
+        }
+        Insert: {
+          agent_id: string
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          project_id: string
+          role?: string | null
+        }
+        Update: {
+          agent_id?: string
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          project_id?: string
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_agents_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_agents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_attachments: {
         Row: {
           category: string

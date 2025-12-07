@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { ProjectAttachments } from '@/components/ProjectAttachments';
+import { AgentAssignment } from '@/components/AgentAssignment';
 
 interface Client {
   id: string;
@@ -325,6 +326,13 @@ const ProjectsPage = () => {
                 />
               </div>
 
+              {/* Agent Assignment - Only show when editing */}
+              {editingProject && (
+                <div className="border-t pt-4">
+                  <AgentAssignment projectId={editingProject.id} onUpdate={fetchData} />
+                </div>
+              )}
+
               {/* File Attachments - Only show when editing */}
               {editingProject && (
                 <div className="border-t pt-4">
@@ -335,7 +343,7 @@ const ProjectsPage = () => {
               {!editingProject && (
                 <p className="text-xs text-muted-foreground bg-muted p-3 rounded-lg flex items-center gap-2">
                   <Paperclip className="h-4 w-4" />
-                  You can upload blueprints, plans, and images after creating the project.
+                  You can assign agents and upload files after creating the project.
                 </p>
               )}
 

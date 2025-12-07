@@ -10,12 +10,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Calendar, Clock, Edit2, Trash2, CheckCircle2, Package, Paperclip, FileText, Image, Building2 } from 'lucide-react';
+import { Plus, Search, Calendar, Clock, Edit2, Trash2, CheckCircle2, Package, Paperclip, FileText, Image, Building2, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { MaterialAssignment, MaterialAssignmentItem, saveInventoryUsage } from '@/components/MaterialAssignment';
 import { Badge } from '@/components/ui/badge';
 import { TicketAttachments } from '@/components/TicketAttachments';
+
+interface Agent {
+  id: string;
+  full_name: string;
+  is_online: boolean;
+  is_available: boolean;
+}
 
 interface Client {
   id: string;
@@ -31,6 +38,7 @@ interface Ticket {
   id: string;
   client_id: string;
   project_id: string | null;
+  assigned_agent_id: string | null;
   title: string;
   description: string | null;
   scheduled_date: string;
@@ -39,6 +47,7 @@ interface Ticket {
   status: string;
   clients: { full_name: string } | null;
   projects: { name: string } | null;
+  agents: { full_name: string } | null;
 }
 
 const TicketsPage = () => {
@@ -46,6 +55,7 @@ const TicketsPage = () => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -58,6 +68,7 @@ const TicketsPage = () => {
   const [formData, setFormData] = useState({
     client_id: '',
     project_id: '',
+    assigned_agent_id: '',
     title: '',
     description: '',
     scheduled_date: '',
@@ -72,10 +83,20 @@ const TicketsPage = () => {
   }, []);
 
   const fetchData = async () => {
-    const [{ data: ticketsData }, { data: clientsData }, { data: projectsData }, { data: usageData }, { data: attachmentsData }] = await Promise.all([
-      supabase.from('tickets').select('*, clients(full_name), projects(name)').order('scheduled_date', { ascending: false }),
+    // Get user's company first
+    const { data: memberData } = await supabase
+      .from('company_members')
+      .select('company_id')
+      .eq('user_id', user?.id)
+      .maybeSingle();
+
+    const [{ data: ticketsData }, { data: clientsData }, { data: projectsData }, { data: agentsData }, { data: usageData }, { data: attachmentsData }] = await Promise.all([
+      supabase.from('tickets').select('*, clients(full_name), projects(name), agents(full_name)').order('scheduled_date', { ascending: false }),
       supabase.from('clients').select('id, full_name').order('full_name'),
       supabase.from('projects').select('id, name').eq('status', 'active').order('name'),
+      memberData?.company_id 
+        ? supabase.from('agents').select('id, full_name, is_online, is_available').eq('company_id', memberData.company_id).order('full_name')
+        : Promise.resolve({ data: [] }),
       supabase.from('inventory_usage').select('ticket_id'),
       supabase.from('ticket_attachments').select('ticket_id, category'),
     ]);
@@ -83,6 +104,7 @@ const TicketsPage = () => {
     if (ticketsData) setTickets(ticketsData);
     if (clientsData) setClients(clientsData);
     if (projectsData) setProjects(projectsData);
+    if (agentsData) setAgents(agentsData || []);
     
     // Count materials per ticket
     if (usageData) {
@@ -119,6 +141,7 @@ const TicketsPage = () => {
     setFormData({
       client_id: '',
       project_id: '',
+      assigned_agent_id: '',
       title: '',
       description: '',
       scheduled_date: '',
@@ -136,6 +159,7 @@ const TicketsPage = () => {
       setFormData({
         client_id: ticket.client_id,
         project_id: ticket.project_id || '',
+        assigned_agent_id: ticket.assigned_agent_id || '',
         title: ticket.title,
         description: ticket.description || '',
         scheduled_date: ticket.scheduled_date,
@@ -170,6 +194,7 @@ const TicketsPage = () => {
     const payload = {
       client_id: formData.client_id,
       project_id: formData.project_id || null,
+      assigned_agent_id: formData.assigned_agent_id || null,
       title: formData.title,
       description: formData.description || null,
       scheduled_date: formData.scheduled_date,
@@ -180,10 +205,19 @@ const TicketsPage = () => {
     };
 
     if (editingTicket) {
-      const { project_id, ...updatePayload } = payload;
       const { error } = await supabase
         .from('tickets')
-        .update({ ...updatePayload, project_id: formData.project_id || null })
+        .update({
+          client_id: payload.client_id,
+          project_id: payload.project_id,
+          assigned_agent_id: payload.assigned_agent_id,
+          title: payload.title,
+          description: payload.description,
+          scheduled_date: payload.scheduled_date,
+          scheduled_time: payload.scheduled_time,
+          duration_minutes: payload.duration_minutes,
+          status: payload.status,
+        })
         .eq('id', editingTicket.id);
 
       if (error) {
@@ -329,6 +363,37 @@ const TicketsPage = () => {
                         <span className="flex items-center gap-2">
                           <Building2 className="h-3 w-3" />
                           {project.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Assign Agent</Label>
+                <Select
+                  value={formData.assigned_agent_id}
+                  onValueChange={(value) => setFormData({ ...formData, assigned_agent_id: value === 'none' ? '' : value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Assign to agent (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No agent assigned</SelectItem>
+                    {agents.map((agent) => (
+                      <SelectItem key={agent.id} value={agent.id}>
+                        <span className="flex items-center gap-2">
+                          <span className={cn(
+                            "w-2 h-2 rounded-full",
+                            agent.is_online ? "bg-success" : "bg-muted-foreground"
+                          )} />
+                          <User className="h-3 w-3" />
+                          {agent.full_name}
+                          {agent.is_online && (
+                            <span className="text-xs text-muted-foreground">
+                              ({agent.is_available ? 'Available' : 'Busy'})
+                            </span>
+                          )}
                         </span>
                       </SelectItem>
                     ))}
@@ -502,6 +567,12 @@ const TicketsPage = () => {
                         <span className="ml-2 inline-flex items-center gap-1 text-primary">
                           <Building2 className="h-3 w-3" />
                           {ticket.projects.name}
+                        </span>
+                      )}
+                      {ticket.agents && (
+                        <span className="ml-2 inline-flex items-center gap-1 text-success">
+                          <User className="h-3 w-3" />
+                          {ticket.agents.full_name}
                         </span>
                       )}
                     </p>
