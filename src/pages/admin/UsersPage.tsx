@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { UserPlus, Shield, User, Users, Briefcase } from "lucide-react";
+import { UserPlus, Shield, User, Users, Briefcase, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import type { Database } from "@/integrations/supabase/types";
@@ -22,13 +22,15 @@ interface UserWithRole {
   full_name: string | null;
   email: string | null;
   role: AppRole;
+  company_name?: string;
 }
 
 export default function UsersPage() {
-  const { userRole, isSuperAdmin } = useAuth();
+  const { user, userRole, isSuperAdmin } = useAuth();
   const canManageUsers = userRole === "admin" || isSuperAdmin;
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
   const [newUser, setNewUser] = useState({
     email: "",
     password: "",
@@ -36,47 +38,107 @@ export default function UsersPage() {
     role: "user" as AppRole,
   });
 
+  // Fetch user's company
+  useEffect(() => {
+    const fetchUserCompany = async () => {
+      if (!user || isSuperAdmin) return;
+      
+      const { data } = await supabase
+        .from("company_members")
+        .select("company_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (data) {
+        setUserCompanyId(data.company_id);
+      }
+    };
+    
+    fetchUserCompany();
+  }, [user, isSuperAdmin]);
+
   const { data: users, isLoading } = useQuery({
-    queryKey: ["users-with-roles"],
+    queryKey: ["users-with-roles", userCompanyId, isSuperAdmin],
     queryFn: async () => {
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, user_id, full_name, email");
+      if (isSuperAdmin) {
+        // Super admin sees all users with their company info
+        const { data: members, error: membersError } = await supabase
+          .from("company_members")
+          .select(`
+            user_id,
+            role,
+            companies (name)
+          `);
 
-      if (profilesError) throw profilesError;
+        if (membersError) throw membersError;
 
-      const { data: roles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("user_id, role");
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, user_id, full_name, email");
 
-      if (rolesError) throw rolesError;
+        if (profilesError) throw profilesError;
 
-      const usersWithRoles: UserWithRole[] = profiles.map((profile) => {
-        const userRole = roles.find((r) => r.user_id === profile.user_id);
-        return {
-          id: profile.id,
-          user_id: profile.user_id,
-          full_name: profile.full_name,
-          email: profile.email,
-          role: userRole?.role || "user",
-        };
-      });
+        const usersWithRoles: UserWithRole[] = profiles.map((profile) => {
+          const memberInfo = members?.find((m) => m.user_id === profile.user_id);
+          return {
+            id: profile.id,
+            user_id: profile.user_id,
+            full_name: profile.full_name,
+            email: profile.email,
+            role: memberInfo?.role || "user",
+            company_name: (memberInfo?.companies as any)?.name || "No Company",
+          };
+        });
 
-      return usersWithRoles;
+        return usersWithRoles;
+      } else {
+        // Company admin only sees their company's users
+        if (!userCompanyId) return [];
+
+        const { data: members, error: membersError } = await supabase
+          .from("company_members")
+          .select("user_id, role")
+          .eq("company_id", userCompanyId);
+
+        if (membersError) throw membersError;
+
+        const userIds = members?.map((m) => m.user_id) || [];
+        
+        if (userIds.length === 0) return [];
+
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, user_id, full_name, email")
+          .in("user_id", userIds);
+
+        if (profilesError) throw profilesError;
+
+        const usersWithRoles: UserWithRole[] = profiles.map((profile) => {
+          const memberInfo = members?.find((m) => m.user_id === profile.user_id);
+          return {
+            id: profile.id,
+            user_id: profile.user_id,
+            full_name: profile.full_name,
+            email: profile.email,
+            role: memberInfo?.role || "user",
+          };
+        });
+
+        return usersWithRoles;
+      }
     },
-    enabled: canManageUsers,
+    enabled: canManageUsers && (isSuperAdmin || !!userCompanyId),
   });
 
   const createUserMutation = useMutation({
     mutationFn: async (userData: typeof newUser) => {
-      const { data: sessionData } = await supabase.auth.getSession();
-      
       const response = await supabase.functions.invoke("create-user", {
         body: {
           email: userData.email,
           password: userData.password,
           fullName: userData.fullName,
           role: userData.role,
+          companyId: userCompanyId, // Pass company ID for non-super-admin
         },
       });
 
@@ -91,7 +153,7 @@ export default function UsersPage() {
       return response.data;
     },
     onSuccess: () => {
-      toast.success("User created successfully");
+      toast.success("User created successfully and added to your company");
       setIsCreateOpen(false);
       setNewUser({ email: "", password: "", fullName: "", role: "user" });
       queryClient.invalidateQueries({ queryKey: ["users-with-roles"] });
@@ -103,12 +165,22 @@ export default function UsersPage() {
 
   const updateRoleMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
-      const { error } = await supabase
+      // Update company_members role
+      const { error: memberError } = await supabase
+        .from("company_members")
+        .update({ role })
+        .eq("user_id", userId);
+
+      if (memberError) throw memberError;
+
+      // Also update user_roles for consistency
+      const { error: roleError } = await supabase
         .from("user_roles")
         .update({ role })
         .eq("user_id", userId);
 
-      if (error) throw error;
+      // Role error is not critical
+      if (roleError) console.log("user_roles update failed:", roleError.message);
     },
     onSuccess: () => {
       toast.success("Role updated successfully");
@@ -145,6 +217,9 @@ export default function UsersPage() {
     }
   };
 
+  // Check if there's already an admin (to prevent creating more)
+  const hasExistingAdmin = users?.some((u) => u.role === "admin");
+
   if (!canManageUsers) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -158,7 +233,11 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-          <p className="text-muted-foreground">Create and manage user accounts and roles</p>
+          <p className="text-muted-foreground">
+            {isSuperAdmin 
+              ? "Manage users across all companies" 
+              : "Create and manage users for your company"}
+          </p>
         </div>
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
@@ -239,14 +318,22 @@ export default function UsersPage() {
                         Client - Ticket updates only
                       </span>
                     </SelectItem>
-                    <SelectItem value="admin">
-                      <span className="flex items-center gap-2">
-                        <Shield className="h-4 w-4" />
-                        Admin - Full access
-                      </span>
-                    </SelectItem>
+                    {/* Only show admin option if no admin exists or super admin is creating */}
+                    {(isSuperAdmin || !hasExistingAdmin) && (
+                      <SelectItem value="admin" disabled={hasExistingAdmin && !isSuperAdmin}>
+                        <span className="flex items-center gap-2">
+                          <Shield className="h-4 w-4" />
+                          Admin - Full access {hasExistingAdmin ? "(already exists)" : ""}
+                        </span>
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
+                {hasExistingAdmin && !isSuperAdmin && (
+                  <p className="text-xs text-muted-foreground">
+                    Note: Only one admin is permitted per company
+                  </p>
+                )}
               </div>
               <Button type="submit" className="w-full" disabled={createUserMutation.isPending}>
                 {createUserMutation.isPending ? "Creating..." : "Create User"}
@@ -303,17 +390,22 @@ export default function UsersPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Users</CardTitle>
+          <CardTitle>
+            {isSuperAdmin ? "All Users (All Companies)" : "Company Users"}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <p className="text-muted-foreground">Loading users...</p>
+          ) : users?.length === 0 ? (
+            <p className="text-muted-foreground">No users found. Create your first user above.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
+                  {isSuperAdmin && <TableHead>Company</TableHead>}
                   <TableHead>Role</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -323,6 +415,14 @@ export default function UsersPage() {
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.full_name || "—"}</TableCell>
                     <TableCell>{user.email || "—"}</TableCell>
+                    {isSuperAdmin && (
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Building2 className="h-3 w-3 text-muted-foreground" />
+                          {user.company_name || "—"}
+                        </div>
+                      </TableCell>
+                    )}
                     <TableCell>
                       <Badge variant={getRoleBadgeVariant(user.role)} className="flex items-center gap-1 w-fit">
                         {getRoleIcon(user.role)}
@@ -335,6 +435,7 @@ export default function UsersPage() {
                         onValueChange={(value: AppRole) =>
                           updateRoleMutation.mutate({ userId: user.user_id, role: value })
                         }
+                        disabled={user.role === "admin" && !isSuperAdmin}
                       >
                         <SelectTrigger className="w-32">
                           <SelectValue />
@@ -343,7 +444,9 @@ export default function UsersPage() {
                           <SelectItem value="user">User</SelectItem>
                           <SelectItem value="staff">Staff</SelectItem>
                           <SelectItem value="client">Client</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
+                          {(isSuperAdmin || user.role === "admin") && (
+                            <SelectItem value="admin">Admin</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </TableCell>
