@@ -18,6 +18,7 @@ import CalendarPage from "./pages/admin/CalendarPage";
 import ClientsPage from "./pages/admin/ClientsPage";
 import TicketsPage from "./pages/admin/TicketsPage";
 import UsersPage from "./pages/admin/UsersPage";
+import BillingPage from "./pages/admin/BillingPage";
 
 const queryClient = new QueryClient();
 
@@ -136,6 +137,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AdminLayout>
                     <UsersPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/billing"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <BillingPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }

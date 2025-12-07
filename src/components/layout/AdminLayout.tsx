@@ -16,7 +16,8 @@ import {
   Radio,
   UserCircle,
   Plus,
-  Shield
+  Shield,
+  CreditCard
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -33,6 +34,7 @@ const navigation = [
   { name: 'Clients', href: '/admin/clients', icon: Users },
   { name: 'Tickets', href: '/admin/tickets', icon: Ticket },
   { name: 'Users', href: '/admin/users', icon: Shield },
+  { name: 'Billing', href: '/admin/billing', icon: CreditCard },
 ];
 
 const AdminLayout = ({ children }: AdminLayoutProps) => {
