@@ -247,10 +247,18 @@ const CompanyRegister = () => {
 
       navigate('/admin');
     } catch (err: any) {
+      let errorMessage = 'Failed to create company.';
+      
+      if (err.code === '23505' || err.message?.includes('duplicate key')) {
+        errorMessage = 'A company with this email already exists. Please use a different email address.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: err.message || 'Failed to create company.',
+        description: errorMessage,
       });
     } finally {
       setIsLoading(false);
