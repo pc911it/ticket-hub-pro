@@ -195,6 +195,120 @@ export type Database = {
           },
         ]
       }
+      inventory_items: {
+        Row: {
+          category: string | null
+          company_id: string | null
+          cost_per_unit: number | null
+          created_at: string
+          description: string | null
+          id: string
+          minimum_stock: number | null
+          name: string
+          quantity_in_stock: number
+          sku: string | null
+          supplier: string | null
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          company_id?: string | null
+          cost_per_unit?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          minimum_stock?: number | null
+          name: string
+          quantity_in_stock?: number
+          sku?: string | null
+          supplier?: string | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          company_id?: string | null
+          cost_per_unit?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          minimum_stock?: number | null
+          name?: string
+          quantity_in_stock?: number
+          sku?: string | null
+          supplier?: string | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_usage: {
+        Row: {
+          agent_id: string | null
+          created_at: string
+          id: string
+          inventory_item_id: string
+          notes: string | null
+          quantity_planned: number | null
+          quantity_used: number
+          ticket_id: string
+          usage_type: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string
+          id?: string
+          inventory_item_id: string
+          notes?: string | null
+          quantity_planned?: number | null
+          quantity_used?: number
+          ticket_id: string
+          usage_type?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string
+          id?: string
+          inventory_item_id?: string
+          notes?: string | null
+          quantity_planned?: number | null
+          quantity_used?: number
+          ticket_id?: string
+          usage_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_usage_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_usage_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_usage_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_updates: {
         Row: {
           agent_id: string

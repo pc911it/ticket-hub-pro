@@ -18,7 +18,8 @@ import {
   Plus,
   Shield,
   CreditCard,
-  Settings
+  Settings,
+  Package
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -34,6 +35,7 @@ const navigation = [
   { name: 'Calendar', href: '/admin/calendar', icon: Calendar },
   { name: 'Clients', href: '/admin/clients', icon: Users },
   { name: 'Tickets', href: '/admin/tickets', icon: Ticket },
+  { name: 'Inventory', href: '/admin/inventory', icon: Package },
   { name: 'Users', href: '/admin/users', icon: Shield },
   { name: 'Billing', href: '/admin/billing', icon: CreditCard },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
