@@ -24,7 +24,8 @@ import {
   Settings,
   Package,
   Building2,
-  CheckSquare
+  CheckSquare,
+  DollarSign
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -50,6 +51,7 @@ const navigation = [
 const superAdminNavigation = [
   { name: 'Platform Overview', href: '/admin/super-dashboard', icon: LayoutDashboard },
   { name: 'Company Approvals', href: '/admin/company-approvals', icon: CheckSquare },
+  { name: 'Platform Billing', href: '/admin/platform-billing', icon: DollarSign },
 ];
 
 const AdminLayout = ({ children }: AdminLayoutProps) => {

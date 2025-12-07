@@ -33,6 +33,7 @@ import PurchaseOrdersPage from "./pages/admin/PurchaseOrdersPage";
 import SuppliersPage from "./pages/admin/SuppliersPage";
 import CompanyApprovalsPage from "./pages/admin/CompanyApprovalsPage";
 import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
+import SuperAdminBillingPage from "./pages/admin/SuperAdminBillingPage";
 import AgentJobPage from "./pages/AgentJobPage";
 
 const queryClient = new QueryClient();
@@ -260,6 +261,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AdminLayout>
                     <SuperAdminDashboard />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/platform-billing"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <SuperAdminBillingPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }
