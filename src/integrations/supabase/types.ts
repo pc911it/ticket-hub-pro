@@ -767,6 +767,7 @@ export type Database = {
           duration_minutes: number | null
           id: string
           priority: string | null
+          project_id: string | null
           scheduled_date: string
           scheduled_time: string
           status: string | null
@@ -787,6 +788,7 @@ export type Database = {
           duration_minutes?: number | null
           id?: string
           priority?: string | null
+          project_id?: string | null
           scheduled_date: string
           scheduled_time: string
           status?: string | null
@@ -807,6 +809,7 @@ export type Database = {
           duration_minutes?: number | null
           id?: string
           priority?: string | null
+          project_id?: string | null
           scheduled_date?: string
           scheduled_time?: string
           status?: string | null
@@ -834,6 +837,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
