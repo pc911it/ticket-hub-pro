@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { Package, Plus, AlertTriangle, TrendingDown, TrendingUp, Wrench, Search, Edit, Trash2, BarChart3 } from "lucide-react";
+import { Package, Plus, AlertTriangle, TrendingDown, TrendingUp, Wrench, Search, Edit, Trash2, BarChart3, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 
@@ -205,6 +205,12 @@ export default function InventoryPage() {
           <p className="text-muted-foreground">Track materials and supplies for job sites</p>
         </div>
         <div className="flex gap-2">
+          <Link to="/admin/inventory/orders">
+            <Button variant="outline">
+              <ShoppingCart className="mr-2 h-4 w-4" />
+              Orders
+            </Button>
+          </Link>
           <Link to="/admin/inventory/reports">
             <Button variant="outline">
               <BarChart3 className="mr-2 h-4 w-4" />
