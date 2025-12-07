@@ -11,7 +11,11 @@ import {
   LogOut, 
   Menu, 
   X,
-  ChevronRight 
+  ChevronRight,
+  Bell,
+  Radio,
+  UserCircle,
+  Plus
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -19,7 +23,11 @@ interface AdminLayoutProps {
 }
 
 const navigation = [
-  { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+  { name: 'Dispatcher', href: '/admin', icon: Radio },
+  { name: 'New Call', href: '/admin/new-call', icon: Plus },
+  { name: 'Notifications', href: '/admin/notifications', icon: Bell },
+  { name: 'Employees', href: '/admin/employees', icon: UserCircle },
+  { name: 'Updates', href: '/admin/updates', icon: LayoutDashboard },
   { name: 'Calendar', href: '/admin/calendar', icon: Calendar },
   { name: 'Clients', href: '/admin/clients', icon: Users },
   { name: 'Tickets', href: '/admin/tickets', icon: Ticket },
