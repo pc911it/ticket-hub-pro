@@ -79,8 +79,8 @@ const Index = () => {
                 <Link to="/auth">
                   <Button variant="ghost">Sign In</Button>
                 </Link>
-                <Link to="/auth">
-                  <Button>Get Started</Button>
+                <Link to="/register-company">
+                  <Button>Register Company</Button>
                 </Link>
               </>
             )}
@@ -106,15 +106,15 @@ const Index = () => {
               Built for professionals who value their time.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: '200ms' }}>
-              <Link to="/auth">
+              <Link to="/register-company">
                 <Button variant="hero" size="xl">
-                  Start Free Today
+                  Register Your Company
                   <ArrowRight className="h-5 w-5 ml-2" />
                 </Button>
               </Link>
               <Link to="/auth">
                 <Button variant="heroOutline" size="xl">
-                  View Demo
+                  Sign In
                 </Button>
               </Link>
             </div>
@@ -189,9 +189,9 @@ const Index = () => {
                       </li>
                     ))}
                   </ul>
-                  <Link to="/auth">
+                  <Link to="/register-company">
                     <Button variant="hero" size="lg">
-                      Get Started Free
+                      Register Company
                       <ArrowRight className="h-4 w-4 ml-2" />
                     </Button>
                   </Link>
