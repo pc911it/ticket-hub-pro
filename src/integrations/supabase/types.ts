@@ -73,6 +73,7 @@ export type Database = {
       clients: {
         Row: {
           address: string | null
+          company_id: string | null
           created_at: string
           email: string
           full_name: string
@@ -83,6 +84,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          company_id?: string | null
           created_at?: string
           email: string
           full_name: string
@@ -93,6 +95,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          company_id?: string | null
           created_at?: string
           email?: string
           full_name?: string
@@ -101,7 +104,15 @@ export type Database = {
           phone?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clients_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       companies: {
         Row: {

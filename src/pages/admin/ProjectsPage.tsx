@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { ProjectAttachments } from '@/components/ProjectAttachments';
 import { AgentAssignment } from '@/components/AgentAssignment';
+import { ProjectInvitations } from '@/components/ProjectInvitations';
 
 interface Client {
   id: string;
@@ -337,6 +338,13 @@ const ProjectsPage = () => {
               {editingProject && (
                 <div className="border-t pt-4">
                   <ProjectAttachments projectId={editingProject.id} />
+                </div>
+              )}
+
+              {/* Project Invitations - Only show when editing */}
+              {editingProject && (
+                <div className="border-t pt-4">
+                  <ProjectInvitations projectId={editingProject.id} projectName={editingProject.name} />
                 </div>
               )}
 
