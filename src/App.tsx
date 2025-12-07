@@ -16,6 +16,7 @@ import EmployeesPage from "./pages/admin/EmployeesPage";
 import UpdatesPage from "./pages/admin/UpdatesPage";
 import CalendarPage from "./pages/admin/CalendarPage";
 import ClientsPage from "./pages/admin/ClientsPage";
+import ProjectsPage from "./pages/admin/ProjectsPage";
 import TicketsPage from "./pages/admin/TicketsPage";
 import UsersPage from "./pages/admin/UsersPage";
 import BillingPage from "./pages/admin/BillingPage";
@@ -123,6 +124,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AdminLayout>
                     <ClientsPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/projects"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <ProjectsPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }

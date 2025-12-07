@@ -19,7 +19,8 @@ import {
   Shield,
   CreditCard,
   Settings,
-  Package
+  Package,
+  Building2
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -34,6 +35,7 @@ const navigation = [
   { name: 'Updates', href: '/admin/updates', icon: LayoutDashboard },
   { name: 'Calendar', href: '/admin/calendar', icon: Calendar },
   { name: 'Clients', href: '/admin/clients', icon: Users },
+  { name: 'Projects', href: '/admin/projects', icon: Building2 },
   { name: 'Tickets', href: '/admin/tickets', icon: Ticket },
   { name: 'Inventory', href: '/admin/inventory', icon: Package },
   { name: 'Users', href: '/admin/users', icon: Shield },
