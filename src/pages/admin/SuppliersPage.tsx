@@ -25,7 +25,8 @@ interface Supplier {
 }
 
 export default function SuppliersPage() {
-  const { user } = useAuth();
+  const { user, isCompanyOwner, isSuperAdmin } = useAuth();
+  const canDelete = isCompanyOwner || isSuperAdmin;
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -385,17 +386,19 @@ export default function SuppliersPage() {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (confirm("Delete this supplier?")) {
-                              deleteSupplierMutation.mutate(supplier.id);
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              if (confirm("Delete this supplier?")) {
+                                deleteSupplierMutation.mutate(supplier.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

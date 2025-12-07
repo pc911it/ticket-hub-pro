@@ -59,7 +59,8 @@ const statusOptions = [
 ];
 
 const PurchaseOrdersPage = () => {
-  const { user } = useAuth();
+  const { user, isCompanyOwner, isSuperAdmin } = useAuth();
+  const canDelete = isCompanyOwner || isSuperAdmin;
   const { toast } = useToast();
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -545,7 +546,7 @@ const PurchaseOrdersPage = () => {
                           <Button variant="ghost" size="icon" onClick={() => viewOrder(order)}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          {order.status === 'draft' && (
+                          {order.status === 'draft' && canDelete && (
                             <Button 
                               variant="ghost" 
                               size="icon" 

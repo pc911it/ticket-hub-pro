@@ -7,6 +7,8 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   userRole: string | null;
+  isCompanyOwner: boolean;
+  isSuperAdmin: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -19,6 +21,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [isCompanyOwner, setIsCompanyOwner] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -29,9 +33,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           setTimeout(() => {
             fetchUserRole(session.user.id);
+            checkCompanyOwnership(session.user.id);
           }, 0);
         } else {
           setUserRole(null);
+          setIsCompanyOwner(false);
+          setIsSuperAdmin(false);
         }
       }
     );
@@ -41,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchUserRole(session.user.id);
+        checkCompanyOwnership(session.user.id);
       }
       setLoading(false);
     });
@@ -57,6 +65,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!error && data) {
       setUserRole(data.role);
+      setIsSuperAdmin(data.role === 'super_admin');
+    }
+  };
+
+  const checkCompanyOwnership = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('owner_id', userId)
+      .maybeSingle();
+
+    if (!error && data) {
+      setIsCompanyOwner(true);
+    } else {
+      setIsCompanyOwner(false);
     }
   };
 
@@ -85,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, userRole, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, userRole, isCompanyOwner, isSuperAdmin, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );

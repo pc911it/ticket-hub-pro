@@ -50,7 +50,8 @@ interface Supplier {
 }
 
 export default function InventoryPage() {
-  const { user } = useAuth();
+  const { user, isCompanyOwner, isSuperAdmin } = useAuth();
+  const canDelete = isCompanyOwner || isSuperAdmin;
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -622,13 +623,15 @@ export default function InventoryPage() {
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => deleteItemMutation.mutate(item.id)}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
+                              {canDelete && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => deleteItemMutation.mutate(item.id)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
