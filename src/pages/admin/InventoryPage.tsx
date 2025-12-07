@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { Package, Plus, AlertTriangle, TrendingDown, TrendingUp, Wrench, Search, Edit, Trash2 } from "lucide-react";
+import { Package, Plus, AlertTriangle, TrendingDown, TrendingUp, Wrench, Search, Edit, Trash2, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 
 const categories = [
   "Electrical",
@@ -203,13 +204,20 @@ export default function InventoryPage() {
           <h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
           <p className="text-muted-foreground">Track materials and supplies for job sites</p>
         </div>
-        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Item
+        <div className="flex gap-2">
+          <Link to="/admin/inventory/reports">
+            <Button variant="outline">
+              <BarChart3 className="mr-2 h-4 w-4" />
+              Reports
             </Button>
-          </DialogTrigger>
+          </Link>
+          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Item
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>Add Inventory Item</DialogTitle>
@@ -346,6 +354,7 @@ export default function InventoryPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Stats Cards */}
