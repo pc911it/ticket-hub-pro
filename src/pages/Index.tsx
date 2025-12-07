@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
+import { PricingPlans } from '@/components/PricingPlans';
 import { 
   Ticket, 
   Calendar, 
@@ -168,8 +169,24 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Pricing Section */}
+      <section className="py-20 bg-muted/30">
+        <div className="container mx-auto px-6">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
+              Simple, Transparent Pricing
+            </h2>
+            <p className="text-lg text-muted-foreground">
+              Choose the plan that fits your business. All plans include a 14-day free trial.
+            </p>
+          </div>
+
+          <PricingPlans variant="landing" />
+        </div>
+      </section>
+
       {/* CTA Section */}
-      <section className="py-20 bg-muted/50">
+      <section className="py-20 bg-background">
         <div className="container mx-auto px-6">
           <Card className="border-0 shadow-xl overflow-hidden" style={{ background: 'var(--gradient-hero)' }}>
             <CardContent className="p-12 md:p-16">
@@ -191,7 +208,7 @@ const Index = () => {
                   </ul>
                   <Link to="/register-company">
                     <Button variant="hero" size="lg">
-                      Register Company
+                      Start Your Free Trial
                       <ArrowRight className="h-4 w-4 ml-2" />
                     </Button>
                   </Link>
