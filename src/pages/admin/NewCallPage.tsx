@@ -126,7 +126,7 @@ const NewCallPage = () => {
       }
 
       toast({ title: 'Success', description: 'Call created and assigned successfully.' });
-      navigate('/admin/dispatcher');
+      navigate('/admin');
     } catch (error: any) {
       console.error('Error creating call:', error);
       toast({ 
@@ -362,7 +362,7 @@ const NewCallPage = () => {
 
         {/* Submit */}
         <div className="flex gap-3 justify-end">
-          <Button type="button" variant="outline" onClick={() => navigate('/admin/dispatcher')}>
+          <Button type="button" variant="outline" onClick={() => navigate('/admin')}>
             Cancel
           </Button>
           <Button type="submit" disabled={submitting || !formData.client_id || !formData.title}>
