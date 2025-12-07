@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        idempotency_key: `customer-${companyId}-${Date.now()}`,
+        idempotency_key: `cust-${companyId.substring(0, 8)}-${Date.now()}`,
         email_address: email,
         company_name: companyName,
         reference_id: companyId,
@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        idempotency_key: `card-${companyId}-${Date.now()}`,
+        idempotency_key: `crd-${companyId.substring(0, 8)}-${Date.now()}`,
         source_id: cardNonce,
         card: {
           customer_id: customerId,
