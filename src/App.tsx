@@ -25,6 +25,7 @@ import ProjectDashboardPage from "./pages/admin/ProjectDashboardPage";
 import TicketsPage from "./pages/admin/TicketsPage";
 import UsersPage from "./pages/admin/UsersPage";
 import BillingPage from "./pages/admin/BillingPage";
+import BillingSettingsPage from "./pages/admin/BillingSettingsPage";
 import CompanySettingsPage from "./pages/admin/CompanySettingsPage";
 import InventoryPage from "./pages/admin/InventoryPage";
 import InventoryReportsPage from "./pages/admin/InventoryReportsPage";
@@ -188,7 +189,7 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <AdminLayout>
-                    <BillingPage />
+                    <BillingSettingsPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }
