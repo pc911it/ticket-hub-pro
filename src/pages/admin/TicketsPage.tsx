@@ -446,8 +446,11 @@ const TicketsPage = () => {
                     type="number"
                     min="0.25"
                     step="0.25"
-                    value={(formData.duration_minutes / 60).toFixed(2)}
-                    onChange={(e) => setFormData({ ...formData, duration_minutes: Math.round(parseFloat(e.target.value || '0') * 60) })}
+                    value={formData.duration_minutes > 0 ? (formData.duration_minutes / 60).toFixed(2) : ''}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      setFormData({ ...formData, duration_minutes: isNaN(val) ? 60 : Math.round(val * 60) });
+                    }}
                     placeholder="e.g., 2.5"
                   />
                   <p className="text-xs text-muted-foreground">Planned work hours</p>
@@ -459,8 +462,11 @@ const TicketsPage = () => {
                     type="number"
                     min="0"
                     step="0.25"
-                    value={((formData.total_time_minutes || 0) / 60).toFixed(2)}
-                    onChange={(e) => setFormData({ ...formData, total_time_minutes: Math.round(parseFloat(e.target.value || '0') * 60) })}
+                    value={formData.total_time_minutes > 0 ? (formData.total_time_minutes / 60).toFixed(2) : ''}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      setFormData({ ...formData, total_time_minutes: isNaN(val) ? 0 : Math.round(val * 60) });
+                    }}
                     placeholder="e.g., 3.0"
                   />
                   <p className="text-xs text-muted-foreground">Time actually spent</p>
