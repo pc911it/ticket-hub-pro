@@ -20,6 +20,7 @@ import TicketsPage from "./pages/admin/TicketsPage";
 import UsersPage from "./pages/admin/UsersPage";
 import BillingPage from "./pages/admin/BillingPage";
 import CompanySettingsPage from "./pages/admin/CompanySettingsPage";
+import InventoryPage from "./pages/admin/InventoryPage";
 
 const queryClient = new QueryClient();
 
@@ -158,6 +159,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AdminLayout>
                     <CompanySettingsPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/inventory"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <InventoryPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }
