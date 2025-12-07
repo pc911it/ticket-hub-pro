@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import { 
   Plus, Search, ShoppingCart, Package, Truck, CheckCircle, 
-  Clock, Edit, Trash2, Eye, ArrowLeft
+  Clock, Edit, Trash2, Eye, ArrowLeft, Mail
 } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -67,6 +67,7 @@ const PurchaseOrdersPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const [companyName, setCompanyName] = useState<string>('');
 
   // Dialog states
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -77,6 +78,7 @@ const PurchaseOrdersPage = () => {
   // Form state
   const [formData, setFormData] = useState({
     supplier: '',
+    supplierEmail: '',
     notes: '',
     expected_delivery_date: '',
   });
@@ -98,6 +100,15 @@ const PurchaseOrdersPage = () => {
 
     if (memberData) {
       setCompanyId(memberData.company_id);
+
+      // Get company name
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('name')
+        .eq('id', memberData.company_id)
+        .single();
+      
+      if (companyData) setCompanyName(companyData.name);
 
       // Fetch orders
       const { data: ordersData } = await supabase
@@ -225,6 +236,11 @@ const PurchaseOrdersPage = () => {
       return;
     }
 
+    // Send email when order is submitted
+    if (newStatus === 'submitted' && selectedOrder) {
+      await sendSupplierEmail(selectedOrder, orderItems);
+    }
+
     // If received, update inventory
     if (newStatus === 'received') {
       const { data: items } = await supabase
@@ -294,8 +310,53 @@ const PurchaseOrdersPage = () => {
   };
 
   const resetForm = () => {
-    setFormData({ supplier: '', notes: '', expected_delivery_date: '' });
+    setFormData({ supplier: '', supplierEmail: '', notes: '', expected_delivery_date: '' });
     setSelectedItems([]);
+  };
+
+  const sendSupplierEmail = async (order: PurchaseOrder, items: OrderItem[]) => {
+    // Check if we have a supplier email - for now we'll use the supplier name as email hint
+    // In a real app, you'd have supplier emails stored in a suppliers table
+    if (!order.supplier) {
+      toast({ title: 'Note', description: 'No supplier specified - email not sent.' });
+      return;
+    }
+
+    // You can customize this to look up supplier email from a suppliers table
+    // For demo, we'll prompt if there's no email format
+    const emailItems = items.map(item => ({
+      name: item.inventory_items?.name || 'Unknown Item',
+      quantity: item.quantity_ordered,
+      unitCost: item.unit_cost || 0,
+    }));
+
+    try {
+      const { data, error } = await supabase.functions.invoke('send-purchase-order-email', {
+        body: {
+          to: order.supplier.includes('@') ? order.supplier : `orders@${order.supplier.toLowerCase().replace(/\s+/g, '')}.com`,
+          supplierName: order.supplier,
+          orderNumber: order.order_number,
+          companyName: companyName || 'Our Company',
+          items: emailItems,
+          totalCost: order.total_cost || 0,
+          expectedDeliveryDate: order.expected_delivery_date 
+            ? format(new Date(order.expected_delivery_date), 'MMMM d, yyyy')
+            : undefined,
+          notes: order.notes || undefined,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({ title: 'Email Sent', description: `Order notification sent to ${order.supplier}.` });
+    } catch (err: any) {
+      console.error('Email error:', err);
+      toast({ 
+        variant: 'destructive', 
+        title: 'Email Failed', 
+        description: 'Order submitted but email notification failed.' 
+      });
+    }
   };
 
   const openCreateWithSuggestions = () => {
