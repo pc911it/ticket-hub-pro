@@ -68,29 +68,26 @@ export default function UsersPage() {
 
   const createUserMutation = useMutation({
     mutationFn: async (userData: typeof newUser) => {
-      const { data, error } = await supabase.auth.signUp({
-        email: userData.email,
-        password: userData.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            full_name: userData.fullName,
-          },
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      const response = await supabase.functions.invoke("create-user", {
+        body: {
+          email: userData.email,
+          password: userData.password,
+          fullName: userData.fullName,
+          role: userData.role,
         },
       });
 
-      if (error) throw error;
-
-      if (data.user && userData.role !== "user") {
-        const { error: roleError } = await supabase
-          .from("user_roles")
-          .update({ role: userData.role })
-          .eq("user_id", data.user.id);
-
-        if (roleError) throw roleError;
+      if (response.error) {
+        throw new Error(response.error.message);
       }
 
-      return data;
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      return response.data;
     },
     onSuccess: () => {
       toast.success("User created successfully");
