@@ -6,14 +6,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Ticket, ArrowLeft, Mail, Lock } from 'lucide-react';
+import { Ticket, ArrowLeft, Mail, Lock, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, user } = useAuth();
+  const [isSignUp, setIsSignUp] = useState(false);
+  const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -28,19 +30,36 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      const { error } = await signIn(email, password);
-      if (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Login failed',
-          description: error.message,
-        });
+      if (isSignUp) {
+        const { error } = await signUp(email, password, fullName);
+        if (error) {
+          toast({
+            variant: 'destructive',
+            title: 'Sign up failed',
+            description: error.message,
+          });
+        } else {
+          toast({
+            title: 'Account created!',
+            description: 'You can now sign in with your credentials.',
+          });
+          setIsSignUp(false);
+        }
       } else {
-        toast({
-          title: 'Welcome back!',
-          description: 'You have been logged in successfully.',
-        });
-        navigate('/admin');
+        const { error } = await signIn(email, password);
+        if (error) {
+          toast({
+            variant: 'destructive',
+            title: 'Login failed',
+            description: error.message,
+          });
+        } else {
+          toast({
+            title: 'Welcome back!',
+            description: 'You have been logged in successfully.',
+          });
+          navigate('/admin');
+        }
       }
     } catch (err) {
       toast({
@@ -75,14 +94,33 @@ const Auth = () => {
               <Ticket className="h-6 w-6 text-primary-foreground" />
             </div>
             <CardTitle className="text-2xl font-display">
-              Welcome back
+              {isSignUp ? 'Create account' : 'Welcome back'}
             </CardTitle>
             <CardDescription>
-              Enter your credentials to access your account
+              {isSignUp 
+                ? 'Enter your details to create an account' 
+                : 'Enter your credentials to access your account'}
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Full Name</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="fullName"
+                      type="text"
+                      placeholder="John Doe"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
@@ -122,11 +160,15 @@ const Auth = () => {
                 size="lg"
                 disabled={isLoading}
               >
-                {isLoading ? 'Please wait...' : 'Sign In'}
+                {isLoading ? 'Please wait...' : isSignUp ? 'Create Account' : 'Sign In'}
               </Button>
-              <p className="text-xs text-muted-foreground text-center">
-                Contact your administrator if you need an account.
-              </p>
+              <button
+                type="button"
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+              </button>
             </CardFooter>
           </form>
         </Card>
