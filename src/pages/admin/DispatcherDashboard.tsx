@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,10 +18,13 @@ import {
   Wrench,
   CheckCircle2,
   AlertTriangle,
-  Truck
+  Truck,
+  Package,
+  ShoppingCart
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Link } from 'react-router-dom';
 
 interface Agent {
   id: string;
@@ -71,6 +75,55 @@ const DispatcherDashboard = () => {
   const [activeCalls, setActiveCalls] = useState<ActiveCall[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Get user's company
+  const { data: userCompany } = useQuery({
+    queryKey: ["user-company-dashboard", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase
+        .from("company_members")
+        .select("company_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
+  // Fetch low stock items
+  const { data: lowStockItems } = useQuery({
+    queryKey: ["low-stock-dashboard", userCompany?.company_id],
+    queryFn: async () => {
+      if (!userCompany?.company_id) return [];
+      const { data, error } = await supabase
+        .from("inventory_items")
+        .select("id, name, quantity_in_stock, minimum_stock, unit")
+        .eq("company_id", userCompany.company_id)
+        .not("minimum_stock", "is", null);
+      if (error) throw error;
+      return data.filter(item => item.minimum_stock && item.quantity_in_stock <= item.minimum_stock);
+    },
+    enabled: !!userCompany?.company_id,
+  });
+
+  // Fetch pending purchase orders
+  const { data: pendingOrders } = useQuery({
+    queryKey: ["pending-orders-dashboard", userCompany?.company_id],
+    queryFn: async () => {
+      if (!userCompany?.company_id) return [];
+      const { data, error } = await supabase
+        .from("purchase_orders")
+        .select("id, order_number, supplier, status, total_cost, created_at")
+        .eq("company_id", userCompany.company_id)
+        .in("status", ["draft", "submitted", "ordered", "shipped"])
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!userCompany?.company_id,
+  });
 
   useEffect(() => {
     fetchDashboardData();
@@ -378,6 +431,116 @@ const DispatcherDashboard = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Inventory Alerts Section */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Low Stock Alerts */}
+        <Card className="border-0 shadow-md">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="font-display text-lg flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                Low Stock Alerts
+                {lowStockItems && lowStockItems.length > 0 && (
+                  <Badge variant="destructive" className="ml-2">{lowStockItems.length}</Badge>
+                )}
+              </CardTitle>
+              <Link to="/admin/inventory">
+                <Button variant="ghost" size="sm">View All</Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {!lowStockItems || lowStockItems.length === 0 ? (
+              <div className="text-center py-8">
+                <Package className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground">All items are well stocked!</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                {lowStockItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-destructive/5 border border-destructive/20"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-destructive/10 flex items-center justify-center">
+                        <Package className="h-4 w-4 text-destructive" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{item.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.quantity_in_stock} {item.unit} remaining (min: {item.minimum_stock})
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="destructive">Low</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Pending Purchase Orders */}
+        <Card className="border-0 shadow-md">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="font-display text-lg flex items-center gap-2">
+                <ShoppingCart className="h-5 w-5 text-warning" />
+                Pending Orders
+                {pendingOrders && pendingOrders.length > 0 && (
+                  <Badge variant="secondary" className="ml-2">{pendingOrders.length}</Badge>
+                )}
+              </CardTitle>
+              <Link to="/admin/inventory/orders">
+                <Button variant="ghost" size="sm">View All</Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {!pendingOrders || pendingOrders.length === 0 ? (
+              <div className="text-center py-8">
+                <ShoppingCart className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground">No pending orders</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                {pendingOrders.map((order) => {
+                  const statusColors: Record<string, string> = {
+                    draft: 'bg-muted text-muted-foreground',
+                    submitted: 'bg-info/10 text-info',
+                    ordered: 'bg-warning/10 text-warning',
+                    shipped: 'bg-primary/10 text-primary',
+                  };
+                  
+                  return (
+                    <div
+                      key={order.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-warning/10 flex items-center justify-center">
+                          <ShoppingCart className="h-4 w-4 text-warning" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{order.order_number}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {order.supplier || 'No supplier'} • ${order.total_cost?.toFixed(2) || '0.00'}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge className={cn("capitalize", statusColors[order.status] || 'bg-muted')}>
+                        {order.status}
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
