@@ -2,6 +2,7 @@ import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { 
   LayoutDashboard, 
@@ -20,7 +21,8 @@ import {
   CreditCard,
   Settings,
   Package,
-  Building2
+  Building2,
+  CheckSquare
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -43,11 +45,15 @@ const navigation = [
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
+const superAdminNavigation = [
+  { name: 'Company Approvals', href: '/admin/company-approvals', icon: CheckSquare },
+];
+
 const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut, user } = useAuth();
+  const { signOut, user, isSuperAdmin, isCompanyOwner, userRole } = useAuth();
 
   const handleSignOut = async () => {
     await signOut();
@@ -90,7 +96,38 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-1">
+          <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+            {/* Super Admin Section */}
+            {isSuperAdmin && (
+              <>
+                <div className="px-3 py-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
+                  Super Admin
+                </div>
+                {superAdminNavigation.map((item) => {
+                  const isActive = location.pathname === item.href;
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      onClick={() => setSidebarOpen(false)}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                        isActive 
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md" 
+                          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      )}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      {item.name}
+                      {isActive && <ChevronRight className="ml-auto h-4 w-4" />}
+                    </Link>
+                  );
+                })}
+                <div className="my-3 border-t border-sidebar-border" />
+              </>
+            )}
+
+            {/* Regular Navigation */}
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
               return (
@@ -121,6 +158,23 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{user?.email}</p>
+                <div className="flex gap-1 mt-1">
+                  {isSuperAdmin && (
+                    <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-primary/10 text-primary border-primary/30">
+                      Super Admin
+                    </Badge>
+                  )}
+                  {isCompanyOwner && !isSuperAdmin && (
+                    <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-success/10 text-success border-success/30">
+                      Owner
+                    </Badge>
+                  )}
+                  {!isSuperAdmin && !isCompanyOwner && userRole && (
+                    <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 capitalize">
+                      {userRole}
+                    </Badge>
+                  )}
+                </div>
               </div>
             </div>
             <Button 
