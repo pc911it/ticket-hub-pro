@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { 
-  Plus, 
   Search, 
   MapPin, 
   Phone, 
@@ -19,7 +19,9 @@ import {
   User,
   Signal,
   SignalZero,
-  UserPlus
+  UserPlus,
+  Power,
+  UserCheck
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -231,6 +233,34 @@ const EmployeesPage = () => {
       fetchCompanyAndAgents();
       setIsAddDialogOpen(false);
       setAddFormData({ user_id: '', full_name: '', phone: '', vehicle_info: '' });
+    }
+  };
+
+  const handleToggleOnline = async (agent: Agent) => {
+    const { error } = await supabase
+      .from('agents')
+      .update({ is_online: !agent.is_online })
+      .eq('id', agent.id);
+
+    if (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to update status.' });
+    } else {
+      toast({ title: 'Success', description: `${agent.full_name} is now ${!agent.is_online ? 'online' : 'offline'}.` });
+      fetchCompanyAndAgents();
+    }
+  };
+
+  const handleToggleAvailable = async (agent: Agent) => {
+    const { error } = await supabase
+      .from('agents')
+      .update({ is_available: !agent.is_available })
+      .eq('id', agent.id);
+
+    if (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to update availability.' });
+    } else {
+      toast({ title: 'Success', description: `${agent.full_name} is now ${!agent.is_available ? 'available' : 'busy'}.` });
+      fetchCompanyAndAgents();
     }
   };
 
@@ -455,25 +485,51 @@ const EmployeesPage = () => {
                   </Dialog>
                 </div>
 
-                <div className="mt-4 space-y-2 text-sm text-muted-foreground">
-                  {agent.phone && (
+                <div className="mt-4 space-y-3">
+                  {/* Status Toggles */}
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
                     <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4" />
-                      {agent.phone}
+                      <Power className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">Online</span>
                     </div>
-                  )}
-                  {agent.vehicle_info && (
+                    <Switch
+                      checked={agent.is_online}
+                      onCheckedChange={() => handleToggleOnline(agent)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
                     <div className="flex items-center gap-2">
-                      <Truck className="h-4 w-4" />
-                      {agent.vehicle_info}
+                      <UserCheck className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">Available</span>
                     </div>
-                  )}
-                  {agent.last_location_update && (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      Last seen {formatDistanceToNow(new Date(agent.last_location_update), { addSuffix: true })}
-                    </div>
-                  )}
+                    <Switch
+                      checked={agent.is_available}
+                      onCheckedChange={() => handleToggleAvailable(agent)}
+                      disabled={!agent.is_online}
+                    />
+                  </div>
+
+                  {/* Agent Info */}
+                  <div className="space-y-2 text-sm text-muted-foreground pt-2 border-t">
+                    {agent.phone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4" />
+                        {agent.phone}
+                      </div>
+                    )}
+                    {agent.vehicle_info && (
+                      <div className="flex items-center gap-2">
+                        <Truck className="h-4 w-4" />
+                        {agent.vehicle_info}
+                      </div>
+                    )}
+                    {agent.last_location_update && (
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        Last seen {formatDistanceToNow(new Date(agent.last_location_update), { addSuffix: true })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
