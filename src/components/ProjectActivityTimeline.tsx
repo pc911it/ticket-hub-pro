@@ -40,6 +40,8 @@ interface TicketSummary {
   agent: string | null;
   description: string | null;
   scheduledDate: string;
+  estimatedHours: number;
+  actualHours: number | null;
 }
 
 interface ProjectActivityTimelineProps {
@@ -82,7 +84,7 @@ export const ProjectActivityTimeline = ({ projectId, projectStartDate }: Project
     // Fetch tickets for this project
     const { data: tickets } = await supabase
       .from('tickets')
-      .select('id, title, status, priority, description, scheduled_date, created_at, updated_at, agents:assigned_agent_id(full_name)')
+      .select('id, title, status, priority, description, scheduled_date, duration_minutes, total_time_minutes, created_at, updated_at, agents:assigned_agent_id(full_name)')
       .eq('project_id', projectId)
       .order('created_at', { ascending: false });
 
@@ -140,6 +142,8 @@ export const ProjectActivityTimeline = ({ projectId, projectStartDate }: Project
           agent: ticket.agents?.full_name || null,
           description: ticket.description,
           scheduledDate: ticket.scheduled_date,
+          estimatedHours: (ticket.duration_minutes || 60) / 60,
+          actualHours: ticket.total_time_minutes ? ticket.total_time_minutes / 60 : null,
         };
 
         if (ticket.status === 'completed') {
@@ -249,6 +253,13 @@ export const ProjectActivityTimeline = ({ projectId, projectStartDate }: Project
   const totalTickets = completedTickets.length + pendingTickets.length;
   const progressPercent = totalTickets > 0 ? Math.round((completedTickets.length / totalTickets) * 100) : 0;
 
+  // Calculate total hours
+  const allTickets = [...completedTickets, ...pendingTickets];
+  const totalEstimatedHours = allTickets.reduce((sum, t) => sum + t.estimatedHours, 0);
+  const totalActualHours = allTickets.reduce((sum, t) => sum + (t.actualHours || 0), 0);
+  const hoursVariance = totalActualHours - totalEstimatedHours;
+  const hoursVariancePercent = totalEstimatedHours > 0 ? Math.round((hoursVariance / totalEstimatedHours) * 100) : 0;
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -279,7 +290,7 @@ export const ProjectActivityTimeline = ({ projectId, projectStartDate }: Project
             Work Progress
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">
               {completedTickets.length} of {totalTickets} tasks completed
@@ -297,6 +308,44 @@ export const ProjectActivityTimeline = ({ projectId, projectStartDate }: Project
               <span>{pendingTickets.length} Remaining</span>
             </div>
           </div>
+          
+          {/* Hours Comparison */}
+          {totalEstimatedHours > 0 && (
+            <div className="pt-3 border-t border-border">
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span className="font-medium flex items-center gap-1">
+                  <Clock className="h-4 w-4 text-primary" />
+                  Hours Tracking
+                </span>
+                {totalActualHours > 0 && (
+                  <span className={cn(
+                    "text-xs font-medium px-2 py-0.5 rounded",
+                    hoursVariance > 0 ? "bg-destructive/10 text-destructive" :
+                    hoursVariance < 0 ? "bg-success/10 text-success" :
+                    "bg-muted text-muted-foreground"
+                  )}>
+                    {hoursVariance > 0 ? '+' : ''}{hoursVariance.toFixed(1)}h ({hoursVariancePercent > 0 ? '+' : ''}{hoursVariancePercent}%)
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-muted/50 rounded-lg p-2 text-center">
+                  <p className="text-xs text-muted-foreground">Estimated</p>
+                  <p className="text-lg font-semibold">{totalEstimatedHours.toFixed(1)}h</p>
+                </div>
+                <div className="bg-muted/50 rounded-lg p-2 text-center">
+                  <p className="text-xs text-muted-foreground">Actual</p>
+                  <p className={cn(
+                    "text-lg font-semibold",
+                    totalActualHours > totalEstimatedHours ? "text-destructive" :
+                    totalActualHours < totalEstimatedHours && totalActualHours > 0 ? "text-success" : ""
+                  )}>
+                    {totalActualHours > 0 ? `${totalActualHours.toFixed(1)}h` : '—'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -341,6 +390,10 @@ export const ProjectActivityTimeline = ({ projectId, projectStartDate }: Project
                         <div className="flex flex-wrap items-center gap-2 mt-2">
                           {getPriorityBadge(ticket.priority)}
                           {getStatusBadge(ticket.status)}
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            Est: {ticket.estimatedHours.toFixed(1)}h
+                          </span>
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
                             {format(new Date(ticket.scheduledDate), 'MMM d, yyyy')}
@@ -387,6 +440,20 @@ export const ProjectActivityTimeline = ({ projectId, projectStartDate }: Project
                         )}
                         <div className="flex flex-wrap items-center gap-2 mt-2 pl-6">
                           {getStatusBadge(ticket.status)}
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            Est: {ticket.estimatedHours.toFixed(1)}h
+                          </span>
+                          {ticket.actualHours !== null && (
+                            <span className={cn(
+                              "text-xs flex items-center gap-1 px-1.5 py-0.5 rounded",
+                              ticket.actualHours > ticket.estimatedHours 
+                                ? "bg-destructive/10 text-destructive" 
+                                : "bg-success/10 text-success"
+                            )}>
+                              Actual: {ticket.actualHours.toFixed(1)}h
+                            </span>
+                          )}
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
                             {format(new Date(ticket.scheduledDate), 'MMM d, yyyy')}

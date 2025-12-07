@@ -44,6 +44,7 @@ interface Ticket {
   scheduled_date: string;
   scheduled_time: string;
   duration_minutes: number;
+  total_time_minutes: number | null;
   status: string;
   clients: { full_name: string } | null;
   projects: { name: string } | null;
@@ -74,6 +75,7 @@ const TicketsPage = () => {
     scheduled_date: '',
     scheduled_time: '',
     duration_minutes: 60,
+    total_time_minutes: 0,
     status: 'pending',
   });
   const { toast } = useToast();
@@ -147,6 +149,7 @@ const TicketsPage = () => {
       scheduled_date: '',
       scheduled_time: '',
       duration_minutes: 60,
+      total_time_minutes: 0,
       status: 'pending',
     });
     setMaterials([]);
@@ -165,6 +168,7 @@ const TicketsPage = () => {
         scheduled_date: ticket.scheduled_date,
         scheduled_time: ticket.scheduled_time,
         duration_minutes: ticket.duration_minutes,
+        total_time_minutes: ticket.total_time_minutes || 0,
         status: ticket.status,
       });
       
@@ -200,6 +204,7 @@ const TicketsPage = () => {
       scheduled_date: formData.scheduled_date,
       scheduled_time: formData.scheduled_time,
       duration_minutes: formData.duration_minutes,
+      total_time_minutes: formData.total_time_minutes || null,
       status: formData.status,
       created_by: user?.id,
     };
@@ -216,6 +221,7 @@ const TicketsPage = () => {
           scheduled_date: payload.scheduled_date,
           scheduled_time: payload.scheduled_time,
           duration_minutes: payload.duration_minutes,
+          total_time_minutes: payload.total_time_minutes,
           status: payload.status,
         })
         .eq('id', editingTicket.id);
@@ -434,33 +440,48 @@ const TicketsPage = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="duration">Duration (min)</Label>
+                  <Label htmlFor="duration">Estimated Hours</Label>
                   <Input
                     id="duration"
                     type="number"
-                    min="15"
-                    step="15"
-                    value={formData.duration_minutes}
-                    onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) })}
+                    min="0.25"
+                    step="0.25"
+                    value={(formData.duration_minutes / 60).toFixed(2)}
+                    onChange={(e) => setFormData({ ...formData, duration_minutes: Math.round(parseFloat(e.target.value || '0') * 60) })}
+                    placeholder="e.g., 2.5"
                   />
+                  <p className="text-xs text-muted-foreground">Planned work hours</p>
                 </div>
                 <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) => setFormData({ ...formData, status: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="confirmed">Confirmed</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="actual">Actual Hours</Label>
+                  <Input
+                    id="actual"
+                    type="number"
+                    min="0"
+                    step="0.25"
+                    value={((formData.total_time_minutes || 0) / 60).toFixed(2)}
+                    onChange={(e) => setFormData({ ...formData, total_time_minutes: Math.round(parseFloat(e.target.value || '0') * 60) })}
+                    placeholder="e.g., 3.0"
+                  />
+                  <p className="text-xs text-muted-foreground">Time actually spent</p>
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) => setFormData({ ...formData, status: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="confirmed">Confirmed</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
