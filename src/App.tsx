@@ -21,6 +21,7 @@ import UsersPage from "./pages/admin/UsersPage";
 import BillingPage from "./pages/admin/BillingPage";
 import CompanySettingsPage from "./pages/admin/CompanySettingsPage";
 import InventoryPage from "./pages/admin/InventoryPage";
+import AgentJobPage from "./pages/AgentJobPage";
 
 const queryClient = new QueryClient();
 
@@ -170,6 +171,14 @@ const App = () => (
                   <AdminLayout>
                     <InventoryPage />
                   </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/agent"
+              element={
+                <ProtectedRoute>
+                  <AgentJobPage />
                 </ProtectedRoute>
               }
             />
