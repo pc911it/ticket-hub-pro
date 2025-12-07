@@ -8,12 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Calendar, Clock, Edit2, Trash2, CheckCircle2, Package } from 'lucide-react';
+import { Plus, Search, Calendar, Clock, Edit2, Trash2, CheckCircle2, Package, Paperclip, FileText, Image } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { MaterialAssignment, MaterialAssignmentItem, saveInventoryUsage } from '@/components/MaterialAssignment';
 import { Badge } from '@/components/ui/badge';
+import { TicketAttachments } from '@/components/TicketAttachments';
 
 interface Client {
   id: string;
@@ -43,6 +45,8 @@ const TicketsPage = () => {
   const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
   const [materials, setMaterials] = useState<MaterialAssignmentItem[]>([]);
   const [existingMaterialCount, setExistingMaterialCount] = useState<Record<string, number>>({});
+  const [attachmentCounts, setAttachmentCounts] = useState<Record<string, { blueprints: number; images: number }>>({});
+  const [selectedTicketForAttachments, setSelectedTicketForAttachments] = useState<Ticket | null>(null);
   const [formData, setFormData] = useState({
     client_id: '',
     title: '',
@@ -59,10 +63,11 @@ const TicketsPage = () => {
   }, []);
 
   const fetchData = async () => {
-    const [{ data: ticketsData }, { data: clientsData }, { data: usageData }] = await Promise.all([
+    const [{ data: ticketsData }, { data: clientsData }, { data: usageData }, { data: attachmentsData }] = await Promise.all([
       supabase.from('tickets').select('*, clients(full_name)').order('scheduled_date', { ascending: false }),
       supabase.from('clients').select('id, full_name').order('full_name'),
       supabase.from('inventory_usage').select('ticket_id'),
+      supabase.from('ticket_attachments').select('ticket_id, category'),
     ]);
 
     if (ticketsData) setTickets(ticketsData);
@@ -75,6 +80,17 @@ const TicketsPage = () => {
         counts[u.ticket_id] = (counts[u.ticket_id] || 0) + 1;
       });
       setExistingMaterialCount(counts);
+    }
+
+    // Count attachments per ticket
+    if (attachmentsData) {
+      const counts: Record<string, { blueprints: number; images: number }> = {};
+      attachmentsData.forEach(a => {
+        if (!counts[a.ticket_id]) counts[a.ticket_id] = { blueprints: 0, images: 0 };
+        if (a.category === 'blueprint') counts[a.ticket_id].blueprints++;
+        else counts[a.ticket_id].images++;
+      });
+      setAttachmentCounts(counts);
     }
     
     setLoading(false);
@@ -441,9 +457,36 @@ const TicketsPage = () => {
                           </Badge>
                         </div>
                       )}
+                      {(attachmentCounts[ticket.id]?.blueprints > 0 || attachmentCounts[ticket.id]?.images > 0) && (
+                        <div className="flex items-center gap-1.5">
+                          <Paperclip className="h-4 w-4" />
+                          <Badge variant="secondary" className="text-xs">
+                            {attachmentCounts[ticket.id]?.blueprints > 0 && (
+                              <span className="flex items-center gap-1">
+                                <FileText className="h-3 w-3" />
+                                {attachmentCounts[ticket.id].blueprints}
+                              </span>
+                            )}
+                            {attachmentCounts[ticket.id]?.images > 0 && (
+                              <span className="flex items-center gap-1 ml-1">
+                                <Image className="h-3 w-3" />
+                                {attachmentCounts[ticket.id].images}
+                              </span>
+                            )}
+                          </Badge>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setSelectedTicketForAttachments(ticket)}
+                    >
+                      <Paperclip className="h-4 w-4 mr-1" />
+                      Files
+                    </Button>
                     {ticket.status === 'pending' && (
                       <Button 
                         variant="outline" 
@@ -488,6 +531,23 @@ const TicketsPage = () => {
           ))}
         </div>
       )}
+
+      {/* Attachments Sheet */}
+      <Sheet open={!!selectedTicketForAttachments} onOpenChange={() => setSelectedTicketForAttachments(null)}>
+        <SheetContent className="sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Ticket Attachments</SheetTitle>
+            <SheetDescription>
+              {selectedTicketForAttachments?.title} - {selectedTicketForAttachments?.clients?.full_name}
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-6">
+            {selectedTicketForAttachments && (
+              <TicketAttachments ticketId={selectedTicketForAttachments.id} />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
