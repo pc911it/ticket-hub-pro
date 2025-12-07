@@ -263,13 +263,13 @@ const TicketsPage = () => {
               New Ticket
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="font-display">
                 {editingTicket ? 'Edit Ticket' : 'Create New Ticket'}
               </DialogTitle>
               <DialogDescription>
-                {editingTicket ? 'Update ticket details.' : 'Schedule a new appointment.'}
+                {editingTicket ? 'Update ticket details and attachments.' : 'Schedule a new appointment. You can add files after creating the ticket.'}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -369,6 +369,20 @@ const TicketsPage = () => {
                 value={materials}
                 onChange={setMaterials}
               />
+
+              {/* File Attachments - Only show when editing */}
+              {editingTicket && (
+                <div className="border-t pt-4">
+                  <TicketAttachments ticketId={editingTicket.id} />
+                </div>
+              )}
+
+              {!editingTicket && (
+                <p className="text-xs text-muted-foreground bg-muted p-3 rounded-lg flex items-center gap-2">
+                  <Paperclip className="h-4 w-4" />
+                  You can upload blueprints, plans, and images after creating the ticket.
+                </p>
+              )}
               
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
