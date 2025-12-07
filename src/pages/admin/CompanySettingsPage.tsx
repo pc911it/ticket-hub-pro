@@ -31,7 +31,8 @@ const companyTypes: { value: CompanyType; label: string }[] = [
 ];
 
 export default function CompanySettingsPage() {
-  const { user } = useAuth();
+  const { user, isCompanyOwner, isSuperAdmin } = useAuth();
+  const canRemoveMembers = isCompanyOwner || isSuperAdmin;
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -518,7 +519,7 @@ export default function CompanySettingsPage() {
                     {new Date(member.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
-                    {member.user_id !== user?.id && (
+                    {member.user_id !== user?.id && canRemoveMembers && (
                       <Button
                         variant="ghost"
                         size="icon"
