@@ -46,6 +46,7 @@ const navigation = [
 ];
 
 const superAdminNavigation = [
+  { name: 'Platform Overview', href: '/admin/super-dashboard', icon: LayoutDashboard },
   { name: 'Company Approvals', href: '/admin/company-approvals', icon: CheckSquare },
 ];
 
