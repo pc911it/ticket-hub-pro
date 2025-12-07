@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Search, Mail, Phone, MapPin, Edit2, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Client {
   id: string;
@@ -17,10 +18,12 @@ interface Client {
   phone: string | null;
   address: string | null;
   notes: string | null;
+  company_id: string | null;
   created_at: string;
 }
 
 const ClientsPage = () => {
+  const { user } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,9 +38,30 @@ const ClientsPage = () => {
   });
   const { toast } = useToast();
 
+  const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
+
   useEffect(() => {
-    fetchClients();
-  }, []);
+    fetchUserCompany();
+  }, [user]);
+
+  useEffect(() => {
+    if (userCompanyId) {
+      fetchClients();
+    }
+  }, [userCompanyId]);
+
+  const fetchUserCompany = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('company_members')
+      .select('company_id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .single();
+    if (data) {
+      setUserCompanyId(data.company_id);
+    }
+  };
 
   const fetchClients = async () => {
     const { data, error } = await supabase
@@ -95,7 +119,10 @@ const ClientsPage = () => {
         resetForm();
       }
     } else {
-      const { error } = await supabase.from('clients').insert(formData);
+      const { error } = await supabase.from('clients').insert({
+        ...formData,
+        company_id: userCompanyId,
+      });
 
       if (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to create client.' });
