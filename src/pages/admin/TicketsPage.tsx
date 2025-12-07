@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Calendar, Clock, Edit2, Trash2, CheckCircle2, Package, Paperclip, FileText, Image } from 'lucide-react';
+import { Plus, Search, Calendar, Clock, Edit2, Trash2, CheckCircle2, Package, Paperclip, FileText, Image, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { MaterialAssignment, MaterialAssignmentItem, saveInventoryUsage } from '@/components/MaterialAssignment';
@@ -22,9 +22,15 @@ interface Client {
   full_name: string;
 }
 
+interface Project {
+  id: string;
+  name: string;
+}
+
 interface Ticket {
   id: string;
   client_id: string;
+  project_id: string | null;
   title: string;
   description: string | null;
   scheduled_date: string;
@@ -32,12 +38,14 @@ interface Ticket {
   duration_minutes: number;
   status: string;
   clients: { full_name: string } | null;
+  projects: { name: string } | null;
 }
 
 const TicketsPage = () => {
   const { user } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -49,6 +57,7 @@ const TicketsPage = () => {
   const [selectedTicketForAttachments, setSelectedTicketForAttachments] = useState<Ticket | null>(null);
   const [formData, setFormData] = useState({
     client_id: '',
+    project_id: '',
     title: '',
     description: '',
     scheduled_date: '',
@@ -63,15 +72,17 @@ const TicketsPage = () => {
   }, []);
 
   const fetchData = async () => {
-    const [{ data: ticketsData }, { data: clientsData }, { data: usageData }, { data: attachmentsData }] = await Promise.all([
-      supabase.from('tickets').select('*, clients(full_name)').order('scheduled_date', { ascending: false }),
+    const [{ data: ticketsData }, { data: clientsData }, { data: projectsData }, { data: usageData }, { data: attachmentsData }] = await Promise.all([
+      supabase.from('tickets').select('*, clients(full_name), projects(name)').order('scheduled_date', { ascending: false }),
       supabase.from('clients').select('id, full_name').order('full_name'),
+      supabase.from('projects').select('id, name').eq('status', 'active').order('name'),
       supabase.from('inventory_usage').select('ticket_id'),
       supabase.from('ticket_attachments').select('ticket_id, category'),
     ]);
 
     if (ticketsData) setTickets(ticketsData);
     if (clientsData) setClients(clientsData);
+    if (projectsData) setProjects(projectsData);
     
     // Count materials per ticket
     if (usageData) {
@@ -107,6 +118,7 @@ const TicketsPage = () => {
   const resetForm = () => {
     setFormData({
       client_id: '',
+      project_id: '',
       title: '',
       description: '',
       scheduled_date: '',
@@ -123,6 +135,7 @@ const TicketsPage = () => {
       setEditingTicket(ticket);
       setFormData({
         client_id: ticket.client_id,
+        project_id: ticket.project_id || '',
         title: ticket.title,
         description: ticket.description || '',
         scheduled_date: ticket.scheduled_date,
@@ -155,14 +168,22 @@ const TicketsPage = () => {
     e.preventDefault();
 
     const payload = {
-      ...formData,
+      client_id: formData.client_id,
+      project_id: formData.project_id || null,
+      title: formData.title,
+      description: formData.description || null,
+      scheduled_date: formData.scheduled_date,
+      scheduled_time: formData.scheduled_time,
+      duration_minutes: formData.duration_minutes,
+      status: formData.status,
       created_by: user?.id,
     };
 
     if (editingTicket) {
+      const { project_id, ...updatePayload } = payload;
       const { error } = await supabase
         .from('tickets')
-        .update(formData)
+        .update({ ...updatePayload, project_id: formData.project_id || null })
         .eq('id', editingTicket.id);
 
       if (error) {
@@ -287,6 +308,28 @@ const TicketsPage = () => {
                     {clients.map((client) => (
                       <SelectItem key={client.id} value={client.id}>
                         {client.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Project</Label>
+                <Select
+                  value={formData.project_id}
+                  onValueChange={(value) => setFormData({ ...formData, project_id: value === 'none' ? '' : value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Assign to project (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No project</SelectItem>
+                    {projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        <span className="flex items-center gap-2">
+                          <Building2 className="h-3 w-3" />
+                          {project.name}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -453,7 +496,15 @@ const TicketsPage = () => {
                         {ticket.status}
                       </span>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">{ticket.clients?.full_name}</p>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {ticket.clients?.full_name}
+                      {ticket.projects && (
+                        <span className="ml-2 inline-flex items-center gap-1 text-primary">
+                          <Building2 className="h-3 w-3" />
+                          {ticket.projects.name}
+                        </span>
+                      )}
+                    </p>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1.5">
                         <Calendar className="h-4 w-4" />
