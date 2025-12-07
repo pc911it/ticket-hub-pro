@@ -5,10 +5,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { SubscriptionGuard } from "@/components/SubscriptionGuard";
+import { ApprovalGuard } from "@/components/ApprovalGuard";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import CompanyRegister from "./pages/CompanyRegister";
 import UpgradePage from "./pages/UpgradePage";
+import PendingApprovalPage from "./pages/PendingApprovalPage";
 import NotFound from "./pages/NotFound";
 import AdminLayout from "./components/layout/AdminLayout";
 import DispatcherDashboard from "./pages/admin/DispatcherDashboard";
@@ -28,6 +30,7 @@ import InventoryPage from "./pages/admin/InventoryPage";
 import InventoryReportsPage from "./pages/admin/InventoryReportsPage";
 import PurchaseOrdersPage from "./pages/admin/PurchaseOrdersPage";
 import SuppliersPage from "./pages/admin/SuppliersPage";
+import CompanyApprovalsPage from "./pages/admin/CompanyApprovalsPage";
 import AgentJobPage from "./pages/AgentJobPage";
 
 const queryClient = new QueryClient();
@@ -49,7 +52,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <SubscriptionGuard>
-      {children}
+      <ApprovalGuard>
+        {children}
+      </ApprovalGuard>
     </SubscriptionGuard>
   );
 };
@@ -66,6 +71,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/register-company" element={<CompanyRegister />} />
             <Route path="/upgrade" element={<UpgradePage />} />
+            <Route path="/pending-approval" element={<PendingApprovalPage />} />
             <Route
               path="/admin"
               element={
@@ -232,6 +238,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AdminLayout>
                     <SuppliersPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/company-approvals"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <CompanyApprovalsPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }

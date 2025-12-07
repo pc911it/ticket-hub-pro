@@ -117,6 +117,9 @@ export type Database = {
       companies: {
         Row: {
           address: string | null
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
           city: string | null
           created_at: string
           email: string
@@ -135,6 +138,9 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           city?: string | null
           created_at?: string
           email: string
@@ -153,6 +159,9 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           city?: string | null
           created_at?: string
           email?: string
@@ -1012,6 +1021,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_company: { Args: { _company_id: string }; Returns: boolean }
       get_user_company_ids: { Args: { _user_id: string }; Returns: string[] }
       has_project_access: {
         Args: { _project_id: string; _user_id: string }
@@ -1037,6 +1047,7 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      reject_company: { Args: { _company_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "staff" | "user" | "client" | "super_admin"
