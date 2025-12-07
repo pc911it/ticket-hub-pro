@@ -129,6 +129,8 @@ export type Database = {
           name: string
           owner_id: string | null
           phone: string | null
+          square_card_id: string | null
+          square_customer_id: string | null
           state: string | null
           subscription_plan: string | null
           subscription_status: string | null
@@ -150,6 +152,8 @@ export type Database = {
           name: string
           owner_id?: string | null
           phone?: string | null
+          square_card_id?: string | null
+          square_customer_id?: string | null
           state?: string | null
           subscription_plan?: string | null
           subscription_status?: string | null
@@ -171,6 +175,8 @@ export type Database = {
           name?: string
           owner_id?: string | null
           phone?: string | null
+          square_card_id?: string | null
+          square_customer_id?: string | null
           state?: string | null
           subscription_plan?: string | null
           subscription_status?: string | null

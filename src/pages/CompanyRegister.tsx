@@ -8,9 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, ArrowLeft, Mail, Lock, User, Phone, MapPin, ArrowRight, Check, Zap, Shield, Users } from 'lucide-react';
+import { Building2, ArrowLeft, Mail, Lock, User, Phone, MapPin, ArrowRight, Check, Zap, Shield, Users, CreditCard } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Database } from '@/integrations/supabase/types';
+import { SquareCardForm } from '@/components/SquareCardForm';
 
 type CompanyType = Database["public"]["Enums"]["company_type"];
 
@@ -100,7 +101,7 @@ const usStates = [
 ];
 
 const CompanyRegister = () => {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [isLoading, setIsLoading] = useState(false);
   const { signUp, user } = useAuth();
   const navigate = useNavigate();
@@ -122,6 +123,9 @@ const CompanyRegister = () => {
 
   // Plan selection
   const [selectedPlan, setSelectedPlan] = useState('professional');
+  
+  // Created company ID for payment step
+  const [createdCompanyId, setCreatedCompanyId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user && step === 1) {
@@ -210,6 +214,10 @@ const CompanyRegister = () => {
         return;
       }
 
+      // Calculate trial end date (14 days from now)
+      const trialEndsAt = new Date();
+      trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+
       // Create the company
       const { data: company, error: companyError } = await supabase
         .from('companies')
@@ -223,6 +231,7 @@ const CompanyRegister = () => {
           owner_id: currentUser.id,
           subscription_plan: selectedPlan,
           subscription_status: 'trial',
+          trial_ends_at: trialEndsAt.toISOString(),
         })
         .select()
         .single();
@@ -240,12 +249,13 @@ const CompanyRegister = () => {
 
       if (memberError) throw memberError;
 
+      setCreatedCompanyId(company.id);
+      setStep(4);
+      
       toast({
         title: 'Company created!',
-        description: `${companyName} is ready. You're on the ${selectedPlan} plan (14-day trial).`,
+        description: 'Now add a payment method to complete registration.',
       });
-
-      navigate('/admin');
     } catch (err: any) {
       let errorMessage = 'Failed to create company.';
       
@@ -265,6 +275,58 @@ const CompanyRegister = () => {
     }
   };
 
+  const handleCardNonce = async (cardNonce: string, postalCode: string) => {
+    if (!createdCompanyId) return;
+    
+    setIsLoading(true);
+    
+    try {
+      // Call Square edge function to create customer and save card
+      const response = await supabase.functions.invoke('square-create-customer', {
+        body: {
+          companyId: createdCompanyId,
+          email: companyEmail || email,
+          companyName,
+          cardNonce,
+          postalCode,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to save payment method');
+      }
+
+      const data = response.data;
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to save payment method');
+      }
+
+      toast({
+        title: 'Registration complete!',
+        description: `Your ${data.cardBrand} card ending in ${data.last4} will be charged after the trial.`,
+      });
+
+      navigate('/admin');
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Payment Setup Failed',
+        description: err.message || 'Could not save payment method. You can add it later in billing settings.',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const skipPaymentSetup = () => {
+    toast({
+      title: 'Registration complete!',
+      description: 'You can add a payment method later in billing settings.',
+    });
+    navigate('/admin');
+  };
+
   return (
     <div className="min-h-screen py-8 px-4" style={{ background: 'var(--gradient-hero)' }}>
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -282,7 +344,7 @@ const CompanyRegister = () => {
         </Link>
 
         {/* Progress indicator */}
-        <div className="flex items-center gap-3 mb-8 max-w-md">
+        <div className="flex items-center gap-2 mb-8 max-w-lg">
           <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors ${
             step >= 1 ? 'bg-primary text-primary-foreground' : 'bg-primary/20 text-primary-foreground/60'
           }`}>
@@ -303,6 +365,14 @@ const CompanyRegister = () => {
             step >= 3 ? 'bg-primary text-primary-foreground' : 'bg-primary/20 text-primary-foreground/60'
           }`}>
             3
+          </div>
+          <div className="flex-1 h-1 bg-primary/20 rounded overflow-hidden">
+            <div className={`h-full bg-primary rounded transition-all duration-300 ${step >= 4 ? 'w-full' : 'w-0'}`} />
+          </div>
+          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors ${
+            step >= 4 ? 'bg-primary text-primary-foreground' : 'bg-primary/20 text-primary-foreground/60'
+          }`}>
+            4
           </div>
         </div>
 
@@ -622,6 +692,35 @@ const CompanyRegister = () => {
               </Button>
             </div>
           </div>
+        )}
+
+        {step === 4 && (
+          <Card className="animate-scale-in shadow-xl border-0 max-w-lg">
+            <CardHeader className="space-y-1 text-center">
+              <div className="mx-auto w-12 h-12 bg-primary rounded-xl flex items-center justify-center mb-2">
+                <CreditCard className="h-6 w-6 text-primary-foreground" />
+              </div>
+              <CardTitle className="text-2xl font-display">Add Payment Method</CardTitle>
+              <CardDescription>
+                Your card will be charged ${plans.find(p => p.id === selectedPlan)?.price || 79}/month after the 14-day trial
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SquareCardForm
+                onCardNonce={handleCardNonce}
+                isLoading={isLoading}
+              />
+            </CardContent>
+            <CardFooter className="flex justify-center">
+              <button
+                type="button"
+                onClick={skipPaymentSetup}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Skip for now - add payment later
+              </button>
+            </CardFooter>
+          </Card>
         )}
       </div>
     </div>
