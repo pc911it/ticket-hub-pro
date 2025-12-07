@@ -50,6 +50,7 @@ const NewCallPage = () => {
   const { toast } = useToast();
   const [clients, setClients] = useState<Client[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -72,6 +73,17 @@ const NewCallPage = () => {
 
   const fetchData = async () => {
     try {
+      // Get user's company first
+      const { data: memberData } = await supabase
+        .from('company_members')
+        .select('company_id')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+
+      if (memberData?.company_id) {
+        setUserCompanyId(memberData.company_id);
+      }
+
       const [clientsRes, agentsRes] = await Promise.all([
         supabase.from('clients').select('id, full_name, phone, address').order('full_name'),
         supabase.from('agents').select('id, full_name, is_available, is_online, phone').order('full_name'),
@@ -109,6 +121,7 @@ const NewCallPage = () => {
         status: formData.assigned_agent_id ? 'assigned' : 'pending',
         call_started_at: new Date().toISOString(),
         created_by: user?.id,
+        company_id: userCompanyId,
       }).select('id').single();
 
       if (error) throw error;
