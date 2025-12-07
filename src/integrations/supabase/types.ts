@@ -106,6 +106,7 @@ export type Database = {
       companies: {
         Row: {
           address: string | null
+          city: string | null
           created_at: string
           email: string
           id: string
@@ -114,11 +115,15 @@ export type Database = {
           name: string
           owner_id: string | null
           phone: string | null
+          state: string | null
+          subscription_plan: string | null
+          subscription_status: string | null
           type: Database["public"]["Enums"]["company_type"]
           updated_at: string
         }
         Insert: {
           address?: string | null
+          city?: string | null
           created_at?: string
           email: string
           id?: string
@@ -127,11 +132,15 @@ export type Database = {
           name: string
           owner_id?: string | null
           phone?: string | null
+          state?: string | null
+          subscription_plan?: string | null
+          subscription_status?: string | null
           type?: Database["public"]["Enums"]["company_type"]
           updated_at?: string
         }
         Update: {
           address?: string | null
+          city?: string | null
           created_at?: string
           email?: string
           id?: string
@@ -140,6 +149,9 @@ export type Database = {
           name?: string
           owner_id?: string | null
           phone?: string | null
+          state?: string | null
+          subscription_plan?: string | null
+          subscription_status?: string | null
           type?: Database["public"]["Enums"]["company_type"]
           updated_at?: string
         }
@@ -294,6 +306,7 @@ export type Database = {
           id: string
           updated_at: string
           user_id: string
+          username: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -303,6 +316,7 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id: string
+          username?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -312,6 +326,7 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -433,7 +448,15 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "staff" | "user" | "client"
-      company_type: "alarm_company" | "tow_company" | "other"
+      company_type:
+        | "alarm_company"
+        | "tow_company"
+        | "other"
+        | "electrician"
+        | "plumber"
+        | "hvac"
+        | "security"
+        | "locksmith"
       job_status:
         | "assigned"
         | "en_route"
@@ -569,7 +592,16 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "staff", "user", "client"],
-      company_type: ["alarm_company", "tow_company", "other"],
+      company_type: [
+        "alarm_company",
+        "tow_company",
+        "other",
+        "electrician",
+        "plumber",
+        "hvac",
+        "security",
+        "locksmith",
+      ],
       job_status: [
         "assigned",
         "en_route",
