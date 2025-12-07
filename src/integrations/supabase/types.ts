@@ -457,6 +457,50 @@ export type Database = {
         }
         Relationships: []
       }
+      project_attachments: {
+        Row: {
+          category: string
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string
+          file_url: string
+          id: string
+          project_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type: string
+          file_url: string
+          id?: string
+          project_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string
+          file_url?: string
+          id?: string
+          project_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_attachments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           address: string | null
