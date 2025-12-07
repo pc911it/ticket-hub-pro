@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Users, Ticket, TrendingUp, Clock, CheckCircle2 } from 'lucide-react';
+import { Calendar, Users, Ticket, TrendingUp, Clock, CheckCircle2, HardHat, FolderOpen } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, isToday } from 'date-fns';
 
 interface Stats {
@@ -22,6 +22,13 @@ interface RecentTicket {
   clients: { full_name: string } | null;
 }
 
+interface AgentProjectAssignment {
+  id: string;
+  agent: { id: string; full_name: string } | null;
+  project: { id: string; name: string; status: string } | null;
+  role: string | null;
+}
+
 const Dashboard = () => {
   const [stats, setStats] = useState<Stats>({
     totalClients: 0,
@@ -32,6 +39,7 @@ const Dashboard = () => {
     monthlyTickets: 0,
   });
   const [recentTickets, setRecentTickets] = useState<RecentTicket[]>([]);
+  const [agentAssignments, setAgentAssignments] = useState<AgentProjectAssignment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,6 +60,7 @@ const Dashboard = () => {
         { count: todayCount },
         { count: monthlyCount },
         { data: tickets },
+        { data: assignments },
       ] = await Promise.all([
         supabase.from('clients').select('*', { count: 'exact', head: true }),
         supabase.from('tickets').select('*', { count: 'exact', head: true }),
@@ -60,6 +69,7 @@ const Dashboard = () => {
         supabase.from('tickets').select('*', { count: 'exact', head: true }).eq('scheduled_date', today),
         supabase.from('tickets').select('*', { count: 'exact', head: true }).gte('scheduled_date', monthStart).lte('scheduled_date', monthEnd),
         supabase.from('tickets').select('*, clients(full_name)').order('scheduled_date', { ascending: false }).limit(5),
+        supabase.from('project_agents').select('id, role, agent:agents(id, full_name), project:projects(id, name, status)').order('assigned_at', { ascending: false }),
       ]);
 
       setStats({
@@ -72,6 +82,7 @@ const Dashboard = () => {
       });
 
       setRecentTickets(tickets || []);
+      setAgentAssignments((assignments as AgentProjectAssignment[]) || []);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -132,37 +143,85 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {/* Recent Tickets */}
-      <Card className="border-0 shadow-md">
-        <CardHeader>
-          <CardTitle className="font-display">Recent Tickets</CardTitle>
-          <CardDescription>Latest appointments and bookings</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {recentTickets.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">No tickets yet. Create your first ticket!</p>
-          ) : (
-            <div className="space-y-4">
-              {recentTickets.map((ticket) => (
-                <div 
-                  key={ticket.id} 
-                  className="flex items-center justify-between p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{ticket.title}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {ticket.clients?.full_name} • {format(new Date(ticket.scheduled_date), 'MMM d, yyyy')} at {ticket.scheduled_time}
-                    </p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Agent Project Assignments */}
+        <Card className="border-0 shadow-md">
+          <CardHeader>
+            <CardTitle className="font-display flex items-center gap-2">
+              <HardHat className="h-5 w-5 text-primary" />
+              Agents on Projects
+            </CardTitle>
+            <CardDescription>Which agents are working on which projects</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {agentAssignments.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">No agents assigned to projects yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {agentAssignments.map((assignment) => (
+                  <div 
+                    key={assignment.id} 
+                    className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Users className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{assignment.agent?.full_name || 'Unknown Agent'}</p>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <FolderOpen className="h-3 w-3" />
+                        <span className="truncate">{assignment.project?.name || 'Unknown Project'}</span>
+                        {assignment.role && (
+                          <span className="px-1.5 py-0.5 rounded bg-secondary/50 text-xs capitalize">{assignment.role}</span>
+                        )}
+                      </div>
+                    </div>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
+                      assignment.project?.status === 'active' ? 'bg-success/10 text-success' :
+                      assignment.project?.status === 'completed' ? 'bg-info/10 text-info' :
+                      'bg-muted text-muted-foreground'
+                    }`}>
+                      {assignment.project?.status || 'unknown'}
+                    </span>
                   </div>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${getStatusColor(ticket.status)}`}>
-                    {ticket.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent Tickets */}
+        <Card className="border-0 shadow-md">
+          <CardHeader>
+            <CardTitle className="font-display">Recent Tickets</CardTitle>
+            <CardDescription>Latest appointments and bookings</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {recentTickets.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">No tickets yet. Create your first ticket!</p>
+            ) : (
+              <div className="space-y-3">
+                {recentTickets.map((ticket) => (
+                  <div 
+                    key={ticket.id} 
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{ticket.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {ticket.clients?.full_name} • {format(new Date(ticket.scheduled_date), 'MMM d, yyyy')} at {ticket.scheduled_time}
+                      </p>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${getStatusColor(ticket.status)}`}>
+                      {ticket.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
