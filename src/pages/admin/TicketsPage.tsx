@@ -9,9 +9,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Calendar, Clock, Edit2, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { Plus, Search, Calendar, Clock, Edit2, Trash2, CheckCircle2, Package } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { MaterialAssignment, MaterialAssignmentItem, saveInventoryUsage } from '@/components/MaterialAssignment';
+import { Badge } from '@/components/ui/badge';
 
 interface Client {
   id: string;
@@ -39,6 +41,8 @@ const TicketsPage = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
+  const [materials, setMaterials] = useState<MaterialAssignmentItem[]>([]);
+  const [existingMaterialCount, setExistingMaterialCount] = useState<Record<string, number>>({});
   const [formData, setFormData] = useState({
     client_id: '',
     title: '',
@@ -55,13 +59,24 @@ const TicketsPage = () => {
   }, []);
 
   const fetchData = async () => {
-    const [{ data: ticketsData }, { data: clientsData }] = await Promise.all([
+    const [{ data: ticketsData }, { data: clientsData }, { data: usageData }] = await Promise.all([
       supabase.from('tickets').select('*, clients(full_name)').order('scheduled_date', { ascending: false }),
       supabase.from('clients').select('id, full_name').order('full_name'),
+      supabase.from('inventory_usage').select('ticket_id'),
     ]);
 
     if (ticketsData) setTickets(ticketsData);
     if (clientsData) setClients(clientsData);
+    
+    // Count materials per ticket
+    if (usageData) {
+      const counts: Record<string, number> = {};
+      usageData.forEach(u => {
+        counts[u.ticket_id] = (counts[u.ticket_id] || 0) + 1;
+      });
+      setExistingMaterialCount(counts);
+    }
+    
     setLoading(false);
   };
 
@@ -83,10 +98,11 @@ const TicketsPage = () => {
       duration_minutes: 60,
       status: 'pending',
     });
+    setMaterials([]);
     setEditingTicket(null);
   };
 
-  const handleOpenDialog = (ticket?: Ticket) => {
+  const handleOpenDialog = async (ticket?: Ticket) => {
     if (ticket) {
       setEditingTicket(ticket);
       setFormData({
@@ -98,6 +114,21 @@ const TicketsPage = () => {
         duration_minutes: ticket.duration_minutes,
         status: ticket.status,
       });
+      
+      // Load existing materials for this ticket
+      const { data: usageData } = await supabase
+        .from('inventory_usage')
+        .select('inventory_item_id, quantity_planned, inventory_items(name, unit)')
+        .eq('ticket_id', ticket.id);
+      
+      if (usageData) {
+        setMaterials(usageData.map(u => ({
+          inventory_item_id: u.inventory_item_id,
+          quantity_planned: u.quantity_planned || 0,
+          name: (u.inventory_items as any)?.name,
+          unit: (u.inventory_items as any)?.unit,
+        })));
+      }
     } else {
       resetForm();
     }
@@ -120,23 +151,41 @@ const TicketsPage = () => {
 
       if (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to update ticket.' });
-      } else {
-        toast({ title: 'Success', description: 'Ticket updated successfully.' });
-        fetchData();
-        setIsDialogOpen(false);
-        resetForm();
+        return;
       }
+
+      // Handle material updates: remove old, add new
+      await supabase.from('inventory_usage').delete().eq('ticket_id', editingTicket.id);
+      
+      if (materials.length > 0) {
+        await saveInventoryUsage(editingTicket.id, materials);
+      }
+
+      toast({ title: 'Success', description: 'Ticket updated successfully.' });
+      fetchData();
+      setIsDialogOpen(false);
+      resetForm();
     } else {
-      const { error } = await supabase.from('tickets').insert(payload);
+      const { data: ticketData, error } = await supabase
+        .from('tickets')
+        .insert(payload)
+        .select('id')
+        .single();
 
       if (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to create ticket.' });
-      } else {
-        toast({ title: 'Success', description: 'Ticket created successfully.' });
-        fetchData();
-        setIsDialogOpen(false);
-        resetForm();
+        return;
       }
+
+      // Save materials and deduct from inventory
+      if (materials.length > 0 && ticketData) {
+        await saveInventoryUsage(ticketData.id, materials);
+      }
+
+      toast({ title: 'Success', description: 'Ticket created successfully.' });
+      fetchData();
+      setIsDialogOpen(false);
+      resetForm();
     }
   };
 
@@ -298,6 +347,13 @@ const TicketsPage = () => {
                   rows={3}
                 />
               </div>
+              
+              {/* Materials Assignment */}
+              <MaterialAssignment
+                value={materials}
+                onChange={setMaterials}
+              />
+              
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
@@ -377,6 +433,14 @@ const TicketsPage = () => {
                         <Clock className="h-4 w-4" />
                         {ticket.scheduled_time} ({ticket.duration_minutes} min)
                       </div>
+                      {existingMaterialCount[ticket.id] > 0 && (
+                        <div className="flex items-center gap-1.5">
+                          <Package className="h-4 w-4" />
+                          <Badge variant="secondary" className="text-xs">
+                            {existingMaterialCount[ticket.id]} material{existingMaterialCount[ticket.id] !== 1 ? 's' : ''}
+                          </Badge>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

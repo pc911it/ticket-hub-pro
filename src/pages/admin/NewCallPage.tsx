@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Phone, MapPin, User, Clock, AlertTriangle, Truck, Flame, Shield } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { MaterialAssignment, MaterialAssignmentItem, saveInventoryUsage } from '@/components/MaterialAssignment';
 
 interface Client {
   id: string;
@@ -52,6 +53,7 @@ const NewCallPage = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [materials, setMaterials] = useState<MaterialAssignmentItem[]>([]);
   
   const [formData, setFormData] = useState({
     client_id: '',
@@ -95,7 +97,7 @@ const NewCallPage = () => {
     setSubmitting(true);
 
     try {
-      const { error } = await supabase.from('tickets').insert({
+      const { data: ticketData, error } = await supabase.from('tickets').insert({
         client_id: formData.client_id,
         title: formData.title,
         description: formData.description,
@@ -107,9 +109,21 @@ const NewCallPage = () => {
         status: formData.assigned_agent_id ? 'assigned' : 'pending',
         call_started_at: new Date().toISOString(),
         created_by: user?.id,
-      });
+      }).select('id').single();
 
       if (error) throw error;
+
+      // Save material assignments and deduct inventory
+      if (materials.length > 0 && ticketData) {
+        const { error: materialError } = await saveInventoryUsage(
+          ticketData.id,
+          materials,
+          formData.assigned_agent_id || undefined
+        );
+        if (materialError) {
+          console.error('Error saving materials:', materialError);
+        }
+      }
 
       toast({ title: 'Success', description: 'Call created and assigned successfully.' });
       navigate('/admin/dispatcher');
@@ -338,6 +352,13 @@ const NewCallPage = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Materials Assignment */}
+        <MaterialAssignment
+          value={materials}
+          onChange={setMaterials}
+          disabled={submitting}
+        />
 
         {/* Submit */}
         <div className="flex gap-3 justify-end">
