@@ -57,6 +57,7 @@ const TicketsPage = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -91,6 +92,10 @@ const TicketsPage = () => {
       .select('company_id')
       .eq('user_id', user?.id)
       .maybeSingle();
+
+    if (memberData?.company_id) {
+      setUserCompanyId(memberData.company_id);
+    }
 
     const [{ data: ticketsData }, { data: clientsData }, { data: projectsData }, { data: agentsData }, { data: usageData }, { data: attachmentsData }] = await Promise.all([
       supabase.from('tickets').select('*, clients(full_name), projects(name), agents(full_name)').order('scheduled_date', { ascending: false }),
@@ -207,6 +212,7 @@ const TicketsPage = () => {
       total_time_minutes: formData.total_time_minutes || null,
       status: formData.status,
       created_by: user?.id,
+      company_id: userCompanyId,
     };
 
     if (editingTicket) {
