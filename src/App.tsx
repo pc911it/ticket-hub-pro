@@ -17,6 +17,7 @@ import UpdatesPage from "./pages/admin/UpdatesPage";
 import CalendarPage from "./pages/admin/CalendarPage";
 import ClientsPage from "./pages/admin/ClientsPage";
 import ProjectsPage from "./pages/admin/ProjectsPage";
+import ProjectDashboardPage from "./pages/admin/ProjectDashboardPage";
 import TicketsPage from "./pages/admin/TicketsPage";
 import UsersPage from "./pages/admin/UsersPage";
 import BillingPage from "./pages/admin/BillingPage";
@@ -134,6 +135,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AdminLayout>
                     <ProjectsPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/projects/:projectId"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <ProjectDashboardPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }
