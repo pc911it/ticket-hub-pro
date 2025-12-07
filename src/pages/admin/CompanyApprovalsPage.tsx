@@ -77,6 +77,15 @@ export default function CompanyApprovalsPage() {
     mutationFn: async (companyId: string) => {
       const { error } = await supabase.rpc("approve_company", { _company_id: companyId });
       if (error) throw error;
+      
+      // Send approval email
+      try {
+        await supabase.functions.invoke("send-approval-email", {
+          body: { company_id: companyId, status: "approved" },
+        });
+      } catch (emailError) {
+        console.error("Failed to send approval email:", emailError);
+      }
     },
     onSuccess: () => {
       toast.success("Company approved successfully");
@@ -91,6 +100,15 @@ export default function CompanyApprovalsPage() {
     mutationFn: async (companyId: string) => {
       const { error } = await supabase.rpc("reject_company", { _company_id: companyId });
       if (error) throw error;
+      
+      // Send rejection email
+      try {
+        await supabase.functions.invoke("send-approval-email", {
+          body: { company_id: companyId, status: "rejected" },
+        });
+      } catch (emailError) {
+        console.error("Failed to send rejection email:", emailError);
+      }
     },
     onSuccess: () => {
       toast.success("Company rejected");
