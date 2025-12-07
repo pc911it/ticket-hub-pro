@@ -38,6 +38,12 @@ export function SquareCardForm({ onCardNonce, isLoading, disabled }: SquareCardF
 
   const applicationId = import.meta.env.VITE_SQUARE_APPLICATION_ID || '';
   const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID || '';
+  
+  // Debug logging
+  console.log('Square config:', { 
+    applicationId: applicationId ? `${applicationId.substring(0, 15)}...` : 'NOT SET',
+    locationId: locationId ? `${locationId.substring(0, 10)}...` : 'NOT SET'
+  });
 
   useEffect(() => {
     // Load Square Web SDK
