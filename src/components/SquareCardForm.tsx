@@ -52,7 +52,11 @@ export function SquareCardForm({ onCardNonce, isLoading, disabled }: SquareCardF
         // Check if script is already loaded
         if (!window.Square) {
           const script = document.createElement('script');
-          script.src = 'https://sandbox.web.squarecdn.com/v1/square.js';
+          // Use sandbox for sandbox app IDs, production otherwise
+          const isSandbox = applicationId.startsWith('sandbox-');
+          script.src = isSandbox 
+            ? 'https://sandbox.web.squarecdn.com/v1/square.js'
+            : 'https://web.squarecdn.com/v1/square.js';
           script.async = true;
           script.onload = () => initializeCard();
           script.onerror = () => {
