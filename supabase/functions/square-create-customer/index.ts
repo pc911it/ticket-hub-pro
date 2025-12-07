@@ -36,9 +36,13 @@ Deno.serve(async (req) => {
     console.log('Creating Square customer for company:', companyId);
 
     // Determine environment (sandbox vs production)
-    const squareBaseUrl = accessToken.startsWith('sandbox-') 
-      ? 'https://connect.squareupsandbox.com/v2'
-      : 'https://connect.squareup.com/v2';
+    // Sandbox access tokens start with 'EAAA' or we can check via env variable
+    const isProduction = Deno.env.get('SQUARE_ENVIRONMENT') === 'production';
+    const squareBaseUrl = isProduction
+      ? 'https://connect.squareup.com/v2'
+      : 'https://connect.squareupsandbox.com/v2';
+    
+    console.log('Using Square environment:', isProduction ? 'production' : 'sandbox');
 
     // Step 1: Create Square customer
     const customerResponse = await fetch(`${squareBaseUrl}/customers`, {
