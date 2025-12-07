@@ -106,6 +106,12 @@ const NewCallPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!userCompanyId) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Company not loaded. Please refresh and try again.' });
+      return;
+    }
+    
     setSubmitting(true);
 
     try {

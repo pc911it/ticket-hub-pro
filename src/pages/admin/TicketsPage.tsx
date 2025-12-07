@@ -200,6 +200,11 @@ const TicketsPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!userCompanyId) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Company not loaded. Please refresh and try again.' });
+      return;
+    }
+
     const payload = {
       client_id: formData.client_id,
       project_id: formData.project_id || null,
