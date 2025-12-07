@@ -129,6 +129,7 @@ export type Database = {
           state: string | null
           subscription_plan: string | null
           subscription_status: string | null
+          trial_ends_at: string | null
           type: Database["public"]["Enums"]["company_type"]
           updated_at: string
         }
@@ -146,6 +147,7 @@ export type Database = {
           state?: string | null
           subscription_plan?: string | null
           subscription_status?: string | null
+          trial_ends_at?: string | null
           type?: Database["public"]["Enums"]["company_type"]
           updated_at?: string
         }
@@ -163,6 +165,7 @@ export type Database = {
           state?: string | null
           subscription_plan?: string | null
           subscription_status?: string | null
+          trial_ends_at?: string | null
           type?: Database["public"]["Enums"]["company_type"]
           updated_at?: string
         }
