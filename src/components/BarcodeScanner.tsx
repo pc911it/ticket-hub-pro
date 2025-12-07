@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -13,23 +13,63 @@ interface BarcodeScannerProps {
 export function BarcodeScanner({ onScan, isOpen, onClose }: BarcodeScannerProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isReady, setIsReady] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
+  // Cleanup scanner on unmount or when dialog closes
   useEffect(() => {
-    if (isOpen && !scannerRef.current) {
-      scannerRef.current = new Html5Qrcode("barcode-reader");
-    }
-
     return () => {
-      if (scannerRef.current?.isScanning) {
-        scannerRef.current.stop().catch(console.error);
+      if (scannerRef.current) {
+        if (scannerRef.current.isScanning) {
+          scannerRef.current.stop().catch(console.error);
+        }
+        scannerRef.current.clear();
+        scannerRef.current = null;
       }
     };
+  }, []);
+
+  // Reset state when dialog closes
+  useEffect(() => {
+    if (!isOpen) {
+      setIsScanning(false);
+      setError(null);
+      setIsReady(false);
+      if (scannerRef.current) {
+        if (scannerRef.current.isScanning) {
+          scannerRef.current.stop().catch(console.error);
+        }
+        scannerRef.current.clear();
+        scannerRef.current = null;
+      }
+    }
   }, [isOpen]);
 
+  // Initialize scanner when DOM element is ready
+  const initializeScanner = useCallback(() => {
+    const element = document.getElementById("barcode-reader");
+    if (element && !scannerRef.current) {
+      scannerRef.current = new Html5Qrcode("barcode-reader");
+      setIsReady(true);
+    }
+  }, []);
+
+  // Use a small delay to ensure DOM is rendered
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(initializeScanner, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, initializeScanner]);
+
   const startScanning = async () => {
-    if (!scannerRef.current) return;
+    if (!scannerRef.current) {
+      initializeScanner();
+      if (!scannerRef.current) {
+        setError("Scanner not ready. Please try again.");
+        return;
+      }
+    }
     
     setError(null);
     setIsScanning(true);
@@ -79,7 +119,6 @@ export function BarcodeScanner({ onScan, isOpen, onClose }: BarcodeScannerProps)
         <div className="space-y-4">
           <div 
             id="barcode-reader" 
-            ref={containerRef}
             className="w-full min-h-[300px] bg-muted rounded-lg overflow-hidden"
           />
           
@@ -89,9 +128,9 @@ export function BarcodeScanner({ onScan, isOpen, onClose }: BarcodeScannerProps)
           
           <div className="flex gap-2 justify-center">
             {!isScanning ? (
-              <Button onClick={startScanning} className="gap-2">
+              <Button onClick={startScanning} className="gap-2" disabled={!isReady}>
                 <Camera className="h-4 w-4" />
-                Start Camera
+                {isReady ? "Start Camera" : "Initializing..."}
               </Button>
             ) : (
               <Button variant="destructive" onClick={stopScanning} className="gap-2">
