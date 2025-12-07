@@ -4,9 +4,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { SubscriptionGuard } from "@/components/SubscriptionGuard";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import CompanyRegister from "./pages/CompanyRegister";
+import UpgradePage from "./pages/UpgradePage";
 import NotFound from "./pages/NotFound";
 import AdminLayout from "./components/layout/AdminLayout";
 import DispatcherDashboard from "./pages/admin/DispatcherDashboard";
@@ -45,7 +47,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/auth" replace />;
   }
 
-  return <>{children}</>;
+  return (
+    <SubscriptionGuard>
+      {children}
+    </SubscriptionGuard>
+  );
 };
 
 const App = () => (
@@ -59,6 +65,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/register-company" element={<CompanyRegister />} />
+            <Route path="/upgrade" element={<UpgradePage />} />
             <Route
               path="/admin"
               element={
