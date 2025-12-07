@@ -12,9 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { Package, Plus, AlertTriangle, TrendingDown, TrendingUp, Wrench, Search, Edit, Trash2, BarChart3, ShoppingCart } from "lucide-react";
+import { Package, Plus, AlertTriangle, TrendingDown, TrendingUp, Wrench, Search, Edit, Trash2, BarChart3, ShoppingCart, QrCode, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
 
 const categories = [
   "Electrical",
@@ -39,6 +40,13 @@ interface InventoryItem {
   cost_per_unit: number | null;
   supplier: string | null;
   company_id: string | null;
+  barcode: string | null;
+  supplier_id: string | null;
+}
+
+interface Supplier {
+  id: string;
+  name: string;
 }
 
 export default function InventoryPage() {
@@ -48,6 +56,8 @@ export default function InventoryPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [scanMode, setScanMode] = useState<"search" | "add" | "edit">("search");
   const [newItem, setNewItem] = useState({
     name: "",
     description: "",
@@ -58,6 +68,8 @@ export default function InventoryPage() {
     minimum_stock: 5,
     cost_per_unit: 0,
     supplier: "",
+    barcode: "",
+    supplier_id: "",
   });
 
   // Get user's company
@@ -81,11 +93,26 @@ export default function InventoryPage() {
       if (!userCompany?.company_id) return [];
       const { data, error } = await supabase
         .from("inventory_items")
-        .select("*")
+        .select("*, suppliers(id, name)")
         .eq("company_id", userCompany.company_id)
         .order("name");
       if (error) throw error;
-      return data as InventoryItem[];
+      return data as (InventoryItem & { suppliers: Supplier | null })[];
+    },
+    enabled: !!userCompany?.company_id,
+  });
+
+  const { data: suppliers } = useQuery({
+    queryKey: ["suppliers-list", userCompany?.company_id],
+    queryFn: async () => {
+      if (!userCompany?.company_id) return [];
+      const { data, error } = await supabase
+        .from("suppliers")
+        .select("id, name")
+        .eq("company_id", userCompany.company_id)
+        .order("name");
+      if (error) throw error;
+      return data as Supplier[];
     },
     enabled: !!userCompany?.company_id,
   });
@@ -111,7 +138,17 @@ export default function InventoryPage() {
     mutationFn: async (item: typeof newItem) => {
       if (!userCompany?.company_id) throw new Error("No company found");
       const { error } = await supabase.from("inventory_items").insert({
-        ...item,
+        name: item.name,
+        description: item.description || null,
+        sku: item.sku || null,
+        category: item.category,
+        unit: item.unit,
+        quantity_in_stock: item.quantity_in_stock,
+        minimum_stock: item.minimum_stock,
+        cost_per_unit: item.cost_per_unit,
+        supplier: item.supplier || null,
+        barcode: item.barcode || null,
+        supplier_id: item.supplier_id || null,
         company_id: userCompany.company_id,
       });
       if (error) throw error;
@@ -129,6 +166,8 @@ export default function InventoryPage() {
         minimum_stock: 5,
         cost_per_unit: 0,
         supplier: "",
+        barcode: "",
+        supplier_id: "",
       });
       queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
     },
@@ -151,6 +190,8 @@ export default function InventoryPage() {
           minimum_stock: item.minimum_stock,
           cost_per_unit: item.cost_per_unit,
           supplier: item.supplier,
+          barcode: item.barcode,
+          supplier_id: item.supplier_id,
         })
         .eq("id", item.id);
       if (error) throw error;
@@ -164,6 +205,25 @@ export default function InventoryPage() {
       toast.error(error.message);
     },
   });
+
+  const handleBarcodeScan = (barcode: string) => {
+    if (scanMode === "search") {
+      // Search for item with this barcode
+      const found = items?.find((item) => item.barcode === barcode);
+      if (found) {
+        setSearchQuery(barcode);
+        toast.success(`Found: ${found.name}`);
+      } else {
+        toast.info("No item found with this barcode");
+      }
+    } else if (scanMode === "add") {
+      setNewItem({ ...newItem, barcode });
+      toast.success("Barcode scanned");
+    } else if (scanMode === "edit" && editingItem) {
+      setEditingItem({ ...editingItem, barcode });
+      toast.success("Barcode scanned");
+    }
+  };
 
   const deleteItemMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -204,7 +264,13 @@ export default function InventoryPage() {
           <h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
           <p className="text-muted-foreground">Track materials and supplies for job sites</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Link to="/admin/inventory/suppliers">
+            <Button variant="outline">
+              <Building2 className="mr-2 h-4 w-4" />
+              Suppliers
+            </Button>
+          </Link>
           <Link to="/admin/inventory/orders">
             <Button variant="outline">
               <ShoppingCart className="mr-2 h-4 w-4" />
@@ -217,6 +283,16 @@ export default function InventoryPage() {
               Reports
             </Button>
           </Link>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setScanMode("search");
+              setIsScannerOpen(true);
+            }}
+          >
+            <QrCode className="mr-2 h-4 w-4" />
+            Scan
+          </Button>
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -341,13 +417,47 @@ export default function InventoryPage() {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Supplier</Label>
-                <Input
-                  value={newItem.supplier}
-                  onChange={(e) => setNewItem({ ...newItem, supplier: e.target.value })}
-                  placeholder="Supplier name"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Barcode</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newItem.barcode}
+                      onChange={(e) => setNewItem({ ...newItem, barcode: e.target.value })}
+                      placeholder="Scan or enter barcode"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        setScanMode("add");
+                        setIsScannerOpen(true);
+                      }}
+                    >
+                      <QrCode className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Supplier</Label>
+                  <Select
+                    value={newItem.supplier_id}
+                    onValueChange={(value) => setNewItem({ ...newItem, supplier_id: value })}
+                  >
+                    <SelectTrigger className="bg-background">
+                      <SelectValue placeholder="Select supplier" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border shadow-lg z-50">
+                      <SelectItem value="">No supplier</SelectItem>
+                      {suppliers?.map((supplier) => (
+                        <SelectItem key={supplier.id} value={supplier.id}>
+                          {supplier.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>
@@ -686,6 +796,48 @@ export default function InventoryPage() {
                   />
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Barcode</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={editingItem.barcode || ""}
+                      onChange={(e) => setEditingItem({ ...editingItem, barcode: e.target.value })}
+                      placeholder="Scan or enter barcode"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        setScanMode("edit");
+                        setIsScannerOpen(true);
+                      }}
+                    >
+                      <QrCode className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Supplier</Label>
+                  <Select
+                    value={editingItem.supplier_id || ""}
+                    onValueChange={(value) => setEditingItem({ ...editingItem, supplier_id: value || null })}
+                  >
+                    <SelectTrigger className="bg-background">
+                      <SelectValue placeholder="Select supplier" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border shadow-lg z-50">
+                      <SelectItem value="">No supplier</SelectItem>
+                      {suppliers?.map((supplier) => (
+                        <SelectItem key={supplier.id} value={supplier.id}>
+                          {supplier.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setEditingItem(null)}>
                   Cancel
@@ -698,6 +850,13 @@ export default function InventoryPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Barcode Scanner */}
+      <BarcodeScanner
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScan={handleBarcodeScan}
+      />
     </div>
   );
 }

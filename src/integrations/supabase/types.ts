@@ -197,6 +197,7 @@ export type Database = {
       }
       inventory_items: {
         Row: {
+          barcode: string | null
           category: string | null
           company_id: string | null
           cost_per_unit: number | null
@@ -208,10 +209,12 @@ export type Database = {
           quantity_in_stock: number
           sku: string | null
           supplier: string | null
+          supplier_id: string | null
           unit: string | null
           updated_at: string
         }
         Insert: {
+          barcode?: string | null
           category?: string | null
           company_id?: string | null
           cost_per_unit?: number | null
@@ -223,10 +226,12 @@ export type Database = {
           quantity_in_stock?: number
           sku?: string | null
           supplier?: string | null
+          supplier_id?: string | null
           unit?: string | null
           updated_at?: string
         }
         Update: {
+          barcode?: string | null
           category?: string | null
           company_id?: string | null
           cost_per_unit?: number | null
@@ -238,6 +243,7 @@ export type Database = {
           quantity_in_stock?: number
           sku?: string | null
           supplier?: string | null
+          supplier_id?: string | null
           unit?: string | null
           updated_at?: string
         }
@@ -247,6 +253,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -532,6 +545,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "purchase_orders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppliers: {
+        Row: {
+          address: string | null
+          company_id: string | null
+          contact_name: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          company_id?: string | null
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          company_id?: string | null
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
