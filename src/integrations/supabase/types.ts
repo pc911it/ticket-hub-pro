@@ -14,6 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      agents: {
+        Row: {
+          company_id: string
+          created_at: string
+          current_location_lat: number | null
+          current_location_lng: number | null
+          full_name: string
+          id: string
+          is_available: boolean
+          is_online: boolean
+          last_location_update: string | null
+          phone: string | null
+          updated_at: string
+          user_id: string
+          vehicle_info: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          current_location_lat?: number | null
+          current_location_lng?: number | null
+          full_name: string
+          id?: string
+          is_available?: boolean
+          is_online?: boolean
+          last_location_update?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+          vehicle_info?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          current_location_lat?: number | null
+          current_location_lng?: number | null
+          full_name?: string
+          id?: string
+          is_available?: boolean
+          is_online?: boolean
+          last_location_update?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+          vehicle_info?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
@@ -47,6 +103,188 @@ export type Database = {
         }
         Relationships: []
       }
+      companies: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          name: string
+          owner_id: string | null
+          phone: string | null
+          type: Database["public"]["Enums"]["company_type"]
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name: string
+          owner_id?: string | null
+          phone?: string | null
+          type?: Database["public"]["Enums"]["company_type"]
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name?: string
+          owner_id?: string | null
+          phone?: string | null
+          type?: Database["public"]["Enums"]["company_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      company_members: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_members_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_updates: {
+        Row: {
+          agent_id: string
+          created_at: string
+          id: string
+          location_lat: number | null
+          location_lng: number | null
+          notes: string | null
+          photo_url: string | null
+          status: Database["public"]["Enums"]["job_status"]
+          ticket_id: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          notes?: string | null
+          photo_url?: string | null
+          status: Database["public"]["Enums"]["job_status"]
+          ticket_id: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          notes?: string | null
+          photo_url?: string | null
+          status?: Database["public"]["Enums"]["job_status"]
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_updates_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          ticket_id: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          ticket_id?: string | null
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          ticket_id?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -79,50 +317,85 @@ export type Database = {
       }
       tickets: {
         Row: {
+          assigned_agent_id: string | null
+          call_ended_at: string | null
+          call_started_at: string | null
+          call_type: string | null
           client_id: string
+          company_id: string | null
           created_at: string
           created_by: string | null
           description: string | null
           duration_minutes: number | null
           id: string
+          priority: string | null
           scheduled_date: string
           scheduled_time: string
           status: string | null
           title: string
+          total_time_minutes: number | null
           updated_at: string
         }
         Insert: {
+          assigned_agent_id?: string | null
+          call_ended_at?: string | null
+          call_started_at?: string | null
+          call_type?: string | null
           client_id: string
+          company_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           duration_minutes?: number | null
           id?: string
+          priority?: string | null
           scheduled_date: string
           scheduled_time: string
           status?: string | null
           title: string
+          total_time_minutes?: number | null
           updated_at?: string
         }
         Update: {
+          assigned_agent_id?: string | null
+          call_ended_at?: string | null
+          call_started_at?: string | null
+          call_type?: string | null
           client_id?: string
+          company_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           duration_minutes?: number | null
           id?: string
+          priority?: string | null
           scheduled_date?: string
           scheduled_time?: string
           status?: string | null
           title?: string
+          total_time_minutes?: number | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tickets_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tickets_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -160,6 +433,14 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "staff" | "user"
+      company_type: "alarm_company" | "tow_company" | "other"
+      job_status:
+        | "assigned"
+        | "en_route"
+        | "on_site"
+        | "working"
+        | "completed"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -288,6 +569,15 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "staff", "user"],
+      company_type: ["alarm_company", "tow_company", "other"],
+      job_status: [
+        "assigned",
+        "en_route",
+        "on_site",
+        "working",
+        "completed",
+        "cancelled",
+      ],
     },
   },
 } as const
