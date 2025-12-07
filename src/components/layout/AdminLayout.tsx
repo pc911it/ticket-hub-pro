@@ -15,7 +15,8 @@ import {
   Bell,
   Radio,
   UserCircle,
-  Plus
+  Plus,
+  Shield
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -31,6 +32,7 @@ const navigation = [
   { name: 'Calendar', href: '/admin/calendar', icon: Calendar },
   { name: 'Clients', href: '/admin/clients', icon: Users },
   { name: 'Tickets', href: '/admin/tickets', icon: Ticket },
+  { name: 'Users', href: '/admin/users', icon: Shield },
 ];
 
 const AdminLayout = ({ children }: AdminLayoutProps) => {
