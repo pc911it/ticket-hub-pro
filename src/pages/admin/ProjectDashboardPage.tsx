@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProjectAttachments } from '@/components/ProjectAttachments';
+import { ProjectMilestones } from '@/components/ProjectMilestones';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -343,6 +344,17 @@ const ProjectDashboardPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Milestones */}
+      <Card className="border-0 shadow-md">
+        <CardContent className="pt-6">
+          <ProjectMilestones 
+            projectId={project.id} 
+            projectStartDate={project.start_date}
+            projectEndDate={project.end_date}
+          />
+        </CardContent>
+      </Card>
 
       {/* Project Details */}
       <div className="grid md:grid-cols-3 gap-6">
