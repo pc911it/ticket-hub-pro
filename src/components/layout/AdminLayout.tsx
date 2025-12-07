@@ -1,6 +1,8 @@
 import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useRealtimeAlerts } from '@/hooks/useRealtimeAlerts';
+import { LiveAlertsBanner } from '@/components/LiveAlertsBanner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -55,6 +57,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, user, isSuperAdmin, isCompanyOwner, userRole } = useAuth();
+  
+  // Enable real-time alerts
+  useRealtimeAlerts();
 
   const handleSignOut = async () => {
     await signOut();
@@ -200,6 +205,12 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           >
             <Menu className="h-5 w-5" />
           </button>
+          
+          {/* Live Alerts Indicator */}
+          <div className="hidden md:block">
+            <LiveAlertsBanner />
+          </div>
+          
           <div className="flex-1" />
           <Link to="/">
             <Button variant="outline" size="sm">
