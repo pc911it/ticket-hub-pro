@@ -98,6 +98,28 @@ Deno.serve(async (req) => {
             .update({ subscription_status: 'payment_failed' })
             .eq('id', company.id);
 
+          // Record failed payment in billing history
+          await supabase.from('billing_history').insert({
+            company_id: company.id,
+            amount: planPrice,
+            status: 'failed',
+            description: `Failed: ${company.subscription_plan} plan subscription`,
+          });
+
+          // Send payment failed email
+          try {
+            await supabase.functions.invoke('send-billing-email', {
+              body: {
+                type: 'payment_failed',
+                email: company.email,
+                companyName: company.name,
+                errorMessage: paymentData.errors?.[0]?.detail,
+              },
+            });
+          } catch (emailErr) {
+            console.error('Failed to send payment failed email:', emailErr);
+          }
+
           results.push({
             companyId: company.id,
             success: false,
@@ -119,6 +141,30 @@ Deno.serve(async (req) => {
             trial_ends_at: nextBillingDate.toISOString(),
           })
           .eq('id', company.id);
+
+        // Record successful payment in billing history
+        await supabase.from('billing_history').insert({
+          company_id: company.id,
+          amount: planPrice,
+          status: 'succeeded',
+          square_payment_id: paymentData.payment.id,
+          description: `${company.subscription_plan} plan subscription`,
+        });
+
+        // Send payment success email
+        try {
+          await supabase.functions.invoke('send-billing-email', {
+            body: {
+              type: 'payment_success',
+              email: company.email,
+              companyName: company.name,
+              amount: planPrice,
+              cardLast4: paymentData.payment.card_details?.card?.last_4,
+            },
+          });
+        } catch (emailErr) {
+          console.error('Failed to send payment success email:', emailErr);
+        }
 
         results.push({
           companyId: company.id,

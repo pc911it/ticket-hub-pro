@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.square-charge-subscription]
 verify_jwt = false
+
+[functions.send-billing-email]
+verify_jwt = false
+
+[functions.check-trial-expiry]
+verify_jwt = false
