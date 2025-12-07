@@ -63,8 +63,15 @@ const ProjectsPage = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchUserCompany();
-  }, [user]);
+    if (user) {
+      if (isSuperAdmin) {
+        // Super admin can see all projects
+        fetchData();
+      } else {
+        fetchUserCompany();
+      }
+    }
+  }, [user, isSuperAdmin]);
 
   useEffect(() => {
     if (userCompanyId) {
@@ -82,6 +89,8 @@ const ProjectsPage = () => {
       .maybeSingle();
     if (data) {
       setUserCompanyId(data.company_id);
+    } else {
+      setLoading(false);
     }
   };
 

@@ -42,8 +42,15 @@ const ClientsPage = () => {
   const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchUserCompany();
-  }, [user]);
+    if (user) {
+      if (isSuperAdmin) {
+        // Super admin can see all clients
+        fetchClients();
+      } else {
+        fetchUserCompany();
+      }
+    }
+  }, [user, isSuperAdmin]);
 
   useEffect(() => {
     if (userCompanyId) {
@@ -58,9 +65,11 @@ const ClientsPage = () => {
       .select('company_id')
       .eq('user_id', user.id)
       .limit(1)
-      .single();
+      .maybeSingle();
     if (data) {
       setUserCompanyId(data.company_id);
+    } else {
+      setLoading(false);
     }
   };
 

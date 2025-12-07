@@ -25,7 +25,8 @@ interface UserWithRole {
 }
 
 export default function UsersPage() {
-  const { userRole } = useAuth();
+  const { userRole, isSuperAdmin } = useAuth();
+  const canManageUsers = userRole === "admin" || isSuperAdmin;
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newUser, setNewUser] = useState({
@@ -63,7 +64,7 @@ export default function UsersPage() {
 
       return usersWithRoles;
     },
-    enabled: userRole === "admin",
+    enabled: canManageUsers,
   });
 
   const createUserMutation = useMutation({
@@ -144,7 +145,7 @@ export default function UsersPage() {
     }
   };
 
-  if (userRole !== "admin") {
+  if (!canManageUsers) {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-muted-foreground">You don't have permission to view this page.</p>
