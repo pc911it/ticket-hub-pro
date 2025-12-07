@@ -9,10 +9,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, MapPin, Edit2, Trash2, Calendar, DollarSign, Building2 } from 'lucide-react';
+import { Plus, Search, MapPin, Edit2, Trash2, Calendar, DollarSign, Building2, Paperclip } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { ProjectAttachments } from '@/components/ProjectAttachments';
 
 interface Client {
   id: string;
@@ -322,6 +323,21 @@ const ProjectsPage = () => {
                   placeholder="Internal notes..."
                 />
               </div>
+
+              {/* File Attachments - Only show when editing */}
+              {editingProject && (
+                <div className="border-t pt-4">
+                  <ProjectAttachments projectId={editingProject.id} />
+                </div>
+              )}
+
+              {!editingProject && (
+                <p className="text-xs text-muted-foreground bg-muted p-3 rounded-lg flex items-center gap-2">
+                  <Paperclip className="h-4 w-4" />
+                  You can upload blueprints, plans, and images after creating the project.
+                </p>
+              )}
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
