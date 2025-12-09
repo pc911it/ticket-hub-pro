@@ -114,40 +114,68 @@ serve(async (req) => {
 
     console.log(`Admin ${requestingUser.email} creating user: ${email} with role: ${role} for company: ${targetCompanyId}`);
 
-    // Create the user using admin API
-    const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        full_name: fullName,
-      },
-    });
+    // Check if user already exists
+    const { data: existingUsers } = await adminClient.auth.admin.listUsers();
+    const existingUser = existingUsers?.users?.find(u => u.email === email);
+    
+    let userId: string;
 
-    if (createError) {
-      console.log("Failed to create user:", createError.message);
-      return new Response(
-        JSON.stringify({ error: createError.message }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (existingUser) {
+      console.log(`User ${email} already exists, checking if already in company...`);
+      
+      // Check if user is already a member of this company
+      const { data: existingMember } = await adminClient
+        .from("company_members")
+        .select("id")
+        .eq("user_id", existingUser.id)
+        .eq("company_id", targetCompanyId)
+        .maybeSingle();
+
+      if (existingMember) {
+        return new Response(
+          JSON.stringify({ error: "This user is already a member of this company" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      userId = existingUser.id;
+      console.log(`Adding existing user ${email} to company ${targetCompanyId}`);
+    } else {
+      // Create the user using admin API
+      const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          full_name: fullName,
+        },
+      });
+
+      if (createError) {
+        console.log("Failed to create user:", createError.message);
+        return new Response(
+          JSON.stringify({ error: createError.message }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      userId = newUser.user.id;
+      console.log(`User created successfully: ${userId}`);
     }
-
-    console.log(`User created successfully: ${newUser.user.id}`);
 
     // Add user to the company
     const { error: memberInsertError } = await adminClient
       .from("company_members")
       .insert({
         company_id: targetCompanyId,
-        user_id: newUser.user.id,
+        user_id: userId,
         role: role || "user",
       });
 
     if (memberInsertError) {
       console.log("Failed to add user to company:", memberInsertError.message);
-      // User was created but company membership failed - this is a problem
       return new Response(
-        JSON.stringify({ error: "User created but failed to add to company: " + memberInsertError.message }),
+        JSON.stringify({ error: "Failed to add user to company: " + memberInsertError.message }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -155,15 +183,14 @@ serve(async (req) => {
     console.log(`User added to company ${targetCompanyId} with role: ${role}`);
 
     // Update the user_roles table if not default "user"
-    if (role && role !== "user" && newUser.user) {
+    if (role && role !== "user") {
       const { error: updateRoleError } = await adminClient
         .from("user_roles")
         .update({ role })
-        .eq("user_id", newUser.user.id);
+        .eq("user_id", userId);
 
       if (updateRoleError) {
         console.log("Failed to update user_roles:", updateRoleError.message);
-        // Not critical - user is already in company_members
       } else {
         console.log(`user_roles updated to: ${role}`);
       }
@@ -173,8 +200,8 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         user: { 
-          id: newUser.user.id, 
-          email: newUser.user.email 
+          id: userId, 
+          email: email 
         } 
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
