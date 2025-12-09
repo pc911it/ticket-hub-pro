@@ -44,26 +44,69 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verify requesting user is a super admin
-    const { data: isSuperAdmin } = await adminClient.rpc("is_super_admin", { 
-      _user_id: requestingUser.id 
-    });
-
-    if (!isSuperAdmin) {
-      return new Response(
-        JSON.stringify({ error: "Only super admins can reset user passwords" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     // Get request body
-    const { userId, newPassword } = await req.json();
+    const { userId, newPassword, companyId } = await req.json();
 
     if (!userId || !newPassword) {
       return new Response(
         JSON.stringify({ error: "userId and newPassword are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Check if requesting user is a super admin
+    const { data: isSuperAdmin } = await adminClient.rpc("is_super_admin", { 
+      _user_id: requestingUser.id 
+    });
+
+    // If not super admin, check if they are a company admin and the target user is in their company
+    if (!isSuperAdmin) {
+      if (!companyId) {
+        return new Response(
+          JSON.stringify({ error: "companyId is required for non-super-admin users" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Check if requesting user is a company admin or owner
+      const { data: isAdmin } = await adminClient.rpc("is_company_admin", { 
+        _company_id: companyId, 
+        _user_id: requestingUser.id 
+      });
+      const { data: isOwner } = await adminClient.rpc("is_company_owner", { 
+        _company_id: companyId, 
+        _user_id: requestingUser.id 
+      });
+
+      if (!isAdmin && !isOwner) {
+        return new Response(
+          JSON.stringify({ error: "Only company admins can reset passwords for their company's users" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Verify the target user is in the same company
+      const { data: targetUserMember, error: memberError } = await adminClient
+        .from("company_members")
+        .select("user_id, role")
+        .eq("company_id", companyId)
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (memberError || !targetUserMember) {
+        return new Response(
+          JSON.stringify({ error: "User not found in your company" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Prevent resetting password for admin users (only super admin can do that)
+      if (targetUserMember.role === "admin") {
+        return new Response(
+          JSON.stringify({ error: "Only super admins can reset admin passwords" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     if (newPassword.length < 6) {
