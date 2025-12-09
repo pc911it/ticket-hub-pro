@@ -198,21 +198,33 @@ serve(async (req) => {
 
     console.log(`User added to company ${targetCompanyId} with role: ${role}`);
 
-    // If role is "client", also add to clients table
+    // If role is "client", also add to clients table (only if not already exists)
     if (role === "client") {
-      const { error: clientError } = await adminClient
+      // Check if client already exists with this email
+      const { data: existingClient } = await adminClient
         .from("clients")
-        .insert({
-          company_id: targetCompanyId,
-          full_name: fullName,
-          email: email,
-        });
+        .select("id")
+        .eq("email", email)
+        .eq("company_id", targetCompanyId)
+        .maybeSingle();
 
-      if (clientError) {
-        console.log("Failed to add to clients table:", clientError.message);
-        // Continue anyway, main user creation succeeded
+      if (!existingClient) {
+        const { error: clientError } = await adminClient
+          .from("clients")
+          .insert({
+            company_id: targetCompanyId,
+            full_name: fullName,
+            email: email,
+          });
+
+        if (clientError) {
+          console.log("Failed to add to clients table:", clientError.message);
+          // Continue anyway, main user creation succeeded
+        } else {
+          console.log(`Client entry created for: ${email}`);
+        }
       } else {
-        console.log(`Client entry created for: ${email}`);
+        console.log(`Client already exists for email: ${email}`);
       }
     }
 
