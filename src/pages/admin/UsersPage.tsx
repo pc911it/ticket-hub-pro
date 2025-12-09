@@ -198,9 +198,9 @@ export default function UsersPage() {
   });
 
   const resetPasswordMutation = useMutation({
-    mutationFn: async ({ userId, newPassword }: { userId: string; newPassword: string }) => {
+    mutationFn: async ({ userId, newPassword, companyId }: { userId: string; newPassword: string; companyId?: string }) => {
       const response = await supabase.functions.invoke("reset-user-password", {
-        body: { userId, newPassword },
+        body: { userId, newPassword, companyId },
       });
 
       if (response.error) {
@@ -510,7 +510,8 @@ export default function UsersPage() {
                             )}
                           </SelectContent>
                         </Select>
-                        {isSuperAdmin && (
+                        {/* Reset password button - visible to super admins and company admins (for non-admin users) */}
+                        {(isSuperAdmin || (canManageUsers && user.role !== "admin")) && (
                           <Button
                             variant="outline"
                             size="icon"
@@ -581,6 +582,7 @@ export default function UsersPage() {
                   resetPasswordMutation.mutate({
                     userId: selectedUserForReset.user_id,
                     newPassword,
+                    companyId: userCompanyId || undefined,
                   });
                 }
               }}
