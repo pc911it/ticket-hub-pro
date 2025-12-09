@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Mail, Phone, MapPin, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Search, Mail, Phone, MapPin, Edit2, Trash2, KeyRound } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -28,8 +28,12 @@ const ClientsPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [selectedClientForLogin, setSelectedClientForLogin] = useState<Client | null>(null);
   const [isCompanyAdmin, setIsCompanyAdmin] = useState(false);
+  const [loginPassword, setLoginPassword] = useState('');
+  const [creatingLogin, setCreatingLogin] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -43,6 +47,7 @@ const ClientsPage = () => {
   
   // Company admins, owners, and super admins can delete
   const canDelete = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
+  const canCreateLogin = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
 
   useEffect(() => {
     if (user) {
@@ -113,6 +118,51 @@ const ClientsPage = () => {
       resetForm();
     }
     setIsDialogOpen(true);
+  };
+
+  const handleOpenLoginDialog = (client: Client) => {
+    setSelectedClientForLogin(client);
+    setLoginPassword('');
+    setIsLoginDialogOpen(true);
+  };
+
+  const handleCreateLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedClientForLogin || !userCompanyId) return;
+
+    if (loginPassword.length < 6) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Password must be at least 6 characters.' });
+      return;
+    }
+
+    setCreatingLogin(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: {
+          email: selectedClientForLogin.email,
+          password: loginPassword,
+          fullName: selectedClientForLogin.full_name,
+          role: 'client',
+          companyId: userCompanyId,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({ title: 'Success', description: 'Client portal login created successfully.' });
+      setIsLoginDialogOpen(false);
+      setLoginPassword('');
+      setSelectedClientForLogin(null);
+    } catch (error: any) {
+      toast({ 
+        variant: 'destructive', 
+        title: 'Error', 
+        description: error.message || 'Failed to create login.' 
+      });
+    } finally {
+      setCreatingLogin(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -251,6 +301,40 @@ const ClientsPage = () => {
         </Dialog>
       </div>
 
+      {/* Create Login Dialog */}
+      <Dialog open={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display">Create Client Portal Login</DialogTitle>
+            <DialogDescription>
+              Create login credentials for {selectedClientForLogin?.full_name} ({selectedClientForLogin?.email})
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="login_password">Password *</Label>
+              <Input
+                id="login_password"
+                type="password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                placeholder="Enter password (min 6 characters)"
+                required
+                minLength={6}
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsLoginDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={creatingLogin}>
+                {creatingLogin ? 'Creating...' : 'Create Login'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* Search */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -288,6 +372,17 @@ const ClientsPage = () => {
                     </p>
                   </div>
                   <div className="flex gap-1">
+                    {canCreateLogin && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8"
+                        onClick={() => handleOpenLoginDialog(client)}
+                        title="Create portal login"
+                      >
+                        <KeyRound className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button 
                       variant="ghost" 
                       size="icon" 
