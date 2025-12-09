@@ -1069,6 +1069,10 @@ export type Database = {
     }
     Functions: {
       approve_company: { Args: { _company_id: string }; Returns: boolean }
+      can_insert_company_member: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
       get_user_company_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_company_ids_direct: {
         Args: { _user_id: string }
