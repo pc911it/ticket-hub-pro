@@ -163,6 +163,22 @@ serve(async (req) => {
       console.log(`User created successfully: ${userId}`);
     }
 
+    // Create or update the user's profile
+    const { error: profileError } = await adminClient
+      .from("profiles")
+      .upsert({
+        user_id: userId,
+        full_name: fullName,
+        email: email,
+      }, { onConflict: 'user_id' });
+
+    if (profileError) {
+      console.log("Failed to create/update profile:", profileError.message);
+      // Continue anyway, profile is not critical
+    } else {
+      console.log(`Profile created/updated for user: ${userId}`);
+    }
+
     // Add user to the company
     const { error: memberInsertError } = await adminClient
       .from("company_members")
@@ -181,6 +197,24 @@ serve(async (req) => {
     }
 
     console.log(`User added to company ${targetCompanyId} with role: ${role}`);
+
+    // If role is "client", also add to clients table
+    if (role === "client") {
+      const { error: clientError } = await adminClient
+        .from("clients")
+        .insert({
+          company_id: targetCompanyId,
+          full_name: fullName,
+          email: email,
+        });
+
+      if (clientError) {
+        console.log("Failed to add to clients table:", clientError.message);
+        // Continue anyway, main user creation succeeded
+      } else {
+        console.log(`Client entry created for: ${email}`);
+      }
+    }
 
     // Update the user_roles table if not default "user"
     if (role && role !== "user") {
