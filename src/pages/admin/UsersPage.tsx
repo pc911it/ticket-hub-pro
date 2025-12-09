@@ -127,14 +127,15 @@ export default function UsersPage() {
 
         if (profilesError) throw profilesError;
 
-        const usersWithRoles: UserWithRole[] = profiles.map((profile) => {
-          const memberInfo = members?.find((m) => m.user_id === profile.user_id);
+        // Build users list from members, with profile info if available
+        const usersWithRoles: UserWithRole[] = members.map((member) => {
+          const profile = profiles?.find((p) => p.user_id === member.user_id);
           return {
-            id: profile.id,
-            user_id: profile.user_id,
-            full_name: profile.full_name,
-            email: profile.email,
-            role: memberInfo?.role || "user",
+            id: profile?.id || member.user_id,
+            user_id: member.user_id,
+            full_name: profile?.full_name || null,
+            email: profile?.email || null,
+            role: member.role || "user",
           };
         });
 
