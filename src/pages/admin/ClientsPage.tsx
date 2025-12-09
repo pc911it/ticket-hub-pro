@@ -24,12 +24,12 @@ interface Client {
 
 const ClientsPage = () => {
   const { user, isCompanyOwner, isSuperAdmin } = useAuth();
-  const canDelete = isCompanyOwner || isSuperAdmin;
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [isCompanyAdmin, setIsCompanyAdmin] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -40,6 +40,9 @@ const ClientsPage = () => {
   const { toast } = useToast();
 
   const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
+  
+  // Company admins, owners, and super admins can delete
+  const canDelete = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
 
   useEffect(() => {
     if (user) {
@@ -62,12 +65,13 @@ const ClientsPage = () => {
     if (!user) return;
     const { data } = await supabase
       .from('company_members')
-      .select('company_id')
+      .select('company_id, role')
       .eq('user_id', user.id)
       .limit(1)
       .maybeSingle();
     if (data) {
       setUserCompanyId(data.company_id);
+      setIsCompanyAdmin(data.role === 'admin');
     } else {
       setLoading(false);
     }
