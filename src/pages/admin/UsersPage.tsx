@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { UserPlus, Shield, User, Users, Briefcase, Building2, KeyRound } from "lucide-react";
+import { UserPlus, Shield, User, Users, Briefcase, Building2, KeyRound, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import type { Database } from "@/integrations/supabase/types";
@@ -31,7 +32,9 @@ export default function UsersPage() {
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedUserForReset, setSelectedUserForReset] = useState<UserWithRole | null>(null);
+  const [selectedUserForDelete, setSelectedUserForDelete] = useState<UserWithRole | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
   const [newUser, setNewUser] = useState({
@@ -215,6 +218,33 @@ export default function UsersPage() {
       setIsResetPasswordOpen(false);
       setSelectedUserForReset(null);
       setNewPassword("");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async ({ userId, companyId }: { userId: string; companyId: string }) => {
+      const response = await supabase.functions.invoke("delete-company-user", {
+        body: { userId, companyId },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success("User removed successfully");
+      setIsDeleteOpen(false);
+      setSelectedUserForDelete(null);
+      queryClient.invalidateQueries({ queryKey: ["users-with-roles"] });
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -493,6 +523,21 @@ export default function UsersPage() {
                             <KeyRound className="h-4 w-4" />
                           </Button>
                         )}
+                        {/* Delete button - visible to company admins and super admins */}
+                        {user.role !== "admin" && (
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => {
+                              setSelectedUserForDelete(user);
+                              setIsDeleteOpen(true);
+                            }}
+                            title="Remove User"
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -547,6 +592,36 @@ export default function UsersPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete User Confirmation Dialog */}
+      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove <strong>{selectedUserForDelete?.full_name || selectedUserForDelete?.email}</strong> from your company? 
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setSelectedUserForDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (selectedUserForDelete && userCompanyId) {
+                  deleteUserMutation.mutate({
+                    userId: selectedUserForDelete.user_id,
+                    companyId: userCompanyId,
+                  });
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteUserMutation.isPending}
+            >
+              {deleteUserMutation.isPending ? "Removing..." : "Remove User"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
