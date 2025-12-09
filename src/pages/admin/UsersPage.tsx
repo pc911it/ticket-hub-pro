@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { UserPlus, Shield, User, Users, Briefcase, Building2 } from "lucide-react";
+import { UserPlus, Shield, User, Users, Briefcase, Building2, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import type { Database } from "@/integrations/supabase/types";
@@ -30,6 +30,9 @@ export default function UsersPage() {
   const canManageUsers = userRole === "admin" || isSuperAdmin;
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const [selectedUserForReset, setSelectedUserForReset] = useState<UserWithRole | null>(null);
+  const [newPassword, setNewPassword] = useState("");
   const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
   const [newUser, setNewUser] = useState({
     email: "",
@@ -185,6 +188,33 @@ export default function UsersPage() {
     onSuccess: () => {
       toast.success("Role updated successfully");
       queryClient.invalidateQueries({ queryKey: ["users-with-roles"] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ userId, newPassword }: { userId: string; newPassword: string }) => {
+      const response = await supabase.functions.invoke("reset-user-password", {
+        body: { userId, newPassword },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success("Password reset successfully");
+      setIsResetPasswordOpen(false);
+      setSelectedUserForReset(null);
+      setNewPassword("");
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -430,25 +460,40 @@ export default function UsersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Select
-                        value={user.role}
-                        onValueChange={(value: AppRole) =>
-                          updateRoleMutation.mutate({ userId: user.user_id, role: value })
-                        }
-                        disabled={user.role === "admin" && !isSuperAdmin}
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="user">User</SelectItem>
-                          <SelectItem value="staff">Staff</SelectItem>
-                          <SelectItem value="client">Client</SelectItem>
-                          {(isSuperAdmin || user.role === "admin") && (
-                            <SelectItem value="admin">Admin</SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={user.role}
+                          onValueChange={(value: AppRole) =>
+                            updateRoleMutation.mutate({ userId: user.user_id, role: value })
+                          }
+                          disabled={user.role === "admin" && !isSuperAdmin}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="user">User</SelectItem>
+                            <SelectItem value="staff">Staff</SelectItem>
+                            <SelectItem value="client">Client</SelectItem>
+                            {(isSuperAdmin || user.role === "admin") && (
+                              <SelectItem value="admin">Admin</SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        {isSuperAdmin && (
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => {
+                              setSelectedUserForReset(user);
+                              setIsResetPasswordOpen(true);
+                            }}
+                            title="Reset Password"
+                          >
+                            <KeyRound className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -457,6 +502,51 @@ export default function UsersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={isResetPasswordOpen} onOpenChange={(open) => {
+        setIsResetPasswordOpen(open);
+        if (!open) {
+          setSelectedUserForReset(null);
+          setNewPassword("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Reset password for <strong>{selectedUserForReset?.full_name || selectedUserForReset?.email}</strong>
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New Password</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password"
+                minLength={6}
+              />
+            </div>
+            <Button
+              onClick={() => {
+                if (selectedUserForReset && newPassword) {
+                  resetPasswordMutation.mutate({
+                    userId: selectedUserForReset.user_id,
+                    newPassword,
+                  });
+                }
+              }}
+              disabled={!newPassword || newPassword.length < 6 || resetPasswordMutation.isPending}
+              className="w-full"
+            >
+              {resetPasswordMutation.isPending ? "Resetting..." : "Reset Password"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
