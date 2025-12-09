@@ -28,7 +28,6 @@ interface UserWithRole {
 
 export default function UsersPage() {
   const { user, userRole, isSuperAdmin } = useAuth();
-  const canManageUsers = userRole === "admin" || isSuperAdmin;
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
@@ -37,6 +36,7 @@ export default function UsersPage() {
   const [selectedUserForDelete, setSelectedUserForDelete] = useState<UserWithRole | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
+  const [isCompanyAdmin, setIsCompanyAdmin] = useState(false);
   const [newUser, setNewUser] = useState({
     email: "",
     password: "",
@@ -44,24 +44,32 @@ export default function UsersPage() {
     role: "user" as AppRole,
   });
 
-  // Fetch user's company
+  // Fetch user's company and check if they're a company admin
   useEffect(() => {
     const fetchUserCompany = async () => {
-      if (!user || isSuperAdmin) return;
+      if (!user) return;
+      
+      if (isSuperAdmin) {
+        setIsCompanyAdmin(true); // Super admin has all permissions
+        return;
+      }
       
       const { data } = await supabase
         .from("company_members")
-        .select("company_id")
+        .select("company_id, role")
         .eq("user_id", user.id)
         .maybeSingle();
       
       if (data) {
         setUserCompanyId(data.company_id);
+        setIsCompanyAdmin(data.role === "admin");
       }
     };
     
     fetchUserCompany();
   }, [user, isSuperAdmin]);
+
+  const canManageUsers = isCompanyAdmin || isSuperAdmin;
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["users-with-roles", userCompanyId, isSuperAdmin],
