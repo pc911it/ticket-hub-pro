@@ -35,7 +35,7 @@ import CompanyApprovalsPage from "./pages/admin/CompanyApprovalsPage";
 import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
 import SuperAdminBillingPage from "./pages/admin/SuperAdminBillingPage";
 import AgentJobPage from "./pages/AgentJobPage";
-
+import ClientDashboard from "./pages/ClientDashboard";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -283,6 +283,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route path="/client" element={<ClientDashboard />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

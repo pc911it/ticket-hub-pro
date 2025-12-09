@@ -23,9 +23,24 @@ const Auth = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user) {
-      navigate('/admin');
-    }
+    const checkUserRoleAndRedirect = async () => {
+      if (!user) return;
+      
+      // Check if user has client role in company_members
+      const { data: memberData } = await supabase
+        .from("company_members")
+        .select("role")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (memberData?.role === "client") {
+        navigate('/client');
+      } else {
+        navigate('/admin');
+      }
+    };
+    
+    checkUserRoleAndRedirect();
   }, [user, navigate]);
 
   // Check if this is the first user (no super_admin exists)
@@ -83,7 +98,7 @@ const Auth = () => {
             title: 'Welcome back!',
             description: 'You have been logged in successfully.',
           });
-          navigate('/admin');
+          // Redirect will happen via useEffect after user state updates
         }
       }
     } catch (err) {
