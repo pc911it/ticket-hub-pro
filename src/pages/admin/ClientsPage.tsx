@@ -148,7 +148,19 @@ const ClientsPage = () => {
       });
 
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (data?.error) {
+        // Handle specific error cases
+        if (data.error.includes('already a member')) {
+          toast({ 
+            variant: 'destructive', 
+            title: 'Already Has Access', 
+            description: 'This client already has portal login credentials.' 
+          });
+        } else {
+          throw new Error(data.error);
+        }
+        return;
+      }
 
       toast({ title: 'Success', description: 'Client portal login created successfully.' });
       setIsLoginDialogOpen(false);
