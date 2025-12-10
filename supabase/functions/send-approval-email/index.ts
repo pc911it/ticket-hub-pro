@@ -5,12 +5,70 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-secret",
 };
 
 interface ApprovalEmailRequest {
   company_id: string;
   status: "approved" | "rejected";
+}
+
+// Verify that the request is from an internal service or authenticated super admin
+async function verifyInternalRequest(req: Request): Promise<boolean> {
+  const internalSecret = Deno.env.get("INTERNAL_SERVICE_SECRET");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  
+  // Check for internal service secret header
+  const providedSecret = req.headers.get("x-internal-secret");
+  if (internalSecret && providedSecret === internalSecret) {
+    return true;
+  }
+  
+  // Check if called with service role key
+  if (serviceRoleKey && providedSecret === serviceRoleKey) {
+    return true;
+  }
+
+  // Check for valid JWT authentication
+  const authHeader = req.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
+    
+    // If it's the service role key, allow
+    if (token === serviceRoleKey) {
+      return true;
+    }
+    
+    // Verify JWT and check if user is super admin
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    
+    try {
+      const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } }
+      });
+      
+      const { data: { user }, error } = await supabase.auth.getUser();
+      
+      if (!error && user) {
+        // Check if user is a super admin
+        const adminClient = createClient(supabaseUrl, serviceRoleKey!);
+        const { data: roles } = await adminClient
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .single();
+        
+        if (roles?.role === "super_admin") {
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error("Error verifying JWT:", error);
+    }
+  }
+
+  return false;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -19,12 +77,46 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Verify the request is authorized
+  const isAuthorized = await verifyInternalRequest(req);
+  if (!isAuthorized) {
+    console.error("Unauthorized request to send-approval-email");
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
+  }
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { company_id, status }: ApprovalEmailRequest = await req.json();
+
+    // Validate inputs
+    if (!company_id || !status) {
+      return new Response(
+        JSON.stringify({ error: "Missing required fields: company_id and status" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    if (status !== "approved" && status !== "rejected") {
+      return new Response(
+        JSON.stringify({ error: "Invalid status. Must be 'approved' or 'rejected'" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Validate company_id is a valid UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(company_id)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid company_id format" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     console.log(`Processing approval email for company ${company_id} with status ${status}`);
 
