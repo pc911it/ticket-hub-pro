@@ -1,12 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
-
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-secret",
 };
 
 interface PurchaseOrderEmailRequest {
@@ -14,6 +13,7 @@ interface PurchaseOrderEmailRequest {
   supplierName: string;
   orderNumber: string;
   companyName: string;
+  companyId?: string;
   items: Array<{
     name: string;
     quantity: number;
@@ -24,6 +24,104 @@ interface PurchaseOrderEmailRequest {
   notes?: string;
 }
 
+// Verify that the request is from an authenticated company admin/owner
+async function verifyCompanyAdmin(req: Request, companyId?: string): Promise<boolean> {
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const internalSecret = Deno.env.get("INTERNAL_SERVICE_SECRET");
+  
+  // Check for internal service secret header
+  const providedSecret = req.headers.get("x-internal-secret");
+  if (internalSecret && providedSecret === internalSecret) {
+    return true;
+  }
+  
+  // Check if called with service role key
+  if (serviceRoleKey && providedSecret === serviceRoleKey) {
+    return true;
+  }
+
+  // Check for valid JWT authentication
+  const authHeader = req.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
+    
+    // If it's the service role key, allow
+    if (token === serviceRoleKey) {
+      return true;
+    }
+    
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    
+    try {
+      const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } }
+      });
+      
+      const { data: { user }, error } = await supabase.auth.getUser();
+      
+      if (!error && user) {
+        const adminClient = createClient(supabaseUrl, serviceRoleKey!);
+        
+        // Check if user is a super admin
+        const { data: roles } = await adminClient
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .single();
+        
+        if (roles?.role === "super_admin") {
+          return true;
+        }
+        
+        // Check if user is a company admin/owner
+        const memberQuery = adminClient
+          .from("company_members")
+          .select("role, company_id")
+          .eq("user_id", user.id)
+          .in("role", ["admin"]);
+        
+        // If companyId is provided, verify user belongs to that company
+        if (companyId) {
+          memberQuery.eq("company_id", companyId);
+        }
+        
+        const { data: membership } = await memberQuery.limit(1);
+        
+        if (membership && membership.length > 0) {
+          return true;
+        }
+        
+        // Also check if user is a company owner
+        const ownerQuery = adminClient
+          .from("companies")
+          .select("id")
+          .eq("owner_id", user.id);
+        
+        if (companyId) {
+          ownerQuery.eq("id", companyId);
+        }
+        
+        const { data: ownedCompanies } = await ownerQuery.limit(1);
+        
+        if (ownedCompanies && ownedCompanies.length > 0) {
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error("Error verifying JWT:", error);
+    }
+  }
+
+  return false;
+}
+
+// Validate email address format
+function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -31,16 +129,44 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    const body: PurchaseOrderEmailRequest = await req.json();
     const {
       to,
       supplierName,
       orderNumber,
       companyName,
+      companyId,
       items,
       totalCost,
       expectedDeliveryDate,
       notes,
-    }: PurchaseOrderEmailRequest = await req.json();
+    } = body;
+
+    // Verify the request is authorized
+    const isAuthorized = await verifyCompanyAdmin(req, companyId);
+    if (!isAuthorized) {
+      console.error("Unauthorized request to send-purchase-order-email");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Validate required fields
+    if (!to || !supplierName || !orderNumber || !companyName || !items) {
+      return new Response(
+        JSON.stringify({ error: "Missing required fields" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Validate email format
+    if (!isValidEmail(to)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid email address format" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     console.log(`Sending purchase order email to: ${to}`);
     console.log(`Order number: ${orderNumber}`);
@@ -141,8 +267,6 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log("Email sent successfully:", emailData);
-
-    console.log("Email sent successfully:", emailResponse);
 
     return new Response(JSON.stringify({ success: true, data: emailData }), {
       status: 200,

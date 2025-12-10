@@ -18,6 +18,43 @@ interface SquareWebhookEvent {
   };
 }
 
+// Verify Square webhook signature using HMAC-SHA256
+async function verifySquareSignature(
+  body: string,
+  signature: string | null,
+  webhookSignatureKey: string | null,
+  notificationUrl: string
+): Promise<boolean> {
+  if (!signature || !webhookSignatureKey) {
+    console.error("Missing signature or webhook signature key");
+    return false;
+  }
+
+  try {
+    // Square signature is computed as: Base64(HMAC-SHA256(notification_url + body, signature_key))
+    const stringToSign = notificationUrl + body;
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(webhookSignatureKey);
+    const messageData = encoder.encode(stringToSign);
+
+    const cryptoKey = await crypto.subtle.importKey(
+      "raw",
+      keyData,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+
+    const signatureBuffer = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
+    const computedSignature = btoa(String.fromCharCode(...new Uint8Array(signatureBuffer)));
+
+    return signature === computedSignature;
+  } catch (error) {
+    console.error("Error verifying signature:", error);
+    return false;
+  }
+}
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -27,10 +64,38 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const webhookSignatureKey = Deno.env.get('SQUARE_WEBHOOK_SIGNATURE_KEY');
+    const webhookNotificationUrl = Deno.env.get('SQUARE_WEBHOOK_NOTIFICATION_URL');
+
+    // Read the raw body for signature verification
+    const rawBody = await req.text();
+    const signature = req.headers.get('x-square-hmacsha256-signature');
+
+    // Verify webhook signature if configured
+    if (webhookSignatureKey && webhookNotificationUrl) {
+      const isValid = await verifySquareSignature(
+        rawBody,
+        signature,
+        webhookSignatureKey,
+        webhookNotificationUrl
+      );
+
+      if (!isValid) {
+        console.error("Invalid Square webhook signature");
+        return new Response(
+          JSON.stringify({ error: "Invalid signature" }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      console.log("Square webhook signature verified successfully");
+    } else {
+      console.warn("Square webhook signature verification is not configured - processing without verification");
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Parse the webhook payload
-    const payload: SquareWebhookEvent = await req.json();
+    // Parse the webhook payload from raw body
+    const payload: SquareWebhookEvent = JSON.parse(rawBody);
     
     console.log('Square webhook received:', JSON.stringify(payload, null, 2));
 
@@ -74,15 +139,21 @@ const handler = async (req: Request): Promise<Response> => {
               .update({ subscription_status: 'active' })
               .eq('id', company.id);
 
-            // Send success email
+            // Send success email via internal call
             try {
-              await supabase.functions.invoke('send-billing-email', {
-                body: {
-                  to: company.email,
+              await fetch(`${supabaseUrl}/functions/v1/send-billing-email`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${supabaseServiceKey}`,
+                  'X-Internal-Secret': Deno.env.get('INTERNAL_SERVICE_SECRET') || supabaseServiceKey,
+                },
+                body: JSON.stringify({
+                  email: company.email,
                   type: 'payment_success',
                   companyName: company.name,
-                  amount: amount / 100
-                }
+                  amount: amount
+                })
               });
             } catch (emailError) {
               console.error('Failed to send payment success email:', emailError);
@@ -128,15 +199,21 @@ const handler = async (req: Request): Promise<Response> => {
               .update({ subscription_status: 'past_due' })
               .eq('id', company.id);
 
-            // Send failure email
+            // Send failure email via internal call
             try {
-              await supabase.functions.invoke('send-billing-email', {
-                body: {
-                  to: company.email,
+              await fetch(`${supabaseUrl}/functions/v1/send-billing-email`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${supabaseServiceKey}`,
+                  'X-Internal-Secret': Deno.env.get('INTERNAL_SERVICE_SECRET') || supabaseServiceKey,
+                },
+                body: JSON.stringify({
+                  email: company.email,
                   type: 'payment_failed',
                   companyName: company.name,
-                  amount: (amount || 0) / 100
-                }
+                  amount: (amount || 0)
+                })
               });
             } catch (emailError) {
               console.error('Failed to send payment failed email:', emailError);
