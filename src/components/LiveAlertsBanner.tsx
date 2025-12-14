@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Bell, Radio, X } from 'lucide-react';
+import { Bell, Radio, X, Phone, Truck, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LiveAlert {
@@ -13,6 +13,30 @@ interface LiveAlert {
   message: string;
   timestamp: Date;
 }
+
+const alertConfig = {
+  ticket: {
+    icon: Phone,
+    borderColor: 'border-l-info',
+    bgColor: 'bg-info/10',
+    iconColor: 'text-info',
+    badgeVariant: 'info' as const,
+  },
+  job_update: {
+    icon: Truck,
+    borderColor: 'border-l-warning',
+    bgColor: 'bg-warning/10',
+    iconColor: 'text-warning',
+    badgeVariant: 'warning' as const,
+  },
+  notification: {
+    icon: MessageSquare,
+    borderColor: 'border-l-success',
+    bgColor: 'bg-success/10',
+    iconColor: 'text-success',
+    badgeVariant: 'success' as const,
+  },
+};
 
 export function LiveAlertsBanner() {
   const { user } = useAuth();
@@ -98,14 +122,14 @@ export function LiveAlertsBanner() {
 
   const addAlert = (alert: LiveAlert) => {
     setAlerts((prev) => {
-      const newAlerts = [alert, ...prev].slice(0, 5); // Keep last 5 alerts
+      const newAlerts = [alert, ...prev].slice(0, 5);
       return newAlerts;
     });
 
-    // Auto-remove after 10 seconds
+    // Auto-remove after 15 seconds
     setTimeout(() => {
       setAlerts((prev) => prev.filter((a) => a.id !== alert.id));
-    }, 10000);
+    }, 15000);
   };
 
   const dismissAlert = (id: string) => {
@@ -114,49 +138,80 @@ export function LiveAlertsBanner() {
 
   if (alerts.length === 0) {
     return (
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Radio className={cn("h-3 w-3", isConnected ? "text-green-500 animate-pulse" : "text-muted-foreground")} />
-        <span>{isConnected ? 'Live' : 'Connecting...'}</span>
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50">
+        <div className="relative">
+          <Radio className={cn(
+            "h-4 w-4 transition-colors",
+            isConnected ? "text-success" : "text-muted-foreground"
+          )} />
+          {isConnected && (
+            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-success animate-pulse" />
+          )}
+        </div>
+        <span className={cn(
+          "text-sm font-medium",
+          isConnected ? "text-success" : "text-muted-foreground"
+        )}>
+          {isConnected ? 'Live' : 'Connecting...'}
+        </span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-        <Radio className="h-3 w-3 text-green-500 animate-pulse" />
-        <span>Live Updates</span>
-        <Badge variant="secondary" className="text-xs">{alerts.length}</Badge>
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 border border-success/20">
+          <Radio className="h-4 w-4 text-success animate-pulse" />
+          <span className="text-sm font-semibold text-success">Live Updates</span>
+        </div>
+        <Badge variant="secondary" className="text-sm font-bold px-3 py-1">
+          {alerts.length}
+        </Badge>
       </div>
       
-      <div className="space-y-2 max-h-[200px] overflow-y-auto">
-        {alerts.map((alert) => (
-          <Card
-            key={alert.id}
-            className={cn(
-              "p-3 animate-in slide-in-from-top-2 duration-300 border-l-4",
-              alert.type === 'ticket' && "border-l-blue-500 bg-blue-500/5",
-              alert.type === 'job_update' && "border-l-amber-500 bg-amber-500/5",
-              alert.type === 'notification' && "border-l-purple-500 bg-purple-500/5"
-            )}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <Bell className="h-3 w-3 flex-shrink-0" />
-                  <p className="text-sm font-medium truncate">{alert.title}</p>
+      <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+        {alerts.map((alert) => {
+          const config = alertConfig[alert.type];
+          const Icon = config.icon;
+
+          return (
+            <Card
+              key={alert.id}
+              className={cn(
+                "p-4 animate-in slide-in-from-top-2 duration-300 border-l-4 shadow-lg hover:shadow-xl transition-shadow",
+                config.borderColor,
+                config.bgColor
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <div className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
+                    config.bgColor
+                  )}>
+                    <Icon className={cn("h-5 w-5", config.iconColor)} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-foreground">{alert.title}</p>
+                      <Badge variant="outline" className="text-xs">
+                        Just now
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground truncate mt-1">{alert.message}</p>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground truncate mt-1">{alert.message}</p>
+                <button
+                  onClick={() => dismissAlert(alert.id)}
+                  className="p-1.5 hover:bg-muted/50 rounded-full transition-colors shrink-0"
+                >
+                  <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                </button>
               </div>
-              <button
-                onClick={() => dismissAlert(alert.id)}
-                className="p-1 hover:bg-muted rounded"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
     </div>
   );
