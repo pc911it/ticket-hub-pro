@@ -1,19 +1,39 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Bell, Ticket, AlertTriangle, CheckCircle, MapPin } from 'lucide-react';
+import { Bell, Ticket, AlertTriangle, CheckCircle, MapPin, Building2 } from 'lucide-react';
 
 interface RealtimeAlertsOptions {
   onNewTicket?: (ticket: any) => void;
   onJobUpdate?: (update: any) => void;
   onNewNotification?: (notification: any) => void;
+  onPartnershipUpdate?: (partnership: any) => void;
 }
 
 export function useRealtimeAlerts(options: RealtimeAlertsOptions = {}) {
   const { toast } = useToast();
   const { user, isSuperAdmin } = useAuth();
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
+
+  // Fetch user's company ID for filtering partnership notifications
+  useEffect(() => {
+    if (!user) return;
+    
+    const fetchCompany = async () => {
+      const { data } = await supabase
+        .from('company_members')
+        .select('company_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .maybeSingle();
+      if (data) {
+        setUserCompanyId(data.company_id);
+      }
+    };
+    fetchCompany();
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -111,6 +131,84 @@ export function useRealtimeAlerts(options: RealtimeAlertsOptions = {}) {
           options.onNewNotification?.(notification);
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'project_companies',
+        },
+        async (payload) => {
+          const partnership = payload.new as any;
+          const oldPartnership = payload.old as any;
+          
+          // Only notify on status changes
+          if (partnership.status !== oldPartnership.status) {
+            // Check if this affects our company (we invited them)
+            const { data: project } = await supabase
+              .from('projects')
+              .select('name, company_id')
+              .eq('id', partnership.project_id)
+              .single();
+            
+            // Fetch the partner company name
+            const { data: partnerCompany } = await supabase
+              .from('companies')
+              .select('name')
+              .eq('id', partnership.company_id)
+              .single();
+            
+            // Notify if we are the project owner
+            if (project && userCompanyId && project.company_id === userCompanyId) {
+              if (partnership.status === 'accepted') {
+                toast({
+                  title: "Partnership Accepted!",
+                  description: `${partnerCompany?.name || 'A company'} has joined "${project.name}"`,
+                  duration: 5000,
+                });
+              } else if (partnership.status === 'declined') {
+                toast({
+                  title: "Partnership Declined",
+                  description: `${partnerCompany?.name || 'A company'} declined to join "${project.name}"`,
+                  duration: 5000,
+                });
+              }
+            }
+            
+            options.onPartnershipUpdate?.(partnership);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'project_companies',
+        },
+        async (payload) => {
+          const partnership = payload.new as any;
+          
+          // Check if we are the invited company
+          if (userCompanyId && partnership.company_id === userCompanyId) {
+            const { data: project } = await supabase
+              .from('projects')
+              .select('name, companies:company_id(name)')
+              .eq('id', partnership.project_id)
+              .single();
+            
+            if (project) {
+              toast({
+                title: "New Partnership Invitation",
+                description: `${(project.companies as any)?.name || 'A company'} invited you to collaborate on "${project.name}"`,
+                duration: 6000,
+              });
+            }
+          }
+          
+          options.onPartnershipUpdate?.(partnership);
+        }
+      )
       .subscribe();
 
     channelRef.current = channel;
@@ -120,7 +218,7 @@ export function useRealtimeAlerts(options: RealtimeAlertsOptions = {}) {
         supabase.removeChannel(channelRef.current);
       }
     };
-  }, [user, isSuperAdmin, toast, options]);
+  }, [user, userCompanyId, isSuperAdmin, toast, options]);
 
   return null;
 }

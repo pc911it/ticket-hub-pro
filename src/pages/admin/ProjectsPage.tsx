@@ -18,6 +18,8 @@ import { ProjectAttachments } from '@/components/ProjectAttachments';
 import { AgentAssignment } from '@/components/AgentAssignment';
 import { ProjectInvitations } from '@/components/ProjectInvitations';
 import { CompanyPartnerships } from '@/components/CompanyPartnerships';
+import { PartnerProjects } from '@/components/PartnerProjects';
+import { ProjectChat } from '@/components/ProjectChat';
 
 interface Client {
   id: string;
@@ -387,6 +389,13 @@ const ProjectsPage = () => {
                 </div>
               )}
 
+              {/* Project Chat - Only show when editing */}
+              {editingProject && (
+                <div className="border-t pt-4">
+                  <ProjectChat projectId={editingProject.id} />
+                </div>
+              )}
+
               {!editingProject && (
                 <p className="text-xs text-muted-foreground bg-muted p-3 rounded-lg flex items-center gap-2">
                   <Paperclip className="h-4 w-4" />
@@ -431,6 +440,9 @@ const ProjectsPage = () => {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Partner Projects Section */}
+      <PartnerProjects />
 
       {/* Projects Grid */}
       {filteredProjects.length === 0 ? (
