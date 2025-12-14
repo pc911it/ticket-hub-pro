@@ -57,12 +57,30 @@ export function ProjectInvitations({ projectId, projectName }: ProjectInvitation
 
     setLoading(true);
     try {
+      // Check if email exists in the system
+      const { data: existingUser, error: userError } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .eq('email', email.trim().toLowerCase())
+        .maybeSingle();
+
+      if (userError) {
+        throw userError;
+      }
+
+      if (!existingUser) {
+        toast.error('This email is not registered in the system. The user must have an account first.');
+        setLoading(false);
+        return;
+      }
+
       const { error } = await supabase
         .from('project_invitations')
         .insert({
           project_id: projectId,
           invited_email: email.trim().toLowerCase(),
           invited_by: user.id,
+          invited_user_id: existingUser.id,
           status: 'pending'
         });
 
