@@ -35,6 +35,57 @@ export function PendingPartnerships() {
     }
   }, [user]);
 
+  // Real-time subscription for new partnership invitations
+  useEffect(() => {
+    if (!userCompanyId) return;
+
+    const channel = supabase
+      .channel('pending-partnerships')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'project_companies',
+          filter: `company_id=eq.${userCompanyId}`
+        },
+        (payload) => {
+          console.log('New partnership invitation received:', payload);
+          toast.info('New partnership invitation received!');
+          fetchPendingPartnerships();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'project_companies',
+          filter: `company_id=eq.${userCompanyId}`
+        },
+        () => {
+          fetchPendingPartnerships();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'project_companies',
+          filter: `company_id=eq.${userCompanyId}`
+        },
+        () => {
+          fetchPendingPartnerships();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userCompanyId]);
+
   const fetchPendingPartnerships = async () => {
     if (!user) return;
 
