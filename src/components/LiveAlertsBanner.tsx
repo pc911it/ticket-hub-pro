@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Bell, Radio, X, Phone, Truck, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 interface LiveAlert {
   id: string;
@@ -42,6 +43,24 @@ export function LiveAlertsBanner() {
   const { user } = useAuth();
   const [alerts, setAlerts] = useState<LiveAlert[]>([]);
   const [isConnected, setIsConnected] = useState(false);
+  const { showCriticalAlert, isEnabled } = usePushNotifications();
+
+  const addAlert = useCallback((alert: LiveAlert) => {
+    setAlerts((prev) => {
+      const newAlerts = [alert, ...prev].slice(0, 5);
+      return newAlerts;
+    });
+
+    // Show desktop push notification if enabled
+    if (isEnabled) {
+      showCriticalAlert(alert.title, alert.message, { type: alert.type, id: alert.id });
+    }
+
+    // Auto-remove after 15 seconds
+    setTimeout(() => {
+      setAlerts((prev) => prev.filter((a) => a.id !== alert.id));
+    }, 15000);
+  }, [isEnabled, showCriticalAlert]);
 
   useEffect(() => {
     if (!user) return;
@@ -118,19 +137,7 @@ export function LiveAlertsBanner() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
-
-  const addAlert = (alert: LiveAlert) => {
-    setAlerts((prev) => {
-      const newAlerts = [alert, ...prev].slice(0, 5);
-      return newAlerts;
-    });
-
-    // Auto-remove after 15 seconds
-    setTimeout(() => {
-      setAlerts((prev) => prev.filter((a) => a.id !== alert.id));
-    }, 15000);
-  };
+  }, [user, addAlert]);
 
   const dismissAlert = (id: string) => {
     setAlerts((prev) => prev.filter((a) => a.id !== id));

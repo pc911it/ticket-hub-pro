@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeAlerts } from '@/hooks/useRealtimeAlerts';
 import { LiveAlertsBanner } from '@/components/LiveAlertsBanner';
 import { GlobalProjectChat } from '@/components/GlobalProjectChat';
+import { NotificationToggle, NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -215,6 +216,10 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           </div>
           
           <div className="flex-1" />
+          
+          {/* Notification Toggle */}
+          <NotificationToggle />
+          
           <Link to="/">
             <Button variant="outline" size="sm">
               View Site
@@ -223,7 +228,10 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         </header>
 
         {/* Page content */}
-        <main className="p-6">
+        <main className="p-6 space-y-6">
+          {/* Notification Permission Banner */}
+          <NotificationPermissionBanner />
+          
           {children}
         </main>
 
