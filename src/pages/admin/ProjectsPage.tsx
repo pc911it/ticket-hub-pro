@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { ProjectAttachments } from '@/components/ProjectAttachments';
 import { AgentAssignment } from '@/components/AgentAssignment';
 import { ProjectInvitations } from '@/components/ProjectInvitations';
+import { CompanyPartnerships } from '@/components/CompanyPartnerships';
 
 interface Client {
   id: string;
@@ -376,6 +377,13 @@ const ProjectsPage = () => {
               {editingProject && (
                 <div className="border-t pt-4">
                   <ProjectInvitations projectId={editingProject.id} projectName={editingProject.name} />
+                </div>
+              )}
+
+              {/* Company Partnerships - Only show when editing */}
+              {editingProject && (
+                <div className="border-t pt-4">
+                  <CompanyPartnerships projectId={editingProject.id} projectName={editingProject.name} />
                 </div>
               )}
 

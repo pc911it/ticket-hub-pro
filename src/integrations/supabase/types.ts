@@ -613,6 +613,54 @@ export type Database = {
           },
         ]
       }
+      project_companies: {
+        Row: {
+          accepted_at: string | null
+          company_id: string
+          created_at: string
+          id: string
+          invited_by: string
+          project_id: string
+          role: string
+          status: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          invited_by: string
+          project_id: string
+          role?: string
+          status?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          invited_by?: string
+          project_id?: string
+          role?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_companies_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_companies_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_invitations: {
         Row: {
           accepted_at: string | null
@@ -1099,6 +1147,10 @@ export type Database = {
       }
       is_company_owner: {
         Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_project_partner: {
+        Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }

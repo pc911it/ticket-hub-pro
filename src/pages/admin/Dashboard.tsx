@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Users, Ticket, TrendingUp, Clock, CheckCircle2, HardHat, FolderOpen } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, isToday } from 'date-fns';
+import { PendingPartnerships } from '@/components/PendingPartnerships';
 
 interface Stats {
   totalClients: number;
@@ -123,6 +124,9 @@ const Dashboard = () => {
         <h1 className="text-3xl font-display font-bold text-foreground">Dashboard</h1>
         <p className="text-muted-foreground mt-1">Welcome back! Here's your overview.</p>
       </div>
+
+      {/* Pending Partnership Invitations */}
+      <PendingPartnerships />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
