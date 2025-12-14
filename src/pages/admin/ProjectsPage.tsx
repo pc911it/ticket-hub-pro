@@ -20,6 +20,7 @@ import { ProjectInvitations } from '@/components/ProjectInvitations';
 import { CompanyPartnerships } from '@/components/CompanyPartnerships';
 import { PartnerProjects } from '@/components/PartnerProjects';
 import { ProjectChat } from '@/components/ProjectChat';
+import { PendingPartnerships } from '@/components/PendingPartnerships';
 
 interface Client {
   id: string;
@@ -440,6 +441,9 @@ const ProjectsPage = () => {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Pending Partnership Invitations */}
+      <PendingPartnerships />
 
       {/* Partner Projects Section */}
       <PartnerProjects />
