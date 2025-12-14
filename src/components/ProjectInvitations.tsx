@@ -102,23 +102,42 @@ export function ProjectInvitations({ projectId, projectName }: ProjectInvitation
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'accepted':
-        return <Badge variant="default" className="bg-green-500"><Check className="h-3 w-3 mr-1" /> Accepted</Badge>;
+        return (
+          <Badge className="bg-emerald-500 text-white border-emerald-600 shadow-sm">
+            <Check className="h-3 w-3 mr-1" /> Accepted
+          </Badge>
+        );
       case 'declined':
-        return <Badge variant="destructive"><X className="h-3 w-3 mr-1" /> Declined</Badge>;
+        return (
+          <Badge className="bg-red-500 text-white border-red-600 shadow-sm">
+            <X className="h-3 w-3 mr-1" /> Declined
+          </Badge>
+        );
       default:
-        return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" /> Pending</Badge>;
+        return (
+          <Badge className="bg-amber-500 text-white border-amber-600 shadow-sm animate-pulse">
+            <Clock className="h-3 w-3 mr-1" /> Pending
+          </Badge>
+        );
     }
   };
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="border-2 border-primary/20 shadow-lg">
+      <CardHeader className="bg-primary/5 border-b">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <Mail className="h-5 w-5" />
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <Mail className="h-5 w-5 text-primary" />
+          </div>
           Project Invitations
+          {invitations.filter(i => i.status === 'pending').length > 0 && (
+            <Badge className="ml-auto bg-amber-500 text-white animate-pulse">
+              {invitations.filter(i => i.status === 'pending').length} Pending
+            </Badge>
+          )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 pt-4">
         <div className="flex gap-2">
           <Input
             type="email"
@@ -126,25 +145,49 @@ export function ProjectInvitations({ projectId, projectName }: ProjectInvitation
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && sendInvitation()}
+            className="border-2 focus:border-primary"
           />
-          <Button onClick={sendInvitation} disabled={loading || !email.trim()}>
+          <Button onClick={sendInvitation} disabled={loading || !email.trim()} className="shadow-md">
             <UserPlus className="h-4 w-4 mr-2" />
             Invite
           </Button>
         </div>
 
         {invitations.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-muted-foreground">Sent Invitations</h4>
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <span className="h-2 w-2 bg-primary rounded-full"></span>
+              Sent Invitations ({invitations.length})
+            </h4>
             <div className="space-y-2">
               {invitations.map((invitation) => (
                 <div
                   key={invitation.id}
-                  className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                  className={`flex items-center justify-between p-4 rounded-lg border-2 transition-all ${
+                    invitation.status === 'pending' 
+                      ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700' 
+                      : invitation.status === 'accepted'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-700'
+                      : 'bg-red-50 dark:bg-red-950/20 border-red-300 dark:border-red-700'
+                  }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{invitation.invited_email}</span>
+                    <div className={`p-2 rounded-full ${
+                      invitation.status === 'pending' 
+                        ? 'bg-amber-200 dark:bg-amber-800' 
+                        : invitation.status === 'accepted'
+                        ? 'bg-emerald-200 dark:bg-emerald-800'
+                        : 'bg-red-200 dark:bg-red-800'
+                    }`}>
+                      <Mail className={`h-4 w-4 ${
+                        invitation.status === 'pending' 
+                          ? 'text-amber-700 dark:text-amber-300' 
+                          : invitation.status === 'accepted'
+                          ? 'text-emerald-700 dark:text-emerald-300'
+                          : 'text-red-700 dark:text-red-300'
+                      }`} />
+                    </div>
+                    <span className="text-sm font-medium">{invitation.invited_email}</span>
                     {getStatusBadge(invitation.status)}
                   </div>
                   {invitation.status === 'pending' && (
@@ -152,6 +195,7 @@ export function ProjectInvitations({ projectId, projectName }: ProjectInvitation
                       variant="ghost"
                       size="sm"
                       onClick={() => cancelInvitation(invitation.id)}
+                      className="text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/30"
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -163,9 +207,12 @@ export function ProjectInvitations({ projectId, projectName }: ProjectInvitation
         )}
 
         {invitations.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            No invitations sent yet. Invite external collaborators by email.
-          </p>
+          <div className="text-center py-6 bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/30">
+            <UserPlus className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+            <p className="text-sm text-muted-foreground">
+              No invitations sent yet. Invite external collaborators by email.
+            </p>
+          </div>
         )}
       </CardContent>
     </Card>
