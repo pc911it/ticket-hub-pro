@@ -111,6 +111,45 @@ export type Database = {
           },
         ]
       }
+      chat_read_receipts: {
+        Row: {
+          comment_id: string
+          company_id: string
+          id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          company_id: string
+          id?: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          company_id?: string
+          id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_read_receipts_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "project_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_read_receipts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
