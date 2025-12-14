@@ -6,9 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProjectAttachments } from '@/components/ProjectAttachments';
 import { ProjectMilestones } from '@/components/ProjectMilestones';
 import { ProjectActivityTimeline } from '@/components/ProjectActivityTimeline';
+import { ProjectChat } from '@/components/ProjectChat';
+import { CompanyPartnerships } from '@/components/CompanyPartnerships';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -19,11 +22,13 @@ import {
   CheckCircle2,
   AlertCircle,
   Ticket,
-  User
+  User,
+  MessageCircle,
+  Users,
+  FileText
 } from 'lucide-react';
 import { format, differenceInDays, isAfter, isBefore } from 'date-fns';
 import { cn } from '@/lib/utils';
-
 interface Project {
   id: string;
   name: string;
@@ -346,147 +351,181 @@ const ProjectDashboardPage = () => {
         </Card>
       </div>
 
-      {/* Milestones and Activity Timeline */}
-      <div className="grid md:grid-cols-2 gap-6">
-        <Card className="border-0 shadow-md">
-          <CardContent className="pt-6">
-            <ProjectMilestones 
-              projectId={project.id} 
-              projectStartDate={project.start_date}
-              projectEndDate={project.end_date}
-            />
-          </CardContent>
-        </Card>
+      {/* Tabbed Content Section */}
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            <span className="hidden sm:inline">Overview</span>
+          </TabsTrigger>
+          <TabsTrigger value="chat" className="flex items-center gap-2">
+            <MessageCircle className="h-4 w-4" />
+            <span className="hidden sm:inline">Chat</span>
+          </TabsTrigger>
+          <TabsTrigger value="partners" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            <span className="hidden sm:inline">Partners</span>
+          </TabsTrigger>
+          <TabsTrigger value="tickets" className="flex items-center gap-2">
+            <Ticket className="h-4 w-4" />
+            <span className="hidden sm:inline">Tickets</span>
+          </TabsTrigger>
+        </TabsList>
 
-        <Card className="border-0 shadow-md">
-          <CardContent className="pt-6">
-            <ProjectActivityTimeline 
-              projectId={project.id} 
-              projectStartDate={project.start_date}
-            />
-          </CardContent>
-        </Card>
-      </div>
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          {/* Milestones and Activity Timeline */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card className="border-0 shadow-md">
+              <CardContent className="pt-6">
+                <ProjectMilestones 
+                  projectId={project.id} 
+                  projectStartDate={project.start_date}
+                  projectEndDate={project.end_date}
+                />
+              </CardContent>
+            </Card>
 
-      {/* Project Details */}
-      <div className="grid md:grid-cols-3 gap-6">
-        {/* Details Card */}
-        <Card className="border-0 shadow-md">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-display">Project Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {project.address && (
-              <div className="flex items-start gap-3">
-                <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium">Address</p>
-                  <p className="text-sm text-muted-foreground">{project.address}</p>
+            <Card className="border-0 shadow-md">
+              <CardContent className="pt-6">
+                <ProjectActivityTimeline 
+                  projectId={project.id} 
+                  projectStartDate={project.start_date}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Project Details */}
+          <Card className="border-0 shadow-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg font-display">Project Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {project.address && (
+                <div className="flex items-start gap-3">
+                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium">Address</p>
+                    <p className="text-sm text-muted-foreground">{project.address}</p>
+                  </div>
                 </div>
-              </div>
-            )}
-            {project.budget && (
-              <div className="flex items-start gap-3">
-                <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
+              )}
+              {project.budget && (
+                <div className="flex items-start gap-3">
+                  <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium">Budget</p>
+                    <p className="text-sm text-muted-foreground">
+                      ${project.budget.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {project.description && (
                 <div>
-                  <p className="text-sm font-medium">Budget</p>
-                  <p className="text-sm text-muted-foreground">
-                    ${project.budget.toLocaleString()}
+                  <p className="text-sm font-medium mb-1">Description</p>
+                  <p className="text-sm text-muted-foreground">{project.description}</p>
+                </div>
+              )}
+              {project.notes && (
+                <div>
+                  <p className="text-sm font-medium mb-1">Notes</p>
+                  <p className="text-sm text-muted-foreground">{project.notes}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Attachments */}
+          <Card className="border-0 shadow-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg font-display">Attachments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ProjectAttachments projectId={project.id} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Chat Tab */}
+        <TabsContent value="chat">
+          <ProjectChat projectId={project.id} />
+        </TabsContent>
+
+        {/* Partners Tab */}
+        <TabsContent value="partners">
+          <CompanyPartnerships projectId={project.id} projectName={project.name} />
+        </TabsContent>
+
+        {/* Tickets Tab */}
+        <TabsContent value="tickets">
+          <Card className="border-0 shadow-md">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-display flex items-center gap-2">
+                  <Ticket className="h-5 w-5 text-primary" />
+                  Project Tickets
+                </CardTitle>
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/admin/tickets">View All Tickets</Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {tickets.length === 0 ? (
+                <div className="text-center py-8">
+                  <Ticket className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-muted-foreground text-sm">
+                    No tickets assigned to this project.
+                  </p>
+                  <p className="text-muted-foreground text-xs mt-1">
+                    Assign tickets to this project from the Tickets page.
                   </p>
                 </div>
-              </div>
-            )}
-            {project.description && (
-              <div>
-                <p className="text-sm font-medium mb-1">Description</p>
-                <p className="text-sm text-muted-foreground">{project.description}</p>
-              </div>
-            )}
-            {project.notes && (
-              <div>
-                <p className="text-sm font-medium mb-1">Notes</p>
-                <p className="text-sm text-muted-foreground">{project.notes}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Tickets List */}
-        <Card className="border-0 shadow-md md:col-span-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-display flex items-center gap-2">
-                <Ticket className="h-5 w-5 text-primary" />
-                Project Tickets
-              </CardTitle>
-              <Button asChild variant="outline" size="sm">
-                <Link to="/admin/tickets">View All Tickets</Link>
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {tickets.length === 0 ? (
-              <div className="text-center py-8">
-                <Ticket className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
-                <p className="text-muted-foreground text-sm">
-                  No tickets assigned to this project.
-                </p>
-                <p className="text-muted-foreground text-xs mt-1">
-                  Assign tickets to this project from the Tickets page.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
-                {tickets.map((ticket) => (
-                  <div
-                    key={ticket.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{ticket.title}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(ticket.scheduled_date), 'MMM d, yyyy')}
-                        </span>
-                        {ticket.agents && (
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <User className="h-3 w-3" />
-                            {ticket.agents.full_name}
+              ) : (
+                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                  {tickets.map((ticket) => (
+                    <div
+                      key={ticket.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{ticket.title}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(ticket.scheduled_date), 'MMM d, yyyy')}
                           </span>
-                        )}
+                          {ticket.agents && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              {ticket.agents.full_name}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge 
+                          variant="outline" 
+                          className={cn("text-xs", getPriorityColor(ticket.priority))}
+                        >
+                          {ticket.priority || 'normal'}
+                        </Badge>
+                        <Badge 
+                          variant="outline" 
+                          className={cn("text-xs", getTicketStatusColor(ticket.status))}
+                        >
+                          {ticket.status || 'pending'}
+                        </Badge>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Badge 
-                        variant="outline" 
-                        className={cn("text-xs", getPriorityColor(ticket.priority))}
-                      >
-                        {ticket.priority || 'normal'}
-                      </Badge>
-                      <Badge 
-                        variant="outline" 
-                        className={cn("text-xs", getTicketStatusColor(ticket.status))}
-                      >
-                        {ticket.status || 'pending'}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Attachments */}
-      <Card className="border-0 shadow-md">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-display">Attachments</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ProjectAttachments projectId={project.id} />
-        </CardContent>
-      </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
