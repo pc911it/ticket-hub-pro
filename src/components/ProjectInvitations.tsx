@@ -165,7 +165,7 @@ export function ProjectInvitations({ projectId, projectName }: ProjectInvitation
             onKeyDown={(e) => e.key === 'Enter' && sendInvitation()}
             className="border-2 focus:border-primary"
           />
-          <Button onClick={sendInvitation} disabled={loading || !email.trim()} className="shadow-md">
+          <Button type="button" onClick={sendInvitation} disabled={loading || !email.trim()} className="shadow-md">
             <UserPlus className="h-4 w-4 mr-2" />
             Invite
           </Button>
