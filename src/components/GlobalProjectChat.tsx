@@ -4,8 +4,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageCircle, ChevronLeft, Building2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MessageCircle, ChevronLeft, Building2, Users } from 'lucide-react';
 import { ProjectChat } from './ProjectChat';
+import { CompanyPartnerships } from './CompanyPartnerships';
 import { cn } from '@/lib/utils';
 
 interface Project {
@@ -20,6 +22,7 @@ export function GlobalProjectChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [activeTab, setActiveTab] = useState<'chat' | 'share'>('chat');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -44,6 +47,7 @@ export function GlobalProjectChat() {
 
   const handleBack = () => {
     setSelectedProject(null);
+    setActiveTab('chat');
   };
 
   const getStatusColor = (status: string) => {
@@ -58,7 +62,10 @@ export function GlobalProjectChat() {
   return (
     <Sheet open={isOpen} onOpenChange={(open) => {
       setIsOpen(open);
-      if (!open) setSelectedProject(null);
+      if (!open) {
+        setSelectedProject(null);
+        setActiveTab('chat');
+      }
     }}>
       <SheetTrigger asChild>
         <Button
@@ -80,7 +87,11 @@ export function GlobalProjectChat() {
                 <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2" onClick={handleBack}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <MessageCircle className="h-5 w-5 text-primary" />
+                {activeTab === 'chat' ? (
+                  <MessageCircle className="h-5 w-5 text-primary" />
+                ) : (
+                  <Users className="h-5 w-5 text-primary" />
+                )}
                 {selectedProject.name}
               </>
             ) : (
@@ -93,8 +104,25 @@ export function GlobalProjectChat() {
         </SheetHeader>
 
         {selectedProject ? (
-          <div className="flex-1 overflow-hidden p-4">
-            <ProjectChat projectId={selectedProject.id} />
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'chat' | 'share')} className="flex flex-col flex-1 overflow-hidden">
+              <TabsList className="mx-4 mt-2 grid grid-cols-2">
+                <TabsTrigger value="chat" className="flex items-center gap-2">
+                  <MessageCircle className="h-4 w-4" />
+                  Chat
+                </TabsTrigger>
+                <TabsTrigger value="share" className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Share
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="chat" className="flex-1 overflow-hidden p-4 mt-0">
+                <ProjectChat projectId={selectedProject.id} />
+              </TabsContent>
+              <TabsContent value="share" className="flex-1 overflow-auto p-4 mt-0">
+                <CompanyPartnerships projectId={selectedProject.id} projectName={selectedProject.name} />
+              </TabsContent>
+            </Tabs>
           </div>
         ) : (
           <ScrollArea className="flex-1">
