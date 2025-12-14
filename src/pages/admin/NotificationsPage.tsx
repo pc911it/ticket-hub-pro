@@ -28,12 +28,12 @@ interface Notification {
   ticket_id: string | null;
 }
 
-const typeConfig: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string }> = {
-  info: { icon: Info, color: 'bg-info/10 text-info' },
-  warning: { icon: AlertTriangle, color: 'bg-warning/10 text-warning' },
-  success: { icon: CheckCircle2, color: 'bg-success/10 text-success' },
-  error: { icon: XCircle, color: 'bg-destructive/10 text-destructive' },
-  update: { icon: Bell, color: 'bg-primary/10 text-primary' },
+const typeConfig: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string; border: string; badge: string }> = {
+  info: { icon: Info, color: 'bg-info/15 text-info', border: 'border-l-info', badge: 'bg-info/20 text-info border-info/30' },
+  warning: { icon: AlertTriangle, color: 'bg-warning/15 text-warning', border: 'border-l-warning', badge: 'bg-warning/20 text-warning border-warning/30' },
+  success: { icon: CheckCircle2, color: 'bg-success/15 text-success', border: 'border-l-success', badge: 'bg-success/20 text-success border-success/30' },
+  error: { icon: XCircle, color: 'bg-destructive/15 text-destructive', border: 'border-l-destructive', badge: 'bg-destructive/20 text-destructive border-destructive/30' },
+  update: { icon: Bell, color: 'bg-primary/15 text-primary', border: 'border-l-primary', badge: 'bg-primary/20 text-primary border-primary/30' },
 };
 
 const NotificationsPage = () => {
@@ -133,14 +133,21 @@ const NotificationsPage = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-display font-bold text-foreground flex items-center gap-3">
-            Notifications
-            {unreadCount > 0 && (
-              <Badge variant="destructive">{unreadCount} new</Badge>
-            )}
-          </h1>
-          <p className="text-muted-foreground mt-1">Stay updated with driver status and job progress.</p>
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center shadow-lg">
+            <Bell className="h-7 w-7 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-display font-bold text-foreground flex items-center gap-3">
+              Notifications
+              {unreadCount > 0 && (
+                <Badge variant="destructive" className="text-sm px-3 py-1 animate-pulse">
+                  {unreadCount} new
+                </Badge>
+              )}
+            </h1>
+            <p className="text-muted-foreground mt-1">Stay updated with driver status and job progress.</p>
+          </div>
         </div>
         {unreadCount > 0 && (
           <Button variant="outline" onClick={markAllAsRead}>
@@ -170,42 +177,55 @@ const NotificationsPage = () => {
               <Card
                 key={notification.id}
                 className={cn(
-                  "border-0 shadow-md transition-all animate-slide-up hover:shadow-lg",
-                  !notification.is_read && "ring-2 ring-primary/20"
+                  "shadow-lg transition-all animate-slide-up hover:shadow-xl border-l-4 overflow-hidden",
+                  config.border,
+                  !notification.is_read && "ring-2 ring-primary/30 bg-card",
+                  notification.is_read && "bg-muted/30"
                 )}
                 style={{ animationDelay: `${index * 30}ms` }}
               >
-                <CardContent className="p-4">
+                <CardContent className="p-5">
                   <div className="flex items-start gap-4">
-                    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center shrink-0", config.color)}>
-                      <Icon className="h-5 w-5" />
+                    <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-sm", config.color)}>
+                      <Icon className="h-6 w-6" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <h4 className={cn(
-                            "font-medium",
-                            !notification.is_read && "text-foreground",
-                            notification.is_read && "text-muted-foreground"
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className={cn(
+                              "font-semibold text-base",
+                              !notification.is_read && "text-foreground",
+                              notification.is_read && "text-muted-foreground"
+                            )}>
+                              {notification.title}
+                            </h4>
+                            {!notification.is_read && (
+                              <Badge className={cn("text-xs px-2 py-0.5 border", config.badge)}>
+                                New
+                              </Badge>
+                            )}
+                          </div>
+                          <p className={cn(
+                            "text-sm mt-1",
+                            !notification.is_read ? "text-foreground/80" : "text-muted-foreground"
                           )}>
-                            {notification.title}
-                          </h4>
-                          <p className="text-sm text-muted-foreground mt-0.5">
                             {notification.message}
                           </p>
                         </div>
                         {!notification.is_read && (
                           <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 shrink-0"
+                            variant="outline"
+                            size="sm"
+                            className="shrink-0 gap-1"
                             onClick={() => markAsRead(notification.id)}
                           >
                             <Check className="h-4 w-4" />
+                            Mark read
                           </Button>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-2">
+                      <p className="text-xs text-muted-foreground mt-3 font-medium">
                         {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                       </p>
                     </div>
