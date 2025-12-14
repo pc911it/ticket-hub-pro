@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Calendar, Users, Ticket, TrendingUp, Clock, CheckCircle2, HardHat, FolderOpen } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, isToday } from 'date-fns';
 import { PendingPartnerships } from '@/components/PendingPartnerships';
+import { PendingProjectInvitations } from '@/components/PendingProjectInvitations';
 
 interface Stats {
   totalClients: number;
@@ -124,6 +125,9 @@ const Dashboard = () => {
         <h1 className="text-3xl font-display font-bold text-foreground">Dashboard</h1>
         <p className="text-muted-foreground mt-1">Welcome back! Here's your overview.</p>
       </div>
+
+      {/* Pending Project Invitations - Live */}
+      <PendingProjectInvitations />
 
       {/* Pending Partnership Invitations */}
       <PendingPartnerships />
