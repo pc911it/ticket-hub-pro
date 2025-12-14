@@ -10,10 +10,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, MapPin, Edit2, Trash2, Calendar, DollarSign, Building2, Paperclip, Eye } from 'lucide-react';
+import { Plus, Search, MapPin, Edit2, Trash2, Calendar, DollarSign, Building2, Paperclip, Eye, CheckSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ProjectAttachments } from '@/components/ProjectAttachments';
 import { AgentAssignment } from '@/components/AgentAssignment';
 import { ProjectInvitations } from '@/components/ProjectInvitations';
@@ -55,6 +56,7 @@ const ProjectsPage = () => {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deleteProject, setDeleteProject] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
   const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -103,8 +105,8 @@ const ProjectsPage = () => {
 
   const fetchData = async () => {
     const [{ data: projectsData }, { data: clientsData }] = await Promise.all([
-      supabase.from('projects').select('*, clients(full_name)').order('created_at', { ascending: false }),
-      supabase.from('clients').select('id, full_name').order('full_name'),
+      supabase.from('projects').select('*, clients(full_name)').is('deleted_at', null).order('created_at', { ascending: false }),
+      supabase.from('clients').select('id, full_name').is('deleted_at', null).order('full_name'),
     ]);
 
     if (projectsData) setProjects(projectsData);
@@ -205,16 +207,56 @@ const ProjectsPage = () => {
     if (!deleteProject) return;
     setDeleting(true);
 
-    const { error } = await supabase.from('projects').delete().eq('id', deleteProject.id);
+    // Soft delete - set deleted_at timestamp
+    const { error } = await supabase
+      .from('projects')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', deleteProject.id);
 
     if (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete project.' });
     } else {
-      toast({ title: 'Success', description: 'Project deleted successfully.' });
+      toast({ title: 'Moved to Trash', description: 'Project moved to trash. You can restore it within 30 days.' });
       fetchData();
     }
     setDeleting(false);
     setDeleteProject(null);
+  };
+
+  const toggleProjectSelection = (id: string) => {
+    setSelectedProjects(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllProjects = () => {
+    if (selectedProjects.size === filteredProjects.length) {
+      setSelectedProjects(new Set());
+    } else {
+      setSelectedProjects(new Set(filteredProjects.map(p => p.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedProjects.size === 0) return;
+    setDeleting(true);
+
+    const { error } = await supabase
+      .from('projects')
+      .update({ deleted_at: new Date().toISOString() })
+      .in('id', Array.from(selectedProjects));
+
+    if (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete projects.' });
+    } else {
+      toast({ title: 'Moved to Trash', description: `${selectedProjects.size} project(s) moved to trash.` });
+      setSelectedProjects(new Set());
+      fetchData();
+    }
+    setDeleting(false);
   };
 
   const getStatusColor = (status: string) => {
@@ -458,6 +500,30 @@ const ProjectsPage = () => {
       {/* Partner Projects Section */}
       <PartnerProjects />
 
+      {/* Bulk Actions */}
+      {canDelete && filteredProjects.length > 0 && (
+        <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
+          <Checkbox
+            checked={selectedProjects.size === filteredProjects.length && filteredProjects.length > 0}
+            onCheckedChange={selectAllProjects}
+          />
+          <span className="text-sm text-muted-foreground">
+            {selectedProjects.size > 0 ? `${selectedProjects.size} selected` : 'Select all'}
+          </span>
+          {selectedProjects.size > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleBulkDelete}
+              disabled={deleting}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Selected ({selectedProjects.size})
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* Projects Grid */}
       {filteredProjects.length === 0 ? (
         <Card className="border-0 shadow-md">
@@ -479,14 +545,23 @@ const ProjectsPage = () => {
             >
               <CardContent className="p-5">
                 <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Building2 className="h-4 w-4 text-primary shrink-0" />
-                      <h3 className="font-semibold text-lg truncate">{project.name}</h3>
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    {canDelete && (
+                      <Checkbox
+                        checked={selectedProjects.has(project.id)}
+                        onCheckedChange={() => toggleProjectSelection(project.id)}
+                        className="mt-1"
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Building2 className="h-4 w-4 text-primary shrink-0" />
+                        <h3 className="font-semibold text-lg truncate">{project.name}</h3>
+                      </div>
+                      <Badge variant="outline" className={cn("text-xs", getStatusColor(project.status))}>
+                        {project.status}
+                      </Badge>
                     </div>
-                    <Badge variant="outline" className={cn("text-xs", getStatusColor(project.status))}>
-                      {project.status}
-                    </Badge>
                   </div>
                   <div className="flex gap-1 shrink-0">
                     <Button

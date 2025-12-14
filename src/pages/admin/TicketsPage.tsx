@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { MaterialAssignment, MaterialAssignmentItem, saveInventoryUsage } from '@/components/MaterialAssignment';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { TicketAttachments } from '@/components/TicketAttachments';
 import { DeleteConfirmationDialog } from '@/components/DeleteConfirmationDialog';
 
@@ -71,6 +72,7 @@ const TicketsPage = () => {
   const [selectedTicketForAttachments, setSelectedTicketForAttachments] = useState<Ticket | null>(null);
   const [deleteTicket, setDeleteTicket] = useState<Ticket | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [selectedTickets, setSelectedTickets] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
     client_id: '',
     project_id: '',
@@ -102,9 +104,9 @@ const TicketsPage = () => {
     }
 
     const [{ data: ticketsData }, { data: clientsData }, { data: projectsData }, { data: agentsData }, { data: usageData }, { data: attachmentsData }] = await Promise.all([
-      supabase.from('tickets').select('*, clients(full_name), projects(name), agents(full_name)').order('scheduled_date', { ascending: false }),
-      supabase.from('clients').select('id, full_name').order('full_name'),
-      supabase.from('projects').select('id, name').eq('status', 'active').order('name'),
+      supabase.from('tickets').select('*, clients(full_name), projects(name), agents(full_name)').is('deleted_at', null).order('scheduled_date', { ascending: false }),
+      supabase.from('clients').select('id, full_name').is('deleted_at', null).order('full_name'),
+      supabase.from('projects').select('id, name').eq('status', 'active').is('deleted_at', null).order('name'),
       memberData?.company_id 
         ? supabase.from('agents').select('id, full_name, is_online, is_available').eq('company_id', memberData.company_id).order('full_name')
         : Promise.resolve({ data: [] }),
@@ -298,16 +300,56 @@ const TicketsPage = () => {
     if (!deleteTicket) return;
     setDeleting(true);
 
-    const { error } = await supabase.from('tickets').delete().eq('id', deleteTicket.id);
+    // Soft delete - set deleted_at timestamp
+    const { error } = await supabase
+      .from('tickets')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', deleteTicket.id);
 
     if (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete ticket.' });
     } else {
-      toast({ title: 'Success', description: 'Ticket deleted successfully.' });
+      toast({ title: 'Moved to Trash', description: 'Ticket moved to trash. You can restore it within 30 days.' });
       fetchData();
     }
     setDeleting(false);
     setDeleteTicket(null);
+  };
+
+  const toggleTicketSelection = (id: string) => {
+    setSelectedTickets(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllTickets = () => {
+    if (selectedTickets.size === filteredTickets.length) {
+      setSelectedTickets(new Set());
+    } else {
+      setSelectedTickets(new Set(filteredTickets.map(t => t.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedTickets.size === 0) return;
+    setDeleting(true);
+
+    const { error } = await supabase
+      .from('tickets')
+      .update({ deleted_at: new Date().toISOString() })
+      .in('id', Array.from(selectedTickets));
+
+    if (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete tickets.' });
+    } else {
+      toast({ title: 'Moved to Trash', description: `${selectedTickets.size} ticket(s) moved to trash.` });
+      setSelectedTickets(new Set());
+      fetchData();
+    }
+    setDeleting(false);
   };
 
   const getStatusColor = (status: string) => {
@@ -575,6 +617,30 @@ const TicketsPage = () => {
         </Select>
       </div>
 
+      {/* Bulk Actions */}
+      {canDelete && filteredTickets.length > 0 && (
+        <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
+          <Checkbox
+            checked={selectedTickets.size === filteredTickets.length && filteredTickets.length > 0}
+            onCheckedChange={selectAllTickets}
+          />
+          <span className="text-sm text-muted-foreground">
+            {selectedTickets.size > 0 ? `${selectedTickets.size} selected` : 'Select all'}
+          </span>
+          {selectedTickets.size > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleBulkDelete}
+              disabled={deleting}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Selected ({selectedTickets.size})
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* Tickets List */}
       {filteredTickets.length === 0 ? (
         <Card className="border-0 shadow-md">
@@ -596,9 +662,24 @@ const TicketsPage = () => {
             >
               <CardContent className="p-5">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-lg truncate">{ticket.title}</h3>
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    {canDelete && (
+                      <Checkbox
+                        checked={selectedTickets.has(ticket.id)}
+                        onCheckedChange={() => toggleTicketSelection(ticket.id)}
+                        className="mt-1"
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="font-semibold text-lg truncate">{ticket.title}</h3>
+                        <span className={cn(
+                          "px-2.5 py-1 rounded-full text-xs font-medium capitalize border",
+                          getStatusColor(ticket.status)
+                        )}>
+                          {ticket.status}
+                        </span>
+                      </div>
                       <span className={cn(
                         "px-2.5 py-1 rounded-full text-xs font-medium capitalize border",
                         getStatusColor(ticket.status)

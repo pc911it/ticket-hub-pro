@@ -155,6 +155,7 @@ export type Database = {
           address: string | null
           company_id: string | null
           created_at: string
+          deleted_at: string | null
           email: string
           full_name: string
           id: string
@@ -166,6 +167,7 @@ export type Database = {
           address?: string | null
           company_id?: string | null
           created_at?: string
+          deleted_at?: string | null
           email: string
           full_name: string
           id?: string
@@ -177,6 +179,7 @@ export type Database = {
           address?: string | null
           company_id?: string | null
           created_at?: string
+          deleted_at?: string | null
           email?: string
           full_name?: string
           id?: string
@@ -850,6 +853,7 @@ export type Database = {
           company_id: string | null
           created_at: string
           created_by: string | null
+          deleted_at: string | null
           description: string | null
           end_date: string | null
           id: string
@@ -866,6 +870,7 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           description?: string | null
           end_date?: string | null
           id?: string
@@ -882,6 +887,7 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           description?: string | null
           end_date?: string | null
           id?: string
@@ -1104,6 +1110,7 @@ export type Database = {
           company_id: string | null
           created_at: string
           created_by: string | null
+          deleted_at: string | null
           description: string | null
           duration_minutes: number | null
           id: string
@@ -1125,6 +1132,7 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           description?: string | null
           duration_minutes?: number | null
           id?: string
@@ -1146,6 +1154,7 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           description?: string | null
           duration_minutes?: number | null
           id?: string
@@ -1250,6 +1259,7 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      purge_old_deleted_items: { Args: never; Returns: undefined }
       reject_company: { Args: { _company_id: string }; Returns: boolean }
     }
     Enums: {
