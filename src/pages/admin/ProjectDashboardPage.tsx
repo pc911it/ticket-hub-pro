@@ -10,8 +10,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProjectAttachments } from '@/components/ProjectAttachments';
 import { ProjectMilestones } from '@/components/ProjectMilestones';
 import { ProjectActivityTimeline } from '@/components/ProjectActivityTimeline';
-import { ProjectChat } from '@/components/ProjectChat';
-import { FloatingProjectChat } from '@/components/FloatingProjectChat';
 import { CompanyPartnerships } from '@/components/CompanyPartnerships';
 import { 
   ArrowLeft, 
@@ -519,9 +517,6 @@ const ProjectDashboardPage = () => {
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Floating Chat Button */}
-      <FloatingProjectChat projectId={project.id} projectName={project.name} />
     </div>
   );
 };
