@@ -9,6 +9,7 @@ interface AuthContextType {
   userRole: string | null;
   isCompanyOwner: boolean;
   isSuperAdmin: boolean;
+  isCompanyAdmin: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -23,6 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isCompanyOwner, setIsCompanyOwner] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isCompanyAdmin, setIsCompanyAdmin] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -34,11 +36,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setTimeout(() => {
             fetchUserRole(session.user.id);
             checkCompanyOwnership(session.user.id);
+            checkCompanyAdmin(session.user.id);
           }, 0);
         } else {
           setUserRole(null);
           setIsCompanyOwner(false);
           setIsSuperAdmin(false);
+          setIsCompanyAdmin(false);
         }
       }
     );
@@ -49,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         fetchUserRole(session.user.id);
         checkCompanyOwnership(session.user.id);
+        checkCompanyAdmin(session.user.id);
       }
       setLoading(false);
     });
@@ -83,6 +88,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const checkCompanyAdmin = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('company_members')
+      .select('role')
+      .eq('user_id', userId)
+      .eq('role', 'admin')
+      .maybeSingle();
+
+    if (!error && data) {
+      setIsCompanyAdmin(true);
+    } else {
+      setIsCompanyAdmin(false);
+    }
+  };
+
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error as Error | null };
@@ -108,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, userRole, isCompanyOwner, isSuperAdmin, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, userRole, isCompanyOwner, isSuperAdmin, isCompanyAdmin, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );
