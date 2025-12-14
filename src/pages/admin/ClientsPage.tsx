@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Search, Mail, Phone, MapPin, Edit2, Trash2, KeyRound } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { format } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { DeleteConfirmationDialog } from '@/components/DeleteConfirmationDialog';
@@ -37,6 +38,7 @@ const ClientsPage = () => {
   const [creatingLogin, setCreatingLogin] = useState(false);
   const [deleteClient, setDeleteClient] = useState<Client | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -89,6 +91,7 @@ const ClientsPage = () => {
     const { data, error } = await supabase
       .from('clients')
       .select('*')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
     if (!error && data) {
@@ -218,16 +221,56 @@ const ClientsPage = () => {
     if (!deleteClient) return;
     setDeleting(true);
 
-    const { error } = await supabase.from('clients').delete().eq('id', deleteClient.id);
+    // Soft delete - set deleted_at timestamp
+    const { error } = await supabase
+      .from('clients')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', deleteClient.id);
 
     if (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete client.' });
     } else {
-      toast({ title: 'Success', description: 'Client deleted successfully.' });
+      toast({ title: 'Moved to Trash', description: 'Client moved to trash. You can restore it within 30 days.' });
       fetchClients();
     }
     setDeleting(false);
     setDeleteClient(null);
+  };
+
+  const toggleClientSelection = (id: string) => {
+    setSelectedClients(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllClients = () => {
+    if (selectedClients.size === filteredClients.length) {
+      setSelectedClients(new Set());
+    } else {
+      setSelectedClients(new Set(filteredClients.map(c => c.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedClients.size === 0) return;
+    setDeleting(true);
+
+    const { error } = await supabase
+      .from('clients')
+      .update({ deleted_at: new Date().toISOString() })
+      .in('id', Array.from(selectedClients));
+
+    if (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete clients.' });
+    } else {
+      toast({ title: 'Moved to Trash', description: `${selectedClients.size} client(s) moved to trash.` });
+      setSelectedClients(new Set());
+      fetchClients();
+    }
+    setDeleting(false);
   };
 
   if (loading) {
@@ -364,6 +407,30 @@ const ClientsPage = () => {
         />
       </div>
 
+      {/* Bulk Actions */}
+      {canDelete && filteredClients.length > 0 && (
+        <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
+          <Checkbox
+            checked={selectedClients.size === filteredClients.length && filteredClients.length > 0}
+            onCheckedChange={selectAllClients}
+          />
+          <span className="text-sm text-muted-foreground">
+            {selectedClients.size > 0 ? `${selectedClients.size} selected` : 'Select all'}
+          </span>
+          {selectedClients.size > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleBulkDelete}
+              disabled={deleting}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Selected ({selectedClients.size})
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* Clients Grid */}
       {filteredClients.length === 0 ? (
         <Card className="border-0 shadow-md">
@@ -383,11 +450,20 @@ const ClientsPage = () => {
             >
               <CardContent className="p-5">
                 <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="font-semibold text-lg">{client.full_name}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Client since {format(new Date(client.created_at), 'MMM yyyy')}
-                    </p>
+                  <div className="flex items-start gap-3">
+                    {canDelete && (
+                      <Checkbox
+                        checked={selectedClients.has(client.id)}
+                        onCheckedChange={() => toggleClientSelection(client.id)}
+                        className="mt-1"
+                      />
+                    )}
+                    <div>
+                      <h3 className="font-semibold text-lg">{client.full_name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Client since {format(new Date(client.created_at), 'MMM yyyy')}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex gap-1">
                     {canCreateLogin && (

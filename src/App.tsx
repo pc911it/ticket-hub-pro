@@ -36,6 +36,7 @@ import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
 import SuperAdminBillingPage from "./pages/admin/SuperAdminBillingPage";
 import AgentJobPage from "./pages/AgentJobPage";
 import ClientDashboard from "./pages/ClientDashboard";
+import TrashPage from "./pages/admin/TrashPage";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -271,6 +272,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AdminLayout>
                     <SuperAdminBillingPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/trash"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <TrashPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }
