@@ -11,6 +11,7 @@ import { ProjectAttachments } from '@/components/ProjectAttachments';
 import { ProjectMilestones } from '@/components/ProjectMilestones';
 import { ProjectActivityTimeline } from '@/components/ProjectActivityTimeline';
 import { ProjectChat } from '@/components/ProjectChat';
+import { FloatingProjectChat } from '@/components/FloatingProjectChat';
 import { CompanyPartnerships } from '@/components/CompanyPartnerships';
 import { 
   ArrowLeft, 
@@ -353,14 +354,10 @@ const ProjectDashboardPage = () => {
 
       {/* Tabbed Content Section */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
             <span className="hidden sm:inline">Overview</span>
-          </TabsTrigger>
-          <TabsTrigger value="chat" className="flex items-center gap-2">
-            <MessageCircle className="h-4 w-4" />
-            <span className="hidden sm:inline">Chat</span>
           </TabsTrigger>
           <TabsTrigger value="partners" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
@@ -448,10 +445,6 @@ const ProjectDashboardPage = () => {
           </Card>
         </TabsContent>
 
-        {/* Chat Tab */}
-        <TabsContent value="chat">
-          <ProjectChat projectId={project.id} />
-        </TabsContent>
 
         {/* Partners Tab */}
         <TabsContent value="partners">
@@ -526,6 +519,9 @@ const ProjectDashboardPage = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Floating Chat Button */}
+      <FloatingProjectChat projectId={project.id} projectName={project.name} />
     </div>
   );
 };
