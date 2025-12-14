@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Mail, Phone, MapPin, Edit2, Trash2, KeyRound } from 'lucide-react';
+import { Plus, Search, Mail, Phone, MapPin, Edit2, Trash2, KeyRound, UserPlus } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { DeleteConfirmationDialog } from '@/components/DeleteConfirmationDialog';
@@ -39,6 +40,8 @@ const ClientsPage = () => {
   const [deleteClient, setDeleteClient] = useState<Client | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set());
+  const [createWithPortalAccess, setCreateWithPortalAccess] = useState(false);
+  const [newClientPassword, setNewClientPassword] = useState('');
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -108,6 +111,8 @@ const ClientsPage = () => {
   const resetForm = () => {
     setFormData({ full_name: '', email: '', phone: '', address: '', notes: '' });
     setEditingClient(null);
+    setCreateWithPortalAccess(false);
+    setNewClientPassword('');
   };
 
   const handleOpenDialog = (client?: Client) => {
@@ -201,19 +206,48 @@ const ClientsPage = () => {
         resetForm();
       }
     } else {
-      const { error } = await supabase.from('clients').insert({
+      const { data: newClient, error } = await supabase.from('clients').insert({
         ...formData,
         company_id: userCompanyId,
-      });
+      }).select().single();
 
       if (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to create client.' });
+        return;
+      }
+
+      // If portal access requested, create login
+      if (createWithPortalAccess && newClientPassword.length >= 6 && newClient) {
+        try {
+          const { data, error: loginError } = await supabase.functions.invoke('create-user', {
+            body: {
+              email: formData.email,
+              password: newClientPassword,
+              fullName: formData.full_name,
+              role: 'client',
+              companyId: userCompanyId,
+            },
+          });
+
+          if (loginError) throw loginError;
+          if (data?.error && !data.error.includes('already')) {
+            throw new Error(data.error);
+          }
+
+          toast({ title: 'Success', description: 'Client created with portal access.' });
+        } catch (loginErr: any) {
+          toast({ 
+            title: 'Partial Success', 
+            description: `Client created but portal login failed: ${loginErr.message}` 
+          });
+        }
       } else {
         toast({ title: 'Success', description: 'Client created successfully.' });
-        fetchClients();
-        setIsDialogOpen(false);
-        resetForm();
       }
+
+      fetchClients();
+      setIsDialogOpen(false);
+      resetForm();
     }
   };
 
@@ -349,12 +383,45 @@ const ClientsPage = () => {
                   rows={3}
                 />
               </div>
+
+              {/* Portal Access Option - Only for new clients */}
+              {!editingClient && canCreateLogin && (
+                <div className="border-t pt-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Enable Portal Access</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Client can log in to view their projects and request work
+                      </p>
+                    </div>
+                    <Switch
+                      checked={createWithPortalAccess}
+                      onCheckedChange={setCreateWithPortalAccess}
+                    />
+                  </div>
+                  {createWithPortalAccess && (
+                    <div className="space-y-2 animate-fade-in">
+                      <Label htmlFor="new_client_password">Portal Password *</Label>
+                      <Input
+                        id="new_client_password"
+                        type="password"
+                        value={newClientPassword}
+                        onChange={(e) => setNewClientPassword(e.target.value)}
+                        placeholder="Min 6 characters"
+                        minLength={6}
+                        required={createWithPortalAccess}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit">
-                  {editingClient ? 'Update' : 'Create'}
+                <Button type="submit" disabled={createWithPortalAccess && newClientPassword.length < 6}>
+                  {editingClient ? 'Update' : createWithPortalAccess ? 'Create with Portal' : 'Create'}
                 </Button>
               </DialogFooter>
             </form>
