@@ -52,8 +52,8 @@ interface Ticket {
 }
 
 const TicketsPage = () => {
-  const { user, isCompanyOwner, isSuperAdmin } = useAuth();
-  const canDelete = isCompanyOwner || isSuperAdmin;
+  const { user, isCompanyOwner, isSuperAdmin, isCompanyAdmin } = useAuth();
+  const canDelete = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);

@@ -43,8 +43,8 @@ interface Project {
 }
 
 const ProjectsPage = () => {
-  const { user, isCompanyOwner, isSuperAdmin } = useAuth();
-  const canDelete = isCompanyOwner || isSuperAdmin;
+  const { user, isCompanyOwner, isSuperAdmin, isCompanyAdmin } = useAuth();
+  const canDelete = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
