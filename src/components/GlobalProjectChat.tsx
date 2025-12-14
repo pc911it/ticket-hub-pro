@@ -52,6 +52,46 @@ export function GlobalProjectChat() {
     }
   }, [isOpen, user]);
 
+  // Real-time subscription for partnership invitations in global chat
+  useEffect(() => {
+    if (!userCompanyId || !isOpen) return;
+
+    const channel = supabase
+      .channel('global-chat-partnerships')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'project_companies',
+          filter: `company_id=eq.${userCompanyId}`
+        },
+        (payload) => {
+          console.log('New partnership invitation in global chat:', payload);
+          toast.info('New partnership invitation received!');
+          fetchPendingPartnerships();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'project_companies',
+          filter: `company_id=eq.${userCompanyId}`
+        },
+        () => {
+          fetchPendingPartnerships();
+          fetchProjects();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userCompanyId, isOpen]);
+
   const fetchProjects = async () => {
     setLoading(true);
     const { data } = await supabase
