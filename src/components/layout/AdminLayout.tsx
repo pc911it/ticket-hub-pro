@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeAlerts } from '@/hooks/useRealtimeAlerts';
 import { LiveAlertsBanner } from '@/components/LiveAlertsBanner';
+import { GlobalProjectChat } from '@/components/GlobalProjectChat';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -225,6 +226,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         <main className="p-6">
           {children}
         </main>
+
+        {/* Global Chat Button */}
+        <GlobalProjectChat />
       </div>
     </div>
   );
