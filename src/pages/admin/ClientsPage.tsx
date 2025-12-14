@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Search, Mail, Phone, MapPin, Edit2, Trash2, KeyRound } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
+import { DeleteConfirmationDialog } from '@/components/DeleteConfirmationDialog';
 
 interface Client {
   id: string;
@@ -34,6 +35,8 @@ const ClientsPage = () => {
   const [isCompanyAdmin, setIsCompanyAdmin] = useState(false);
   const [loginPassword, setLoginPassword] = useState('');
   const [creatingLogin, setCreatingLogin] = useState(false);
+  const [deleteClient, setDeleteClient] = useState<Client | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -211,10 +214,11 @@ const ClientsPage = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this client?')) return;
+  const handleDelete = async () => {
+    if (!deleteClient) return;
+    setDeleting(true);
 
-    const { error } = await supabase.from('clients').delete().eq('id', id);
+    const { error } = await supabase.from('clients').delete().eq('id', deleteClient.id);
 
     if (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete client.' });
@@ -222,6 +226,8 @@ const ClientsPage = () => {
       toast({ title: 'Success', description: 'Client deleted successfully.' });
       fetchClients();
     }
+    setDeleting(false);
+    setDeleteClient(null);
   };
 
   if (loading) {
@@ -408,7 +414,7 @@ const ClientsPage = () => {
                         variant="ghost" 
                         size="icon" 
                         className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(client.id)}
+                        onClick={() => setDeleteClient(client)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -438,6 +444,17 @@ const ClientsPage = () => {
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={!!deleteClient}
+        onOpenChange={(open) => !open && setDeleteClient(null)}
+        onConfirm={handleDelete}
+        title="Client"
+        itemName={deleteClient?.full_name || ''}
+        itemType="client"
+        loading={deleting}
+      />
     </div>
   );
 };

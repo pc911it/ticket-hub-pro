@@ -21,6 +21,7 @@ import { CompanyPartnerships } from '@/components/CompanyPartnerships';
 import { PartnerProjects } from '@/components/PartnerProjects';
 import { ProjectChat } from '@/components/ProjectChat';
 import { PendingPartnerships } from '@/components/PendingPartnerships';
+import { DeleteConfirmationDialog } from '@/components/DeleteConfirmationDialog';
 
 interface Client {
   id: string;
@@ -52,6 +53,8 @@ const ProjectsPage = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [deleteProject, setDeleteProject] = useState<Project | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -198,10 +201,11 @@ const ProjectsPage = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this project?')) return;
+  const handleDelete = async () => {
+    if (!deleteProject) return;
+    setDeleting(true);
 
-    const { error } = await supabase.from('projects').delete().eq('id', id);
+    const { error } = await supabase.from('projects').delete().eq('id', deleteProject.id);
 
     if (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete project.' });
@@ -209,6 +213,8 @@ const ProjectsPage = () => {
       toast({ title: 'Success', description: 'Project deleted successfully.' });
       fetchData();
     }
+    setDeleting(false);
+    setDeleteProject(null);
   };
 
   const getStatusColor = (status: string) => {
@@ -506,7 +512,7 @@ const ProjectsPage = () => {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(project.id)}
+                        onClick={() => setDeleteProject(project)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -553,6 +559,17 @@ const ProjectsPage = () => {
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={!!deleteProject}
+        onOpenChange={(open) => !open && setDeleteProject(null)}
+        onConfirm={handleDelete}
+        title="Project"
+        itemName={deleteProject?.name || ''}
+        itemType="project"
+        loading={deleting}
+      />
     </div>
   );
 };

@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { MaterialAssignment, MaterialAssignmentItem, saveInventoryUsage } from '@/components/MaterialAssignment';
 import { Badge } from '@/components/ui/badge';
 import { TicketAttachments } from '@/components/TicketAttachments';
+import { DeleteConfirmationDialog } from '@/components/DeleteConfirmationDialog';
 
 interface Agent {
   id: string;
@@ -68,6 +69,8 @@ const TicketsPage = () => {
   const [existingMaterialCount, setExistingMaterialCount] = useState<Record<string, number>>({});
   const [attachmentCounts, setAttachmentCounts] = useState<Record<string, { blueprints: number; images: number }>>({});
   const [selectedTicketForAttachments, setSelectedTicketForAttachments] = useState<Ticket | null>(null);
+  const [deleteTicket, setDeleteTicket] = useState<Ticket | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [formData, setFormData] = useState({
     client_id: '',
     project_id: '',
@@ -291,10 +294,11 @@ const TicketsPage = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this ticket?')) return;
+  const handleDelete = async () => {
+    if (!deleteTicket) return;
+    setDeleting(true);
 
-    const { error } = await supabase.from('tickets').delete().eq('id', id);
+    const { error } = await supabase.from('tickets').delete().eq('id', deleteTicket.id);
 
     if (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete ticket.' });
@@ -302,6 +306,8 @@ const TicketsPage = () => {
       toast({ title: 'Success', description: 'Ticket deleted successfully.' });
       fetchData();
     }
+    setDeleting(false);
+    setDeleteTicket(null);
   };
 
   const getStatusColor = (status: string) => {
@@ -696,7 +702,7 @@ const TicketsPage = () => {
                         variant="ghost" 
                         size="icon"
                         className="text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(ticket.id)}
+                        onClick={() => setDeleteTicket(ticket)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -725,6 +731,17 @@ const TicketsPage = () => {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={!!deleteTicket}
+        onOpenChange={(open) => !open && setDeleteTicket(null)}
+        onConfirm={handleDelete}
+        title="Ticket"
+        itemName={deleteTicket?.title || ''}
+        itemType="ticket"
+        loading={deleting}
+      />
     </div>
   );
 };
