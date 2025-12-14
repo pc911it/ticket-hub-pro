@@ -168,6 +168,20 @@ export function CompanyPartnerships({ projectId, projectName }: CompanyPartnersh
           throw error;
         }
       } else {
+        // Send email notification
+        try {
+          await supabase.functions.invoke('send-partnership-email', {
+            body: {
+              type: 'invitation',
+              project_id: projectId,
+              partner_company_id: company.id,
+              inviting_company_id: userCompanyId
+            }
+          });
+        } catch (emailError) {
+          console.error('Failed to send partnership email:', emailError);
+        }
+        
         toast.success(`Partnership invitation sent to ${company.name}`);
         setEmail('');
         fetchPartnerships();
@@ -212,6 +226,20 @@ export function CompanyPartnerships({ projectId, projectName }: CompanyPartnersh
           throw error;
         }
       } else {
+        // Send email notification
+        try {
+          await supabase.functions.invoke('send-partnership-email', {
+            body: {
+              type: 'invitation',
+              project_id: projectId,
+              partner_company_id: company.id,
+              inviting_company_id: userCompanyId
+            }
+          });
+        } catch (emailError) {
+          console.error('Failed to send partnership email:', emailError);
+        }
+        
         toast.success(`Partnership invitation sent to ${company.name}`);
         setSearchOpen(false);
         setSearchQuery('');
