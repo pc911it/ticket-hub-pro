@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Building2, Check, X, Clock } from 'lucide-react';
 import { toast } from 'sonner';
@@ -17,6 +16,7 @@ interface PendingPartnership {
     id: string;
     name: string;
     description: string | null;
+    company_id: string;
     companies: {
       name: string;
     } | null;
@@ -27,6 +27,7 @@ export function PendingPartnerships() {
   const { user } = useAuth();
   const [partnerships, setPartnerships] = useState<PendingPartnership[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -50,6 +51,8 @@ export function PendingPartnerships() {
       return;
     }
 
+    setUserCompanyId(membership.company_id);
+
     const { data, error } = await supabase
       .from('project_companies')
       .select(`
@@ -62,6 +65,7 @@ export function PendingPartnerships() {
           id,
           name,
           description,
+          company_id,
           companies:company_id(name)
         )
       `)
@@ -75,7 +79,7 @@ export function PendingPartnerships() {
     setLoading(false);
   };
 
-  const respondToInvitation = async (partnershipId: string, accept: boolean) => {
+  const respondToInvitation = async (partnership: PendingPartnership, accept: boolean) => {
     try {
       const { error } = await supabase
         .from('project_companies')
@@ -83,9 +87,24 @@ export function PendingPartnerships() {
           status: accept ? 'accepted' : 'declined',
           accepted_at: accept ? new Date().toISOString() : null
         })
-        .eq('id', partnershipId);
+        .eq('id', partnership.id);
 
       if (error) throw error;
+
+      // Send email notification to inviting company
+      try {
+        await supabase.functions.invoke('send-partnership-email', {
+          body: {
+            type: accept ? 'accepted' : 'declined',
+            project_id: partnership.project_id,
+            partner_company_id: userCompanyId,
+            inviting_company_id: partnership.projects.company_id
+          }
+        });
+      } catch (emailError) {
+        console.error('Failed to send partnership email:', emailError);
+      }
+
       toast.success(accept ? 'Partnership accepted! You now have access to this project.' : 'Partnership declined');
       fetchPendingPartnerships();
     } catch (error: any) {
@@ -142,14 +161,14 @@ export function PendingPartnerships() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => respondToInvitation(partnership.id, false)}
+                onClick={() => respondToInvitation(partnership, false)}
               >
                 <X className="h-4 w-4 mr-1" />
                 Decline
               </Button>
               <Button
                 size="sm"
-                onClick={() => respondToInvitation(partnership.id, true)}
+                onClick={() => respondToInvitation(partnership, true)}
               >
                 <Check className="h-4 w-4 mr-1" />
                 Accept

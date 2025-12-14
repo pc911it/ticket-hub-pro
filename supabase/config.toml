@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.square-webhook]
 verify_jwt = false
+
+[functions.send-partnership-email]
+verify_jwt = false

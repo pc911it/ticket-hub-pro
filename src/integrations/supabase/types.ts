@@ -618,6 +618,10 @@ export type Database = {
           company_id: string
           content: string
           created_at: string
+          file_name: string | null
+          file_size: number | null
+          file_type: string | null
+          file_url: string | null
           id: string
           project_id: string
           updated_at: string
@@ -627,6 +631,10 @@ export type Database = {
           company_id: string
           content: string
           created_at?: string
+          file_name?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string | null
           id?: string
           project_id: string
           updated_at?: string
@@ -636,6 +644,10 @@ export type Database = {
           company_id?: string
           content?: string
           created_at?: string
+          file_name?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string | null
           id?: string
           project_id?: string
           updated_at?: string

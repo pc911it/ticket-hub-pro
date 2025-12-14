@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { MessageCircle, Send, Building2 } from 'lucide-react';
+import { MessageCircle, Send, Building2, Paperclip, FileText, Image, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
@@ -16,8 +16,12 @@ interface Comment {
   user_id: string;
   company_id: string;
   content: string;
+  file_url: string | null;
+  file_name: string | null;
+  file_type: string | null;
+  file_size: number | null;
   created_at: string;
-  profiles?: { full_name: string | null } | null;
+  profiles?: { full_name: string | null; user_id: string } | null;
   companies?: { name: string } | null;
 }
 
@@ -30,14 +34,18 @@ export function ProjectChat({ projectId }: ProjectChatProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user) {
       fetchUserCompany();
       fetchComments();
-      subscribeToComments();
+      const unsubscribe = subscribeToComments();
+      return () => { unsubscribe?.(); };
     }
   }, [projectId, user]);
 
@@ -136,32 +144,101 @@ export function ProjectChat({ projectId }: ProjectChatProps) {
     };
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        toast.error('File size must be less than 10MB');
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
+  const removeSelectedFile = () => {
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const uploadFile = async (file: File): Promise<{ url: string; name: string; type: string; size: number } | null> => {
+    if (!user) return null;
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('project-chat-files')
+      .upload(fileName, file);
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      throw uploadError;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('project-chat-files')
+      .getPublicUrl(fileName);
+
+    return {
+      url: publicUrl,
+      name: file.name,
+      type: file.type,
+      size: file.size
+    };
+  };
+
   const sendMessage = async () => {
-    if (!message.trim() || !user || !userCompanyId) return;
+    if ((!message.trim() && !selectedFile) || !user || !userCompanyId) return;
 
     setLoading(true);
+    setUploading(!!selectedFile);
+
     try {
+      let fileData = null;
+
+      if (selectedFile) {
+        fileData = await uploadFile(selectedFile);
+      }
+
       const { error } = await supabase
         .from('project_comments')
         .insert({
           project_id: projectId,
           user_id: user.id,
           company_id: userCompanyId,
-          content: message.trim()
+          content: message.trim() || (fileData ? `Shared a file: ${fileData.name}` : ''),
+          file_url: fileData?.url || null,
+          file_name: fileData?.name || null,
+          file_type: fileData?.type || null,
+          file_size: fileData?.size || null
         });
 
       if (error) throw error;
       setMessage('');
+      removeSelectedFile();
     } catch (error: any) {
       toast.error(error.message || 'Failed to send message');
     } finally {
       setLoading(false);
+      setUploading(false);
     }
   };
 
   const getInitials = (name: string | null | undefined) => {
     if (!name) return '??';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  const isImage = (type: string | null) => {
+    return type?.startsWith('image/');
   };
 
   return (
@@ -209,7 +286,38 @@ export function ProjectChat({ projectId }: ProjectChatProps) {
                             : 'bg-muted'
                         }`}
                       >
-                        {comment.content}
+                        {comment.content && <p>{comment.content}</p>}
+                        
+                        {comment.file_url && (
+                          <div className="mt-2">
+                            {isImage(comment.file_type) ? (
+                              <a href={comment.file_url} target="_blank" rel="noopener noreferrer">
+                                <img 
+                                  src={comment.file_url} 
+                                  alt={comment.file_name || 'Attached image'} 
+                                  className="max-w-full max-h-48 rounded-md"
+                                />
+                              </a>
+                            ) : (
+                              <a 
+                                href={comment.file_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className={`flex items-center gap-2 p-2 rounded border ${
+                                  isOwn ? 'border-primary-foreground/30 hover:bg-primary-foreground/10' : 'border-border hover:bg-background'
+                                }`}
+                              >
+                                <FileText className="h-4 w-4" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium truncate">{comment.file_name}</p>
+                                  {comment.file_size && (
+                                    <p className="text-xs opacity-70">{formatFileSize(comment.file_size)}</p>
+                                  )}
+                                </div>
+                              </a>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <span className="text-xs text-muted-foreground mt-1">
                         {format(new Date(comment.created_at), 'MMM d, h:mm a')}
@@ -222,7 +330,37 @@ export function ProjectChat({ projectId }: ProjectChatProps) {
           )}
         </ScrollArea>
 
+        {selectedFile && (
+          <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+            {selectedFile.type.startsWith('image/') ? (
+              <Image className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            )}
+            <span className="text-sm flex-1 truncate">{selectedFile.name}</span>
+            <span className="text-xs text-muted-foreground">{formatFileSize(selectedFile.size)}</span>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={removeSelectedFile}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
         <div className="flex gap-2">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            className="hidden"
+            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+          />
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={loading}
+          >
+            <Paperclip className="h-4 w-4" />
+          </Button>
           <Input
             placeholder="Type a message..."
             value={message}
@@ -230,8 +368,12 @@ export function ProjectChat({ projectId }: ProjectChatProps) {
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
             disabled={loading}
           />
-          <Button onClick={sendMessage} disabled={loading || !message.trim()}>
-            <Send className="h-4 w-4" />
+          <Button onClick={sendMessage} disabled={loading || (!message.trim() && !selectedFile)}>
+            {uploading ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
         </div>
       </CardContent>
