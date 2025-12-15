@@ -105,13 +105,13 @@ export default function ClientDashboard() {
     enabled: !!clientEmail,
   });
 
-  // Fetch projects for this client
+  // Fetch projects for this client with ticket counts for progress tracking
   const { data: projects, isLoading: projectsLoading } = useQuery({
     queryKey: ["client-projects", clientRecord?.id],
     queryFn: async () => {
       if (!clientRecord?.id) return [];
       
-      const { data, error } = await supabase
+      const { data: projectsData, error } = await supabase
         .from("projects")
         .select("*")
         .eq("client_id", clientRecord.id)
@@ -119,7 +119,47 @@ export default function ClientDashboard() {
         .order("created_at", { ascending: false });
       
       if (error) throw error;
-      return data;
+      
+      // Fetch ticket counts for each project to calculate progress
+      const projectsWithProgress = await Promise.all(
+        (projectsData || []).map(async (project) => {
+          const { data: ticketData, error: ticketError } = await supabase
+            .from("tickets")
+            .select("id, status")
+            .eq("project_id", project.id)
+            .is("deleted_at", null);
+          
+          if (ticketError) {
+            console.error("Error fetching tickets for project:", ticketError);
+            return { ...project, totalTickets: 0, completedTickets: 0, progress: 0, phase: "planning" };
+          }
+          
+          const totalTickets = ticketData?.length || 0;
+          const completedTickets = ticketData?.filter(t => t.status === "completed").length || 0;
+          const inProgressTickets = ticketData?.filter(t => t.status === "in_progress" || t.status === "confirmed").length || 0;
+          const progress = totalTickets > 0 ? Math.round((completedTickets / totalTickets) * 100) : 0;
+          
+          // Determine phase based on progress
+          let phase = "planning";
+          if (totalTickets === 0) phase = "planning";
+          else if (progress === 100) phase = "completed";
+          else if (progress >= 75) phase = "finalizing";
+          else if (progress >= 50) phase = "in_progress";
+          else if (progress >= 25 || inProgressTickets > 0) phase = "active";
+          else if (totalTickets > 0) phase = "starting";
+          
+          return { 
+            ...project, 
+            totalTickets, 
+            completedTickets, 
+            inProgressTickets,
+            progress, 
+            phase 
+          };
+        })
+      );
+      
+      return projectsWithProgress;
     },
     enabled: !!clientRecord?.id,
   });
@@ -947,7 +987,7 @@ export default function ClientDashboard() {
                 </CardContent>
               </Card>
 
-              {/* Your Projects */}
+              {/* Your Projects with Progress Tracking */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base flex items-center gap-2">
@@ -961,23 +1001,61 @@ export default function ClientDashboard() {
                   ) : projects?.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">No projects</p>
                   ) : (
-                    <div className="space-y-3">
-                      {projects?.slice(0, 5).map((project) => (
-                        <div key={project.id} className="p-3 rounded-lg border bg-card">
-                          <div className="flex items-start justify-between gap-2">
-                            <h4 className="text-sm font-medium">{project.name}</h4>
-                            <Badge variant={project.status === "active" ? "default" : "secondary"} className="text-xs">
-                              {project.status}
-                            </Badge>
+                    <div className="space-y-4">
+                      {projects?.slice(0, 5).map((project: any) => {
+                        const phaseConfig: Record<string, { color: string; label: string; bg: string }> = {
+                          planning: { color: "text-muted-foreground", label: "Planning", bg: "bg-muted" },
+                          starting: { color: "text-info", label: "Starting", bg: "bg-info" },
+                          active: { color: "text-primary", label: "Active", bg: "bg-primary" },
+                          in_progress: { color: "text-warning", label: "In Progress", bg: "bg-warning" },
+                          finalizing: { color: "text-amber-600", label: "Finalizing", bg: "bg-amber-500" },
+                          completed: { color: "text-success", label: "Completed", bg: "bg-success" },
+                        };
+                        const phase = phaseConfig[project.phase] || phaseConfig.planning;
+                        
+                        return (
+                          <div key={project.id} className="p-3 rounded-lg border bg-card space-y-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <h4 className="text-sm font-medium">{project.name}</h4>
+                              <Badge variant="outline" className={cn("text-xs", phase.color)}>
+                                {phase.label}
+                              </Badge>
+                            </div>
+                            
+                            {/* Progress Bar */}
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-muted-foreground">Progress</span>
+                                <span className="font-medium">{project.progress}%</span>
+                              </div>
+                              <Progress value={project.progress} className="h-2" />
+                            </div>
+                            
+                            {/* Work Stats */}
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <CheckCircle className="h-3 w-3 text-success" />
+                                {project.completedTickets} done
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Wrench className="h-3 w-3 text-primary" />
+                                {project.inProgressTickets || 0} in progress
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Ticket className="h-3 w-3" />
+                                {project.totalTickets} total
+                              </span>
+                            </div>
+                            
+                            {project.address && (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {project.address}
+                              </p>
+                            )}
                           </div>
-                          {project.address && (
-                            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />
-                              {project.address}
-                            </p>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>
