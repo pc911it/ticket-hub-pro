@@ -767,20 +767,20 @@ const TicketsPage = () => {
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground mb-2">
-                      {ticket.clients?.full_name}
-                      {ticket.projects && (
-                        <span className="ml-2 inline-flex items-center gap-1 text-primary">
-                          <Building2 className="h-3 w-3" />
-                          {ticket.projects.name}
-                        </span>
-                      )}
-                      {ticket.agents && (
-                        <span className="ml-2 inline-flex items-center gap-1 text-success">
-                          <User className="h-3 w-3" />
-                          {ticket.agents.full_name}
-                        </span>
-                      )}
-                    </p>
+                        {ticket.clients?.full_name}
+                        {ticket.projects && (
+                          <span className="ml-2 inline-flex items-center gap-1 text-primary">
+                            <Building2 className="h-3 w-3" />
+                            {ticket.projects.name}
+                          </span>
+                        )}
+                        {ticket.agents && (
+                          <span className="ml-2 inline-flex items-center gap-1 text-success">
+                            <User className="h-3 w-3" />
+                            {ticket.agents.full_name}
+                          </span>
+                        )}
+                      </p>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1.5">
                         <Calendar className="h-4 w-4" />
