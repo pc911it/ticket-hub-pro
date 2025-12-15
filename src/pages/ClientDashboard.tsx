@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { SignaturePad } from "@/components/SignaturePad";
 import { FileUploadPreview } from "@/components/FileUploadPreview";
 import { PasswordResetReminder } from "@/components/PasswordResetReminder";
+import { ClientProjectDetails } from "@/components/ClientProjectDetails";
 import { 
   FolderOpen, 
   Ticket, 
@@ -36,7 +37,8 @@ import {
   CircleDot,
   PenTool,
   CheckCircle2,
-  Paperclip
+  Paperclip,
+  ChevronRight
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -50,6 +52,7 @@ export default function ClientDashboard() {
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
   const [selectedTicketForApproval, setSelectedTicketForApproval] = useState<any>(null);
+  const [selectedProject, setSelectedProject] = useState<any>(null);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [requestForm, setRequestForm] = useState({
@@ -1014,12 +1017,19 @@ export default function ClientDashboard() {
                         const phase = phaseConfig[project.phase] || phaseConfig.planning;
                         
                         return (
-                          <div key={project.id} className="p-3 rounded-lg border bg-card space-y-3">
+                          <button
+                            key={project.id}
+                            onClick={() => setSelectedProject(project)}
+                            className="w-full p-3 rounded-lg border bg-card space-y-3 text-left hover:border-primary/50 hover:bg-accent/50 transition-colors group"
+                          >
                             <div className="flex items-start justify-between gap-2">
                               <h4 className="text-sm font-medium">{project.name}</h4>
-                              <Badge variant="outline" className={cn("text-xs", phase.color)}>
-                                {phase.label}
-                              </Badge>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className={cn("text-xs", phase.color)}>
+                                  {phase.label}
+                                </Badge>
+                                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                              </div>
                             </div>
                             
                             {/* Progress Bar */}
@@ -1053,7 +1063,7 @@ export default function ClientDashboard() {
                                 {project.address}
                               </p>
                             )}
-                          </div>
+                          </button>
                         );
                       })}
                     </div>
@@ -1062,6 +1072,15 @@ export default function ClientDashboard() {
               </Card>
             </div>
           </div>
+        )}
+
+        {/* Project Details Dialog */}
+        {selectedProject && (
+          <ClientProjectDetails
+            project={selectedProject}
+            open={!!selectedProject}
+            onOpenChange={(open) => !open && setSelectedProject(null)}
+          />
         )}
       </main>
     </div>
