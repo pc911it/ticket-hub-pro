@@ -3,7 +3,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -48,7 +47,7 @@ export function DeleteConfirmationDialog({
             </div>
             <AlertDialogTitle className="text-xl">Delete {title}?</AlertDialogTitle>
           </div>
-          <AlertDialogDescription className="pt-4 space-y-3">
+          <div className="pt-4 space-y-3">
             <div className="p-3 bg-muted rounded-lg border">
               <p className="text-sm text-muted-foreground">You are about to delete:</p>
               <p className="font-semibold text-foreground mt-1 truncate">{itemName}</p>
@@ -59,12 +58,15 @@ export function DeleteConfirmationDialog({
             <p className="text-sm text-muted-foreground">
               This action cannot be undone.
             </p>
-          </AlertDialogDescription>
+          </div>
         </AlertDialogHeader>
         <AlertDialogFooter className="gap-2 sm:gap-0">
           <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            onClick={onConfirm}
+            onClick={(e) => {
+              e.preventDefault();
+              onConfirm();
+            }}
             disabled={loading}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
