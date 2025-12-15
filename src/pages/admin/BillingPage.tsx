@@ -267,21 +267,47 @@ export default function BillingPage() {
       </div>
 
       {/* Cancel Subscription */}
-      {company.subscription_status !== 'cancelled' && company.subscription_status !== 'trial' && (
+      {company.subscription_status !== 'cancelled' && (
         <Card className="border-destructive/30">
           <CardHeader>
             <CardTitle className="text-lg text-destructive">Cancel Subscription</CardTitle>
             <CardDescription>
-              Cancel your subscription. You'll retain access until the end of your current billing period.
+              {company.subscription_status === 'trial' ? (
+                <>
+                  <span className="block mb-2">
+                    Canceling during trial will incur a <span className="font-semibold text-destructive">
+                      ${currentPlan.monthlyPrice} cancellation fee
+                    </span> (one month of your selected plan).
+                  </span>
+                  <span>Your company account will be deactivated and data will be retained for 30 days.</span>
+                </>
+              ) : (
+                "Cancel your subscription. You'll retain access until the end of your current billing period."
+              )}
             </CardDescription>
           </CardHeader>
+          <CardContent className="pt-0">
+            <div className="bg-muted/50 rounded-lg p-4 text-sm space-y-2">
+              <p className="font-medium">What happens when you cancel:</p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                {company.subscription_status === 'trial' && (
+                  <li>A ${currentPlan.monthlyPrice} cancellation fee will be charged to your card on file</li>
+                )}
+                <li>Your account will be deactivated immediately</li>
+                <li>Data will be retained for 30 days before permanent deletion</li>
+                <li>Team members will lose access to the platform</li>
+              </ul>
+            </div>
+          </CardContent>
           <CardFooter>
             <Button 
               variant="outline" 
               className="text-destructive border-destructive/50 hover:bg-destructive/10"
               onClick={() => setCancelDialog(true)}
             >
-              Cancel Subscription
+              {company.subscription_status === 'trial' 
+                ? `Cancel & Pay $${currentPlan.monthlyPrice} Fee`
+                : 'Cancel Subscription'}
             </Button>
           </CardFooter>
         </Card>
@@ -327,8 +353,17 @@ export default function BillingPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Cancel Subscription</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to cancel? You'll lose access to premium features at the end of your billing period. You can reactivate anytime.
+            <DialogDescription className="space-y-3">
+              {company.subscription_status === 'trial' ? (
+                <>
+                  <p>
+                    Canceling during your trial will charge a <span className="font-semibold text-destructive">${currentPlan.monthlyPrice} cancellation fee</span> to your card on file.
+                  </p>
+                  <p>Your company account will be deactivated and all data will be permanently deleted after 30 days.</p>
+                </>
+              ) : (
+                <p>Are you sure you want to cancel? You'll lose access to premium features at the end of your billing period. You can reactivate anytime.</p>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -340,7 +375,11 @@ export default function BillingPage() {
               onClick={() => cancelSubscriptionMutation.mutate()}
               disabled={cancelSubscriptionMutation.isPending}
             >
-              {cancelSubscriptionMutation.isPending ? 'Cancelling...' : 'Yes, Cancel'}
+              {cancelSubscriptionMutation.isPending 
+                ? 'Cancelling...' 
+                : company.subscription_status === 'trial'
+                  ? `Yes, Cancel & Pay $${currentPlan.monthlyPrice}`
+                  : 'Yes, Cancel'}
             </Button>
           </DialogFooter>
         </DialogContent>
