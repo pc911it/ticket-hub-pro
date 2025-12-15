@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Calendar, Clock, Edit2, Trash2, CheckCircle2, Package, Paperclip, FileText, Image, Building2, User } from 'lucide-react';
+import { Plus, Search, Calendar, Clock, Edit2, Trash2, CheckCircle2, Package, Paperclip, FileText, Image, Building2, User, PenTool } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { MaterialAssignment, MaterialAssignmentItem, saveInventoryUsage } from '@/components/MaterialAssignment';
@@ -48,6 +48,8 @@ interface Ticket {
   duration_minutes: number;
   total_time_minutes: number | null;
   status: string;
+  client_signature_url: string | null;
+  client_approved_at: string | null;
   clients: { full_name: string } | null;
   projects: { name: string } | null;
   agents: { full_name: string } | null;
@@ -284,6 +286,19 @@ const TicketsPage = () => {
   };
 
   const handleStatusChange = async (ticketId: string, newStatus: string) => {
+    // Block completion if no signature
+    if (newStatus === 'completed') {
+      const ticket = tickets.find(t => t.id === ticketId);
+      if (ticket && !ticket.client_signature_url) {
+        toast({ 
+          variant: 'destructive', 
+          title: 'Signature Required', 
+          description: 'Client signature is required before completing this ticket. The agent must capture the signature on-site.' 
+        });
+        return;
+      }
+    }
+
     const { error } = await supabase
       .from('tickets')
       .update({ status: newStatus })
@@ -764,11 +779,25 @@ const TicketsPage = () => {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        className="text-info border-info/30 hover:bg-info/10"
+                        className={cn(
+                          ticket.client_signature_url
+                            ? "text-info border-info/30 hover:bg-info/10"
+                            : "text-muted-foreground border-muted hover:bg-muted/50"
+                        )}
                         onClick={() => handleStatusChange(ticket.id, 'completed')}
+                        title={!ticket.client_signature_url ? "Signature required" : undefined}
                       >
-                        <CheckCircle2 className="h-4 w-4 mr-1" />
-                        Complete
+                        {ticket.client_signature_url ? (
+                          <>
+                            <CheckCircle2 className="h-4 w-4 mr-1" />
+                            Complete
+                          </>
+                        ) : (
+                          <>
+                            <PenTool className="h-4 w-4 mr-1" />
+                            Needs Signature
+                          </>
+                        )}
                       </Button>
                     )}
                     <Button 
