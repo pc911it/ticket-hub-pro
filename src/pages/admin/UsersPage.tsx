@@ -147,13 +147,29 @@ export default function UsersPage() {
 
   const createUserMutation = useMutation({
     mutationFn: async (userData: typeof newUser) => {
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(userData.email.trim())) {
+        throw new Error("Please enter a valid email address");
+      }
+
+      // Validate password length
+      if (userData.password.length < 6) {
+        throw new Error("Password must be at least 6 characters");
+      }
+
+      // Validate name
+      if (!userData.fullName.trim()) {
+        throw new Error("Full name is required");
+      }
+
       const response = await supabase.functions.invoke("create-user", {
         body: {
-          email: userData.email,
+          email: userData.email.trim().toLowerCase(),
           password: userData.password,
-          fullName: userData.fullName,
+          fullName: userData.fullName.trim(),
           role: userData.role,
-          companyId: userCompanyId, // Pass company ID for non-super-admin
+          companyId: userCompanyId,
         },
       });
 
@@ -167,8 +183,11 @@ export default function UsersPage() {
 
       return response.data;
     },
-    onSuccess: () => {
-      toast.success("User created successfully and added to your company");
+    onSuccess: (data) => {
+      const message = data?.message?.includes('Password updated') 
+        ? "User password updated successfully" 
+        : "User created successfully and added to your company";
+      toast.success(message);
       setIsCreateOpen(false);
       setNewUser({ email: "", password: "", fullName: "", role: "user" });
       queryClient.invalidateQueries({ queryKey: ["users-with-roles"] });
