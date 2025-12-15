@@ -26,6 +26,7 @@ import TicketsPage from "./pages/admin/TicketsPage";
 import UsersPage from "./pages/admin/UsersPage";
 import BillingPage from "./pages/admin/BillingPage";
 import BillingSettingsPage from "./pages/admin/BillingSettingsPage";
+import ClientBillingPage from "./pages/admin/ClientBillingPage";
 import CompanySettingsPage from "./pages/admin/CompanySettingsPage";
 import InventoryPage from "./pages/admin/InventoryPage";
 import InventoryReportsPage from "./pages/admin/InventoryReportsPage";
@@ -193,6 +194,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AdminLayout>
                     <BillingSettingsPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/client-billing"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <ClientBillingPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }

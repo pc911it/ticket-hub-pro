@@ -150,6 +150,292 @@ export type Database = {
           },
         ]
       }
+      client_invoices: {
+        Row: {
+          amount: number
+          client_id: string
+          company_id: string
+          created_at: string
+          currency: string
+          description: string | null
+          due_date: string
+          id: string
+          invoice_number: string
+          line_items: Json | null
+          notes: string | null
+          paid_at: string | null
+          payment_method: string | null
+          project_id: string | null
+          sent_at: string | null
+          square_payment_id: string | null
+          status: string
+          subscription_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          client_id: string
+          company_id: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          due_date: string
+          id?: string
+          invoice_number: string
+          line_items?: Json | null
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          project_id?: string | null
+          sent_at?: string | null
+          square_payment_id?: string | null
+          status?: string
+          subscription_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          company_id?: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          due_date?: string
+          id?: string
+          invoice_number?: string
+          line_items?: Json | null
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          project_id?: string | null
+          sent_at?: string | null
+          square_payment_id?: string | null
+          status?: string
+          subscription_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_invoices_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_invoices_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_invoices_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "client_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_payment_plans: {
+        Row: {
+          amount: number
+          billing_interval: string
+          company_id: string
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          billing_interval?: string
+          company_id: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          billing_interval?: string
+          company_id?: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_payment_plans_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_payments: {
+        Row: {
+          amount: number
+          client_id: string
+          company_id: string
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          invoice_id: string | null
+          payment_method: string
+          square_payment_id: string | null
+          status: string
+          subscription_id: string | null
+        }
+        Insert: {
+          amount: number
+          client_id: string
+          company_id: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          invoice_id?: string | null
+          payment_method: string
+          square_payment_id?: string | null
+          status?: string
+          subscription_id?: string | null
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          company_id?: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          invoice_id?: string | null
+          payment_method?: string
+          square_payment_id?: string | null
+          status?: string
+          subscription_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_payments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_payments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "client_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_payments_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "client_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_subscriptions: {
+        Row: {
+          cancelled_at: string | null
+          client_id: string
+          company_id: string
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          payment_method: string
+          payment_plan_id: string
+          square_card_id: string | null
+          square_customer_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          client_id: string
+          company_id: string
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          payment_method?: string
+          payment_plan_id: string
+          square_card_id?: string | null
+          square_customer_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          client_id?: string
+          company_id?: string
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          payment_method?: string
+          payment_plan_id?: string
+          square_card_id?: string | null
+          square_customer_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_subscriptions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_subscriptions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_subscriptions_payment_plan_id_fkey"
+            columns: ["payment_plan_id"]
+            isOneToOne: false
+            referencedRelation: "client_payment_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
