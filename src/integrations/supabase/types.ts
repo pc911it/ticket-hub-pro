@@ -1102,6 +1102,10 @@ export type Database = {
       }
       tickets: {
         Row: {
+          admin_approval_status: string | null
+          admin_approved_at: string | null
+          admin_approved_by: string | null
+          admin_rejection_reason: string | null
           assigned_agent_id: string | null
           call_ended_at: string | null
           call_started_at: string | null
@@ -1127,6 +1131,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          admin_approval_status?: string | null
+          admin_approved_at?: string | null
+          admin_approved_by?: string | null
+          admin_rejection_reason?: string | null
           assigned_agent_id?: string | null
           call_ended_at?: string | null
           call_started_at?: string | null
@@ -1152,6 +1160,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          admin_approval_status?: string | null
+          admin_approved_at?: string | null
+          admin_approved_by?: string | null
+          admin_rejection_reason?: string | null
           assigned_agent_id?: string | null
           call_ended_at?: string | null
           call_started_at?: string | null

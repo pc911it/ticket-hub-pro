@@ -5,6 +5,7 @@ import { Calendar, Users, Ticket, TrendingUp, Clock, CheckCircle2, HardHat, Fold
 import { format, startOfMonth, endOfMonth, isToday } from 'date-fns';
 import { PendingPartnerships } from '@/components/PendingPartnerships';
 import { PendingProjectInvitations } from '@/components/PendingProjectInvitations';
+import { ClientRequestApprovals } from '@/components/ClientRequestApprovals';
 
 interface Stats {
   totalClients: number;
@@ -131,6 +132,9 @@ const Dashboard = () => {
 
       {/* Pending Partnership Invitations */}
       <PendingPartnerships />
+
+      {/* Client Request Approvals */}
+      <ClientRequestApprovals />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
