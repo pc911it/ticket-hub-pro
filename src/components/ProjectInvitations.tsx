@@ -212,7 +212,11 @@ export function ProjectInvitations({ projectId, projectName }: ProjectInvitation
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => cancelInvitation(invitation.id)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        cancelInvitation(invitation.id);
+                      }}
                       className="text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/30"
                     >
                       <X className="h-4 w-4" />
