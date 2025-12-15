@@ -28,7 +28,8 @@ import {
   Building2,
   CheckSquare,
   DollarSign,
-  Trash2
+  Trash2,
+  FileText
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -44,6 +45,7 @@ const navigation = [
   { name: 'Calendar', href: '/admin/calendar', icon: Calendar },
   { name: 'Clients', href: '/admin/clients', icon: Users },
   { name: 'Projects', href: '/admin/projects', icon: Building2 },
+  { name: 'Plans', href: '/admin/plans', icon: FileText },
   { name: 'Tickets', href: '/admin/tickets', icon: Ticket },
   { name: 'Inventory', href: '/admin/inventory', icon: Package },
   { name: 'Trash', href: '/admin/trash', icon: Trash2 },
