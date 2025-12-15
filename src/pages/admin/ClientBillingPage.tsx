@@ -201,21 +201,21 @@ const ClientBillingPage = () => {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  // Send invoice
+  // Send invoice via email
   const sendInvoiceMutation = useMutation({
     mutationFn: async (invoiceId: string) => {
-      const { error } = await supabase
-        .from('client_invoices')
-        .update({ status: 'sent', sent_at: new Date().toISOString() })
-        .eq('id', invoiceId);
+      const { data, error } = await supabase.functions.invoke('send-client-invoice', {
+        body: { invoiceId },
+      });
       if (error) throw error;
-      // TODO: Integrate with email sending edge function
+      if (data?.error) throw new Error(data.error);
+      return data;
     },
     onSuccess: () => {
-      toast.success('Invoice sent');
+      toast.success('Invoice sent to client');
       queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(`Failed to send invoice: ${error.message}`),
   });
 
   // Mark invoice as paid

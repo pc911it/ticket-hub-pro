@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.delete-company]
 verify_jwt = false
+
+[functions.send-client-invoice]
+verify_jwt = false
