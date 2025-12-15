@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Calendar, Clock, Edit2, Trash2, CheckCircle2, Package, Paperclip, FileText, Image, Building2, User, PenTool, XCircle } from 'lucide-react';
+import { Plus, Search, Calendar, Clock, Edit2, Trash2, CheckCircle2, Package, Paperclip, FileText, Image, Building2, User, PenTool, XCircle, Eye, Radio } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { MaterialAssignment, MaterialAssignmentItem, saveInventoryUsage } from '@/components/MaterialAssignment';
@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TicketAttachments } from '@/components/TicketAttachments';
 import { DeleteConfirmationDialog } from '@/components/DeleteConfirmationDialog';
+import { TicketDetailSheet } from '@/components/TicketDetailSheet';
 
 interface Agent {
   id: string;
@@ -75,6 +76,7 @@ const TicketsPage = () => {
   const [existingMaterialCount, setExistingMaterialCount] = useState<Record<string, number>>({});
   const [attachmentCounts, setAttachmentCounts] = useState<Record<string, { blueprints: number; images: number }>>({});
   const [selectedTicketForAttachments, setSelectedTicketForAttachments] = useState<Ticket | null>(null);
+  const [selectedTicketForDetails, setSelectedTicketForDetails] = useState<Ticket | null>(null);
   const [deleteTicket, setDeleteTicket] = useState<Ticket | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [selectedTickets, setSelectedTickets] = useState<Set<string>>(new Set());
@@ -762,6 +764,10 @@ const TicketsPage = () => {
                         )}>
                           {ticket.status}
                         </span>
+                        <Badge variant="outline" className="text-xs animate-pulse bg-primary/10 border-primary/30">
+                          <Radio className="h-3 w-3 mr-1" />
+                          Live
+                        </Badge>
                         {ticket.admin_approval_status && ticket.admin_approval_status !== 'approved' && (
                           <span className={cn(
                             "px-2.5 py-1 rounded-full text-xs font-medium border",
@@ -826,6 +832,14 @@ const TicketsPage = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setSelectedTicketForDetails(ticket)}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      Details
+                    </Button>
                     <Button 
                       variant="outline" 
                       size="sm"
@@ -934,6 +948,14 @@ const TicketsPage = () => {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Ticket Detail Sheet */}
+      <TicketDetailSheet
+        ticket={selectedTicketForDetails}
+        open={!!selectedTicketForDetails}
+        onOpenChange={(open) => !open && setSelectedTicketForDetails(null)}
+        onUpdate={fetchData}
+      />
 
       {/* Delete Confirmation Dialog */}
       <DeleteConfirmationDialog
