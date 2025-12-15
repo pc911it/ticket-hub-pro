@@ -9,11 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Building2, Upload, Save, UserPlus, Mail, Trash2, Shield, Briefcase, User } from "lucide-react";
+import { Building2, Upload, Save, UserPlus, Mail, Trash2, Shield, Briefcase, User, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import type { Database } from "@/integrations/supabase/types";
 
 type CompanyType = Database["public"]["Enums"]["company_type"];
@@ -31,11 +33,16 @@ const companyTypes: { value: CompanyType; label: string }[] = [
 ];
 
 export default function CompanySettingsPage() {
-  const { user, isCompanyOwner, isSuperAdmin } = useAuth();
+  const { user, isCompanyOwner, isSuperAdmin, signOut } = useAuth();
   const canRemoveMembers = isCompanyOwner || isSuperAdmin;
+  const canDeleteCompany = isCompanyOwner || isSuperAdmin;
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<AppRole>("staff");
   const [uploading, setUploading] = useState(false);
@@ -536,6 +543,132 @@ export default function CompanySettingsPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Danger Zone - Delete Company */}
+      {canDeleteCompany && company && (
+        <Card className="border-destructive/50">
+          <CardHeader>
+            <CardTitle className="text-destructive flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              Danger Zone
+            </CardTitle>
+            <CardDescription>
+              Irreversible and destructive actions
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-4 border border-destructive/30 rounded-lg bg-destructive/5">
+              <div>
+                <h4 className="font-medium">Delete Company</h4>
+                <p className="text-sm text-muted-foreground">
+                  Permanently delete this company and all associated data. A cancellation fee equivalent to one month's subscription will be charged.
+                </p>
+                <p className="text-sm text-destructive mt-1">
+                  Cancellation fee: ${company.subscription_plan === 'enterprise' ? '199' : company.subscription_plan === 'professional' ? '79' : '29'}
+                </p>
+              </div>
+              <Button 
+                variant="destructive" 
+                onClick={() => setIsDeleteDialogOpen(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Company
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Delete Company Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Delete Company
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                This action cannot be undone. This will permanently delete <strong>{company?.name}</strong> and remove all associated data including:
+              </p>
+              <ul className="list-disc list-inside text-sm space-y-1">
+                <li>All projects and tickets</li>
+                <li>All clients and employees</li>
+                <li>All inventory and purchase orders</li>
+                <li>All billing history</li>
+              </ul>
+              <p className="text-destructive font-medium">
+                A cancellation fee of ${company?.subscription_plan === 'enterprise' ? '199' : company?.subscription_plan === 'professional' ? '79' : '29'} will be charged to your payment method.
+              </p>
+              <div className="pt-2">
+                <Label htmlFor="confirm-delete">
+                  Type <strong>{company?.name}</strong> to confirm:
+                </Label>
+                <Input
+                  id="confirm-delete"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="Enter company name"
+                  className="mt-2"
+                />
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteConfirmText("")}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteConfirmText !== company?.name || isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async (e) => {
+                e.preventDefault();
+                if (!company?.id) return;
+                
+                setIsDeleting(true);
+                try {
+                  const { data: session } = await supabase.auth.getSession();
+                  
+                  const response = await supabase.functions.invoke('delete-company', {
+                    body: { 
+                      company_id: company.id,
+                      reason: "Owner requested deletion"
+                    }
+                  });
+
+                  if (response.error) {
+                    throw new Error(response.error.message);
+                  }
+
+                  const result = response.data;
+                  
+                  if (result.success) {
+                    toast.success("Company deleted", {
+                      description: result.fee_charged 
+                        ? `Your company has been deleted. A $${result.fee_amount} cancellation fee was charged.`
+                        : "Your company has been deleted."
+                    });
+                    
+                    // Sign out and redirect
+                    await signOut();
+                    navigate('/');
+                  } else {
+                    throw new Error(result.error || "Failed to delete company");
+                  }
+                } catch (error: any) {
+                  toast.error("Failed to delete company", {
+                    description: error.message
+                  });
+                } finally {
+                  setIsDeleting(false);
+                  setIsDeleteDialogOpen(false);
+                  setDeleteConfirmText("");
+                }
+              }}
+            >
+              {isDeleting ? "Deleting..." : "Delete Company"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

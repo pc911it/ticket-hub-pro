@@ -203,8 +203,11 @@ export type Database = {
           approval_status: string
           approved_at: string | null
           approved_by: string | null
+          cancellation_fee_charged: boolean | null
+          cancellation_reason: string | null
           city: string | null
           created_at: string
+          deleted_at: string | null
           email: string
           id: string
           is_active: boolean
@@ -226,8 +229,11 @@ export type Database = {
           approval_status?: string
           approved_at?: string | null
           approved_by?: string | null
+          cancellation_fee_charged?: boolean | null
+          cancellation_reason?: string | null
           city?: string | null
           created_at?: string
+          deleted_at?: string | null
           email: string
           id?: string
           is_active?: boolean
@@ -249,8 +255,11 @@ export type Database = {
           approval_status?: string
           approved_at?: string | null
           approved_by?: string | null
+          cancellation_fee_charged?: boolean | null
+          cancellation_reason?: string | null
           city?: string | null
           created_at?: string
+          deleted_at?: string | null
           email?: string
           id?: string
           is_active?: boolean
