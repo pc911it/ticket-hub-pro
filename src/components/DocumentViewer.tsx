@@ -209,16 +209,18 @@ export const DocumentViewer = ({
   if (!currentDoc) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onClose} modal={false}>
       <DialogContent 
         ref={containerRef}
         className={cn(
-          "p-0 gap-0 border-0 bg-black/95",
+          "p-0 gap-0 border-0 bg-black/95 fixed inset-0 z-[100]",
           isFullscreen 
             ? "w-screen h-screen max-w-none max-h-none rounded-none" 
-            : "w-[95vw] h-[90vh] max-w-6xl"
+            : "w-[95vw] h-[90vh] max-w-6xl left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
         )}
         onInteractOutside={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
         aria-describedby={undefined}
       >
         <VisuallyHidden>
@@ -244,7 +246,7 @@ export const DocumentViewer = ({
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={handleDownload}
+              onClick={(e) => { e.stopPropagation(); handleDownload(); }}
               className="text-white hover:bg-white/20 h-8 w-8"
             >
               <Download className="h-4 w-4" />
@@ -252,7 +254,7 @@ export const DocumentViewer = ({
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={onClose}
+              onClick={(e) => { e.stopPropagation(); onClose(); }}
               className="text-white hover:bg-white/20 h-8 w-8"
             >
               <X className="h-4 w-4" />
@@ -313,7 +315,7 @@ export const DocumentViewer = ({
             <Button
               variant="ghost"
               size="icon"
-              onClick={goToPrevious}
+              onClick={(e) => { e.stopPropagation(); goToPrevious(); }}
               disabled={currentIndex === 0}
               className={cn(
                 "absolute left-2 top-1/2 -translate-y-1/2 z-40",
@@ -327,7 +329,7 @@ export const DocumentViewer = ({
             <Button
               variant="ghost"
               size="icon"
-              onClick={goToNext}
+              onClick={(e) => { e.stopPropagation(); goToNext(); }}
               disabled={currentIndex === documents.length - 1}
               className={cn(
                 "absolute right-2 top-1/2 -translate-y-1/2 z-40",
@@ -347,7 +349,7 @@ export const DocumentViewer = ({
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={handleZoomOut}
+              onClick={(e) => { e.stopPropagation(); handleZoomOut(); }}
               disabled={zoom <= 0.25}
               className="text-white hover:bg-white/20 h-8 w-8 sm:h-10 sm:w-10"
             >
@@ -361,7 +363,7 @@ export const DocumentViewer = ({
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={handleZoomIn}
+              onClick={(e) => { e.stopPropagation(); handleZoomIn(); }}
               disabled={zoom >= 4}
               className="text-white hover:bg-white/20 h-8 w-8 sm:h-10 sm:w-10"
             >
@@ -372,7 +374,7 @@ export const DocumentViewer = ({
               <Button 
                 variant="ghost" 
                 size="icon" 
-                onClick={handleRotate}
+                onClick={(e) => { e.stopPropagation(); handleRotate(); }}
                 className="text-white hover:bg-white/20 h-8 w-8 sm:h-10 sm:w-10"
               >
                 <RotateCw className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -382,7 +384,7 @@ export const DocumentViewer = ({
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={toggleFullscreen}
+              onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
               className="text-white hover:bg-white/20 h-8 w-8 sm:h-10 sm:w-10"
             >
               {isFullscreen ? (
@@ -401,7 +403,8 @@ export const DocumentViewer = ({
               {documents.map((doc, index) => (
                 <button
                   key={doc.id}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setCurrentIndex(index);
                     resetView();
                   }}
