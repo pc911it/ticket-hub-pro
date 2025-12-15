@@ -2,6 +2,7 @@ import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeAlerts } from '@/hooks/useRealtimeAlerts';
+import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { LiveAlertsBanner } from '@/components/LiveAlertsBanner';
 import { GlobalProjectChat } from '@/components/GlobalProjectChat';
 import { NotificationToggle, NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
@@ -70,6 +71,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   
   // Enable real-time alerts
   useRealtimeAlerts();
+  
+  // Session timeout warning
+  const { SessionTimeoutDialog } = useSessionTimeout();
 
   const handleSignOut = async () => {
     await signOut();
@@ -250,6 +254,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         {/* Global Chat Button */}
         <GlobalProjectChat />
       </div>
+      
+      {/* Session Timeout Warning */}
+      <SessionTimeoutDialog />
     </div>
   );
 };
