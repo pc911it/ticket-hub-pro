@@ -15,6 +15,8 @@ import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { SignaturePad } from "@/components/SignaturePad";
+import { FileUploadPreview } from "@/components/FileUploadPreview";
 import { 
   FolderOpen, 
   Ticket, 
@@ -30,7 +32,10 @@ import {
   ArrowRight,
   Activity,
   Wrench,
-  CircleDot
+  CircleDot,
+  PenTool,
+  CheckCircle2,
+  Paperclip
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -42,6 +47,10 @@ export default function ClientDashboard() {
   const queryClient = useQueryClient();
   const [clientEmail, setClientEmail] = useState<string | null>(null);
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
+  const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
+  const [selectedTicketForApproval, setSelectedTicketForApproval] = useState<any>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [requestForm, setRequestForm] = useState({
     title: '',
     description: '',
@@ -162,6 +171,35 @@ export default function ClientDashboard() {
     enabled: !!tickets && tickets.length > 0,
   });
 
+  // Upload files to storage
+  const uploadFiles = async (files: File[]): Promise<string[]> => {
+    const uploadedUrls: string[] = [];
+    
+    for (const file of files) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user?.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from("client-request-attachments")
+        .upload(fileName, file);
+      
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        continue;
+      }
+      
+      const { data: urlData } = supabase.storage
+        .from("client-request-attachments")
+        .getPublicUrl(fileName);
+      
+      if (urlData?.publicUrl) {
+        uploadedUrls.push(urlData.publicUrl);
+      }
+    }
+    
+    return uploadedUrls;
+  };
+
   // Submit work request mutation
   const submitRequest = useMutation({
     mutationFn: async (data: typeof requestForm) => {
@@ -169,31 +207,113 @@ export default function ClientDashboard() {
         throw new Error("Client record not found");
       }
 
+      setIsSubmitting(true);
+
+      // Upload files first
+      let attachmentUrls: string[] = [];
+      if (uploadedFiles.length > 0) {
+        attachmentUrls = await uploadFiles(uploadedFiles);
+      }
+
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      const { error } = await supabase.from("tickets").insert({
+      // Include attachment URLs in description
+      let fullDescription = data.description || '';
+      if (attachmentUrls.length > 0) {
+        fullDescription += `\n\n--- Attachments ---\n${attachmentUrls.join('\n')}`;
+      }
+
+      const { data: ticketData, error } = await supabase.from("tickets").insert({
         client_id: clientRecord.id,
         company_id: clientRecord.company_id,
         project_id: data.project_id || null,
         title: data.title,
-        description: data.description,
+        description: fullDescription,
         priority: data.priority,
         status: "pending",
         scheduled_date: tomorrow.toISOString().split('T')[0],
         scheduled_time: "09:00",
-      });
+      }).select().single();
 
       if (error) throw error;
+
+      // Create ticket attachments for uploaded files
+      if (attachmentUrls.length > 0) {
+        for (let i = 0; i < uploadedFiles.length; i++) {
+          const file = uploadedFiles[i];
+          const url = attachmentUrls[i];
+          if (url) {
+            await supabase.from("ticket_attachments").insert({
+              ticket_id: ticketData.id,
+              file_name: file.name,
+              file_type: file.type,
+              file_size: file.size,
+              file_url: url,
+              category: file.type.startsWith("image/") ? "image" : "document",
+              uploaded_by: user?.id,
+            });
+          }
+        }
+      }
+
+      return ticketData;
     },
     onSuccess: () => {
       toast({ title: "Request Submitted", description: "Your work request has been submitted successfully." });
       setIsRequestDialogOpen(false);
       setRequestForm({ title: '', description: '', priority: 'normal', project_id: '' });
+      setUploadedFiles([]);
       queryClient.invalidateQueries({ queryKey: ["client-tickets"] });
     },
     onError: (error: any) => {
       toast({ variant: "destructive", title: "Error", description: error.message || "Failed to submit request." });
+    },
+    onSettled: () => {
+      setIsSubmitting(false);
+    },
+  });
+
+  // Approve completed ticket with signature
+  const approveTicket = useMutation({
+    mutationFn: async ({ ticketId, signatureDataUrl }: { ticketId: string; signatureDataUrl: string }) => {
+      // Upload signature to storage
+      const response = await fetch(signatureDataUrl);
+      const blob = await response.blob();
+      const fileName = `${user?.id}/${ticketId}_${Date.now()}.png`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from("client-signatures")
+        .upload(fileName, blob, { contentType: "image/png" });
+      
+      if (uploadError) throw uploadError;
+      
+      const { data: urlData } = supabase.storage
+        .from("client-signatures")
+        .getPublicUrl(fileName);
+      
+      // Update ticket with approval info
+      const { error: updateError } = await supabase
+        .from("tickets")
+        .update({
+          client_signature_url: urlData?.publicUrl,
+          client_approved_at: new Date().toISOString(),
+          client_approved_by: user?.id,
+        })
+        .eq("id", ticketId);
+      
+      if (updateError) throw updateError;
+      
+      return { ticketId, signatureUrl: urlData?.publicUrl };
+    },
+    onSuccess: () => {
+      toast({ title: "Work Approved", description: "Thank you! Your approval has been recorded." });
+      setIsSignatureDialogOpen(false);
+      setSelectedTicketForApproval(null);
+      queryClient.invalidateQueries({ queryKey: ["client-tickets"] });
+    },
+    onError: (error: any) => {
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to save approval." });
     },
   });
 
@@ -209,6 +329,17 @@ export default function ClientDashboard() {
       return;
     }
     submitRequest.mutate(requestForm);
+  };
+
+  const handleOpenApproval = (ticket: any) => {
+    setSelectedTicketForApproval(ticket);
+    setIsSignatureDialogOpen(true);
+  };
+
+  const handleSaveSignature = (signatureDataUrl: string) => {
+    if (selectedTicketForApproval) {
+      approveTicket.mutate({ ticketId: selectedTicketForApproval.id, signatureDataUrl });
+    }
   };
 
   const getStatusConfig = (status: string | null) => {
@@ -244,6 +375,8 @@ export default function ClientDashboard() {
 
   const activeTickets = tickets?.filter(t => t.status !== "completed" && t.status !== "cancelled") || [];
   const completedTickets = tickets?.filter(t => t.status === "completed") || [];
+  const pendingApprovalTickets = completedTickets.filter(t => !(t as any).client_approved_at);
+  const approvedTickets = completedTickets.filter(t => (t as any).client_approved_at);
   const pendingTickets = tickets?.filter(t => t.status === "pending") || [];
   const inProgressTickets = tickets?.filter(t => t.status === "confirmed" || t.status === "in_progress") || [];
   
@@ -266,18 +399,24 @@ export default function ClientDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
+            <Dialog open={isRequestDialogOpen} onOpenChange={(open) => {
+              setIsRequestDialogOpen(open);
+              if (!open) {
+                setUploadedFiles([]);
+                setRequestForm({ title: '', description: '', priority: 'normal', project_id: '' });
+              }
+            }}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
                   Request Work
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
+              <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                   <DialogTitle>Request New Work</DialogTitle>
                   <DialogDescription>
-                    Submit a new work request. Our team will review and schedule it.
+                    Submit a new work request. You can attach photos or documents.
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmitRequest} className="space-y-4">
@@ -338,12 +477,24 @@ export default function ClientDashboard() {
                       rows={3}
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Paperclip className="h-4 w-4" />
+                      Attachments
+                    </Label>
+                    <FileUploadPreview
+                      files={uploadedFiles}
+                      onFilesChange={setUploadedFiles}
+                      maxFiles={5}
+                      disabled={isSubmitting}
+                    />
+                  </div>
                   <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => setIsRequestDialogOpen(false)}>
                       Cancel
                     </Button>
-                    <Button type="submit" disabled={submitRequest.isPending}>
-                      {submitRequest.isPending ? "Submitting..." : "Submit Request"}
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? "Submitting..." : "Submit Request"}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -356,6 +507,28 @@ export default function ClientDashboard() {
           </div>
         </div>
       </header>
+
+      {/* Signature Approval Dialog */}
+      <Dialog open={isSignatureDialogOpen} onOpenChange={setIsSignatureDialogOpen}>
+        <DialogContent className="sm:max-w-md p-0 gap-0">
+          <div className="p-6 border-b">
+            <DialogHeader>
+              <DialogTitle>Approve Completed Work</DialogTitle>
+              <DialogDescription>
+                {selectedTicketForApproval?.title}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="p-4">
+            <SignaturePad
+              onSave={handleSaveSignature}
+              onCancel={() => setIsSignatureDialogOpen(false)}
+              title="Sign to Approve"
+              isLoading={approveTicket.isPending}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <main className="container mx-auto px-4 py-6 space-y-6">
         {/* Quick Stats */}
@@ -386,34 +559,54 @@ export default function ClientDashboard() {
               </div>
             </CardContent>
           </Card>
+          <Card className="border-l-4 border-l-amber-500">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Needs Approval</p>
+                  <p className="text-2xl font-bold">{pendingApprovalTickets.length}</p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
+                  <PenTool className="h-5 w-5 text-amber-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
           <Card className="border-l-4 border-l-success">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Completed</p>
-                  <p className="text-2xl font-bold">{completedTickets.length}</p>
+                  <p className="text-sm text-muted-foreground">Approved</p>
+                  <p className="text-2xl font-bold">{approvedTickets.length}</p>
                 </div>
                 <div className="h-10 w-10 rounded-full bg-success/10 flex items-center justify-center">
-                  <CheckCircle className="h-5 w-5 text-success" />
+                  <CheckCircle2 className="h-5 w-5 text-success" />
                 </div>
               </div>
-            </CardContent>
-          </Card>
-          <Card className="border-l-4 border-l-info">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Completion Rate</p>
-                  <p className="text-2xl font-bold">{completionRate}%</p>
-                </div>
-                <div className="h-10 w-10 rounded-full bg-info/10 flex items-center justify-center">
-                  <Activity className="h-5 w-5 text-info" />
-                </div>
-              </div>
-              <Progress value={completionRate} className="mt-2 h-2" />
             </CardContent>
           </Card>
         </div>
+
+        {/* Pending Approval Banner */}
+        {pendingApprovalTickets.length > 0 && (
+          <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/20">
+            <CardContent className="py-4">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center">
+                  <PenTool className="h-6 w-6 text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-amber-800 dark:text-amber-200">
+                    {pendingApprovalTickets.length} Work Order{pendingApprovalTickets.length > 1 ? 's' : ''} Need{pendingApprovalTickets.length === 1 ? 's' : ''} Your Approval
+                  </h3>
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    Please review and sign off on completed work below
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {!clientRecord && !projectsLoading && (
           <Card className="border-destructive/50 bg-destructive/5">
@@ -445,17 +638,82 @@ export default function ClientDashboard() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <Tabs defaultValue="active" className="space-y-4">
-                    <TabsList className="grid w-full grid-cols-3">
-                      <TabsTrigger value="active" className="gap-2">
+                  <Tabs defaultValue="pending-approval" className="space-y-4">
+                    <TabsList className="grid w-full grid-cols-4">
+                      <TabsTrigger value="pending-approval" className="gap-1 text-xs sm:text-sm">
+                        Approve
+                        {pendingApprovalTickets.length > 0 && (
+                          <Badge variant="secondary" className="h-5 px-1.5 bg-amber-100 text-amber-800">{pendingApprovalTickets.length}</Badge>
+                        )}
+                      </TabsTrigger>
+                      <TabsTrigger value="active" className="gap-1 text-xs sm:text-sm">
                         Active
                         {activeTickets.length > 0 && (
                           <Badge variant="secondary" className="h-5 px-1.5">{activeTickets.length}</Badge>
                         )}
                       </TabsTrigger>
-                      <TabsTrigger value="completed">Completed</TabsTrigger>
-                      <TabsTrigger value="all">All</TabsTrigger>
+                      <TabsTrigger value="completed" className="text-xs sm:text-sm">Completed</TabsTrigger>
+                      <TabsTrigger value="all" className="text-xs sm:text-sm">All</TabsTrigger>
                     </TabsList>
+
+                    {/* Pending Approval Tab */}
+                    <TabsContent value="pending-approval" className="m-0">
+                      {pendingApprovalTickets.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <CheckCircle2 className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                          <p>No work orders pending approval</p>
+                        </div>
+                      ) : (
+                        <ScrollArea className="h-[400px] pr-4">
+                          <div className="space-y-3">
+                            {pendingApprovalTickets.map((ticket) => (
+                              <Card key={ticket.id} className="border shadow-sm border-amber-200 bg-amber-50/50 dark:bg-amber-950/20">
+                                <CardContent className="p-4">
+                                  <div className="flex items-start gap-3">
+                                    <div className="p-2 rounded-lg bg-success/10 text-success">
+                                      <CheckCircle className="h-4 w-4" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <h4 className="font-medium">{ticket.title}</h4>
+                                        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200">
+                                          Needs Signature
+                                        </Badge>
+                                      </div>
+                                      {ticket.description && (
+                                        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                                          {ticket.description}
+                                        </p>
+                                      )}
+                                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                                        <span className="flex items-center gap-1">
+                                          <Calendar className="h-3 w-3" />
+                                          {format(new Date(ticket.scheduled_date), "MMM d")}
+                                        </span>
+                                        {(ticket as any).agents?.full_name && (
+                                          <span className="flex items-center gap-1">
+                                            <User className="h-3 w-3" />
+                                            {(ticket as any).agents.full_name}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <Button
+                                        className="mt-3"
+                                        size="sm"
+                                        onClick={() => handleOpenApproval(ticket)}
+                                      >
+                                        <PenTool className="h-4 w-4 mr-2" />
+                                        Sign & Approve
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      )}
+                    </TabsContent>
 
                     <TabsContent value="active" className="m-0">
                       {activeTickets.length === 0 ? (
@@ -531,14 +789,30 @@ export default function ClientDashboard() {
                         <ScrollArea className="h-[400px] pr-4">
                           <div className="space-y-3">
                             {completedTickets.map((ticket) => (
-                              <Card key={ticket.id} className="border shadow-sm bg-success/5">
+                              <Card key={ticket.id} className={cn(
+                                "border shadow-sm",
+                                (ticket as any).client_approved_at ? "bg-success/5" : "bg-amber-50/50"
+                              )}>
                                 <CardContent className="p-4">
                                   <div className="flex items-start gap-3">
                                     <div className="p-2 rounded-lg bg-success/10 text-success">
                                       <CheckCircle className="h-4 w-4" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                      <h4 className="font-medium">{ticket.title}</h4>
+                                      <div className="flex items-start justify-between gap-2">
+                                        <h4 className="font-medium">{ticket.title}</h4>
+                                        {(ticket as any).client_approved_at ? (
+                                          <Badge variant="outline" className="border-success text-success">
+                                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                                            Approved
+                                          </Badge>
+                                        ) : (
+                                          <Button size="sm" variant="outline" onClick={() => handleOpenApproval(ticket)}>
+                                            <PenTool className="h-3 w-3 mr-1" />
+                                            Approve
+                                          </Button>
+                                        )}
+                                      </div>
                                       <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                                         <span>Completed {format(new Date(ticket.scheduled_date), "MMM d, yyyy")}</span>
                                         {(ticket as any).projects?.name && (
@@ -548,6 +822,11 @@ export default function ClientDashboard() {
                                           </span>
                                         )}
                                       </div>
+                                      {(ticket as any).client_approved_at && (
+                                        <p className="text-xs text-success mt-1">
+                                          Signed {format(new Date((ticket as any).client_approved_at), "MMM d, yyyy")}
+                                        </p>
+                                      )}
                                     </div>
                                   </div>
                                 </CardContent>
