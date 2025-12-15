@@ -151,14 +151,22 @@ export function PendingProjectInvitations() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => handleInvitation(invitation.id, false)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleInvitation(invitation.id, false);
+                }}
                 className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
               >
                 <X className="h-4 w-4" />
               </Button>
               <Button
                 size="sm"
-                onClick={() => handleInvitation(invitation.id, true)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleInvitation(invitation.id, true);
+                }}
                 className="bg-success hover:bg-success/90 text-white"
               >
                 <Check className="h-4 w-4 mr-1" />

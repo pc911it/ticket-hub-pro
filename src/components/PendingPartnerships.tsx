@@ -212,14 +212,22 @@ export function PendingPartnerships() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => respondToInvitation(partnership, false)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  respondToInvitation(partnership, false);
+                }}
               >
                 <X className="h-4 w-4 mr-1" />
                 Decline
               </Button>
               <Button
                 size="sm"
-                onClick={() => respondToInvitation(partnership, true)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  respondToInvitation(partnership, true);
+                }}
               >
                 <Check className="h-4 w-4 mr-1" />
                 Accept

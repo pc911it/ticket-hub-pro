@@ -298,7 +298,11 @@ export function GlobalProjectChat() {
                         size="sm"
                         variant="outline"
                         className="flex-1"
-                        onClick={() => respondToInvitation(partnership, false)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          respondToInvitation(partnership, false);
+                        }}
                       >
                         <X className="h-4 w-4 mr-1" />
                         Decline
@@ -306,7 +310,11 @@ export function GlobalProjectChat() {
                       <Button
                         size="sm"
                         className="flex-1"
-                        onClick={() => respondToInvitation(partnership, true)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          respondToInvitation(partnership, true);
+                        }}
                       >
                         <Check className="h-4 w-4 mr-1" />
                         Accept
