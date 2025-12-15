@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Calendar, Clock, Edit2, Trash2, CheckCircle2, Package, Paperclip, FileText, Image, Building2, User, PenTool } from 'lucide-react';
+import { Plus, Search, Calendar, Clock, Edit2, Trash2, CheckCircle2, Package, Paperclip, FileText, Image, Building2, User, PenTool, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { MaterialAssignment, MaterialAssignmentItem, saveInventoryUsage } from '@/components/MaterialAssignment';
@@ -50,6 +50,8 @@ interface Ticket {
   status: string;
   client_signature_url: string | null;
   client_approved_at: string | null;
+  admin_approval_status: string | null;
+  admin_rejection_reason: string | null;
   clients: { full_name: string } | null;
   projects: { name: string } | null;
   agents: { full_name: string } | null;
@@ -66,6 +68,7 @@ const TicketsPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [approvalFilter, setApprovalFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
   const [materials, setMaterials] = useState<MaterialAssignmentItem[]>([]);
@@ -149,7 +152,8 @@ const TicketsPage = () => {
       ticket.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       ticket.clients?.full_name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesApproval = approvalFilter === 'all' || ticket.admin_approval_status === approvalFilter;
+    return matchesSearch && matchesStatus && matchesApproval;
   });
 
   const resetForm = () => {
@@ -226,6 +230,9 @@ const TicketsPage = () => {
       status: formData.status,
       created_by: user?.id,
       company_id: userCompanyId,
+      admin_approval_status: 'approved', // Admin-created tickets are auto-approved
+      admin_approved_at: new Date().toISOString(),
+      admin_approved_by: user?.id,
     };
 
     if (editingTicket) {
@@ -374,6 +381,51 @@ const TicketsPage = () => {
       case 'completed': return 'bg-info/10 text-info border-info/30';
       case 'cancelled': return 'bg-destructive/10 text-destructive border-destructive/30';
       default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const getApprovalStatusColor = (status: string | null) => {
+    switch (status) {
+      case 'approved': return 'bg-success/10 text-success border-success/30';
+      case 'pending_approval': return 'bg-amber-100 text-amber-800 border-amber-300';
+      case 'declined': return 'bg-destructive/10 text-destructive border-destructive/30';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const handleApproveRequest = async (ticketId: string) => {
+    const { error } = await supabase
+      .from('tickets')
+      .update({
+        admin_approval_status: 'approved',
+        admin_approved_at: new Date().toISOString(),
+        admin_approved_by: user?.id,
+      })
+      .eq('id', ticketId);
+
+    if (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to approve request.' });
+    } else {
+      toast({ title: 'Approved', description: 'Client request has been approved.' });
+      fetchData();
+    }
+  };
+
+  const handleDeclineRequest = async (ticketId: string) => {
+    const { error } = await supabase
+      .from('tickets')
+      .update({
+        admin_approval_status: 'declined',
+        admin_approved_at: new Date().toISOString(),
+        admin_approved_by: user?.id,
+      })
+      .eq('id', ticketId);
+
+    if (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to decline request.' });
+    } else {
+      toast({ title: 'Declined', description: 'Client request has been declined.' });
+      fetchData();
     }
   };
 
@@ -630,6 +682,17 @@ const TicketsPage = () => {
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={approvalFilter} onValueChange={setApprovalFilter}>
+          <SelectTrigger className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Approvals</SelectItem>
+            <SelectItem value="pending_approval">Pending Approval</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="declined">Declined</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Bulk Actions */}
@@ -686,7 +749,7 @@ const TicketsPage = () => {
                       />
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2">
+                      <div className="flex items-center gap-3 mb-2 flex-wrap">
                         <h3 className="font-semibold text-lg truncate">{ticket.title}</h3>
                         <span className={cn(
                           "px-2.5 py-1 rounded-full text-xs font-medium capitalize border",
@@ -694,15 +757,16 @@ const TicketsPage = () => {
                         )}>
                           {ticket.status}
                         </span>
+                        {ticket.admin_approval_status && ticket.admin_approval_status !== 'approved' && (
+                          <span className={cn(
+                            "px-2.5 py-1 rounded-full text-xs font-medium border",
+                            getApprovalStatusColor(ticket.admin_approval_status)
+                          )}>
+                            {ticket.admin_approval_status === 'pending_approval' ? 'Awaiting Approval' : 'Declined'}
+                          </span>
+                        )}
                       </div>
-                      <span className={cn(
-                        "px-2.5 py-1 rounded-full text-xs font-medium capitalize border",
-                        getStatusColor(ticket.status)
-                      )}>
-                        {ticket.status}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2">
+                      <p className="text-sm text-muted-foreground mb-2">
                       {ticket.clients?.full_name}
                       {ticket.projects && (
                         <span className="ml-2 inline-flex items-center gap-1 text-primary">
@@ -754,6 +818,7 @@ const TicketsPage = () => {
                         </div>
                       )}
                     </div>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button 
@@ -764,7 +829,30 @@ const TicketsPage = () => {
                       <Paperclip className="h-4 w-4 mr-1" />
                       Files
                     </Button>
-                    {ticket.status === 'pending' && (
+                    {/* Approval buttons for pending approval tickets */}
+                    {ticket.admin_approval_status === 'pending_approval' && (
+                      <>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                          onClick={() => handleDeclineRequest(ticket.id)}
+                        >
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Decline
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="text-success border-success/30 hover:bg-success/10"
+                          onClick={() => handleApproveRequest(ticket.id)}
+                        >
+                          <CheckCircle2 className="h-4 w-4 mr-1" />
+                          Approve
+                        </Button>
+                      </>
+                    )}
+                    {ticket.status === 'pending' && ticket.admin_approval_status === 'approved' && (
                       <Button 
                         variant="outline" 
                         size="sm"

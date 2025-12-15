@@ -232,6 +232,7 @@ export default function ClientDashboard() {
         description: fullDescription,
         priority: data.priority,
         status: "pending",
+        admin_approval_status: "pending_approval",
         scheduled_date: tomorrow.toISOString().split('T')[0],
         scheduled_time: "09:00",
       }).select().single();
@@ -260,7 +261,7 @@ export default function ClientDashboard() {
       return ticketData;
     },
     onSuccess: () => {
-      toast({ title: "Request Submitted", description: "Your work request has been submitted successfully." });
+      toast({ title: "Request Submitted", description: "Your work request has been submitted and is awaiting admin approval." });
       setIsRequestDialogOpen(false);
       setRequestForm({ title: '', description: '', priority: 'normal', project_id: '' });
       setUploadedFiles([]);
@@ -342,7 +343,15 @@ export default function ClientDashboard() {
     }
   };
 
-  const getStatusConfig = (status: string | null) => {
+  const getStatusConfig = (status: string | null, adminApprovalStatus?: string | null) => {
+    // Check admin approval status first
+    if (adminApprovalStatus === 'pending_approval') {
+      return { color: "text-amber-600", bg: "bg-amber-100", icon: <Clock className="h-4 w-4" />, label: "Awaiting Admin Approval" };
+    }
+    if (adminApprovalStatus === 'declined') {
+      return { color: "text-destructive", bg: "bg-destructive/10", icon: <AlertCircle className="h-4 w-4" />, label: "Request Declined" };
+    }
+    
     const config: Record<string, { color: string; bg: string; icon: React.ReactNode; label: string }> = {
       pending: { color: "text-warning", bg: "bg-warning/10", icon: <Clock className="h-4 w-4" />, label: "Pending" },
       confirmed: { color: "text-info", bg: "bg-info/10", icon: <CheckCircle className="h-4 w-4" />, label: "Confirmed" },
@@ -373,12 +382,15 @@ export default function ClientDashboard() {
     );
   }
 
-  const activeTickets = tickets?.filter(t => t.status !== "completed" && t.status !== "cancelled") || [];
+  const awaitingApprovalTickets = tickets?.filter(t => (t as any).admin_approval_status === 'pending_approval') || [];
+  const declinedTickets = tickets?.filter(t => (t as any).admin_approval_status === 'declined') || [];
+  const approvedAndActive = tickets?.filter(t => (t as any).admin_approval_status === 'approved' && t.status !== "completed" && t.status !== "cancelled") || [];
+  const activeTickets = approvedAndActive;
   const completedTickets = tickets?.filter(t => t.status === "completed") || [];
   const pendingApprovalTickets = completedTickets.filter(t => !(t as any).client_approved_at);
   const approvedTickets = completedTickets.filter(t => (t as any).client_approved_at);
-  const pendingTickets = tickets?.filter(t => t.status === "pending") || [];
-  const inProgressTickets = tickets?.filter(t => t.status === "confirmed" || t.status === "in_progress") || [];
+  const pendingTickets = tickets?.filter(t => t.status === "pending" && (t as any).admin_approval_status === 'approved') || [];
+  const inProgressTickets = tickets?.filter(t => (t.status === "confirmed" || t.status === "in_progress") && (t as any).admin_approval_status === 'approved') || [];
   
   const completionRate = tickets && tickets.length > 0 
     ? Math.round((completedTickets.length / tickets.length) * 100) 

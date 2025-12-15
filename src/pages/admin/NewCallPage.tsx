@@ -139,6 +139,9 @@ const NewCallPage = () => {
         call_started_at: new Date().toISOString(),
         created_by: user?.id,
         company_id: userCompanyId,
+        admin_approval_status: 'approved',
+        admin_approved_at: new Date().toISOString(),
+        admin_approved_by: user?.id,
       }).select('id').single();
 
       if (error) throw error;
