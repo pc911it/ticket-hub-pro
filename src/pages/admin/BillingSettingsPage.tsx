@@ -24,6 +24,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -40,6 +41,7 @@ const BillingSettingsPage = () => {
   const queryClient = useQueryClient();
   const [showUpdateCard, setShowUpdateCard] = useState(false);
   const [showChangePlan, setShowChangePlan] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [isUpdatingCard, setIsUpdatingCard] = useState(false);
 
   // Fetch company data
@@ -309,16 +311,62 @@ const BillingSettingsPage = () => {
                     Cancellation fee: ${currentPlan.monthlyPrice} (one month)
                   </p>
                 )}
-                <Button 
-                  variant="outline" 
-                  className="w-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                  onClick={() => cancelMutation.mutate()}
-                  disabled={cancelMutation.isPending}
-                >
-                  {company.subscription_status === 'trial' 
-                    ? `Cancel & Pay $${currentPlan.monthlyPrice} Fee`
-                    : 'Cancel Subscription'}
-                </Button>
+                <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className="w-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                    >
+                      {company.subscription_status === 'trial' 
+                        ? `Cancel & Pay $${currentPlan.monthlyPrice} Fee`
+                        : 'Cancel Subscription'}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle className="text-destructive">Cancel Subscription</DialogTitle>
+                      <DialogDescription className="space-y-3 pt-2">
+                        {company.subscription_status === 'trial' ? (
+                          <>
+                            <p>
+                              Canceling during your trial will charge a <span className="font-semibold text-destructive">${currentPlan.monthlyPrice} cancellation fee</span> to your card on file.
+                            </p>
+                            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 text-sm">
+                              <p className="font-medium text-destructive mb-2">What happens when you cancel:</p>
+                              <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                                <li>A ${currentPlan.monthlyPrice} cancellation fee will be charged</li>
+                                <li>Your account will be deactivated immediately</li>
+                                <li>Data will be retained for 30 days before deletion</li>
+                                <li>Team members will lose access</li>
+                              </ul>
+                            </div>
+                          </>
+                        ) : (
+                          <p>Are you sure you want to cancel? You'll lose access to premium features at the end of your billing period. You can reactivate anytime.</p>
+                        )}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2 sm:gap-0">
+                      <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
+                        Keep Subscription
+                      </Button>
+                      <Button 
+                        variant="destructive"
+                        onClick={() => {
+                          cancelMutation.mutate();
+                          setShowCancelDialog(false);
+                        }}
+                        disabled={cancelMutation.isPending}
+                      >
+                        {cancelMutation.isPending 
+                          ? 'Cancelling...' 
+                          : company.subscription_status === 'trial'
+                            ? `Yes, Cancel & Pay $${currentPlan.monthlyPrice}`
+                            : 'Yes, Cancel'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             )}
           </CardContent>
