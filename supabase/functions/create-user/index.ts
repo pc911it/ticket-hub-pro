@@ -131,13 +131,6 @@ serve(async (req) => {
         .eq("company_id", targetCompanyId)
         .maybeSingle();
 
-      if (existingMember) {
-        return new Response(
-          JSON.stringify({ error: "This user is already a member of this company" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
       // Update the existing user's password if provided
       if (password) {
         const { error: updatePasswordError } = await adminClient.auth.admin.updateUserById(
@@ -150,6 +143,22 @@ serve(async (req) => {
         } else {
           console.log(`Password updated for existing user: ${email}`);
         }
+      }
+
+      if (existingMember) {
+        // User already in company - just return success since we updated their password
+        console.log(`User ${email} already in company, password updated`);
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: "Password updated for existing user",
+            user: { 
+              id: existingUser.id, 
+              email: email 
+            } 
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
 
       userId = existingUser.id;
