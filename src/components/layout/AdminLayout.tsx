@@ -6,6 +6,7 @@ import { LiveAlertsBanner } from '@/components/LiveAlertsBanner';
 import { GlobalProjectChat } from '@/components/GlobalProjectChat';
 import { NotificationToggle, NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
 import { BillingAlertBanner } from '@/components/BillingAlertBanner';
+import { PasswordResetReminder } from '@/components/PasswordResetReminder';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -221,6 +222,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           </div>
           
           <div className="flex-1" />
+          
+          {/* Security Settings */}
+          {user && <PasswordResetReminder userId={user.id} />}
           
           {/* Notification Toggle */}
           <NotificationToggle />
