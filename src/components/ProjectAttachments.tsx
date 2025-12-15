@@ -4,14 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, FileText, Image, Trash2, Eye, X } from 'lucide-react';
+import { Upload, FileText, Image, Trash2, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { DocumentViewer } from '@/components/DocumentViewer';
 
 interface Attachment {
   id: string;
@@ -31,8 +26,8 @@ interface ProjectAttachmentsProps {
 export const ProjectAttachments = ({ projectId, readOnly = false }: ProjectAttachmentsProps) => {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewType, setPreviewType] = useState<string>('');
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -118,13 +113,14 @@ export const ProjectAttachments = ({ projectId, readOnly = false }: ProjectAttac
     }
   };
 
-  const openPreview = (attachment: Attachment) => {
-    setPreviewUrl(attachment.file_url);
-    setPreviewType(attachment.file_type);
+  const openViewer = (index: number) => {
+    setViewerIndex(index);
+    setViewerOpen(true);
   };
 
   const blueprints = attachments.filter(a => a.category === 'blueprint');
   const images = attachments.filter(a => a.category === 'image');
+  const allDocuments = [...blueprints, ...images];
 
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return '';
@@ -179,7 +175,7 @@ export const ProjectAttachments = ({ projectId, readOnly = false }: ProjectAttac
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => openPreview(attachment)}>
+                  <Button variant="ghost" size="sm" onClick={() => openViewer(allDocuments.findIndex(d => d.id === attachment.id))}>
                     <Eye className="h-4 w-4" />
                   </Button>
                   {!readOnly && (
@@ -234,7 +230,7 @@ export const ProjectAttachments = ({ projectId, readOnly = false }: ProjectAttac
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <Button variant="secondary" size="sm" onClick={() => openPreview(attachment)}>
+                  <Button variant="secondary" size="sm" onClick={() => openViewer(allDocuments.findIndex(d => d.id === attachment.id))}>
                     <Eye className="h-4 w-4" />
                   </Button>
                   {!readOnly && (
@@ -252,25 +248,13 @@ export const ProjectAttachments = ({ projectId, readOnly = false }: ProjectAttac
         )}
       </div>
 
-      {/* Preview Dialog */}
-      <Dialog open={!!previewUrl} onOpenChange={() => setPreviewUrl(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle>File Preview</DialogTitle>
-          </DialogHeader>
-          {previewUrl && (
-            previewType.startsWith('image/') ? (
-              <img src={previewUrl} alt="Preview" className="w-full h-auto" />
-            ) : (
-              <iframe
-                src={previewUrl}
-                className="w-full h-[70vh]"
-                title="PDF Preview"
-              />
-            )
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Document Viewer */}
+      <DocumentViewer
+        documents={allDocuments}
+        initialIndex={viewerIndex}
+        open={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+      />
     </div>
   );
 };
