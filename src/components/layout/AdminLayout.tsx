@@ -47,6 +47,7 @@ const navigation = [
   { name: 'Updates', href: '/admin/updates', icon: LayoutDashboard },
   { name: 'Calendar', href: '/admin/calendar', icon: Calendar },
   { name: 'Clients', href: '/admin/clients', icon: Users },
+  { name: 'Client Billing', href: '/admin/client-billing', icon: DollarSign },
   { name: 'Projects', href: '/admin/projects', icon: Building2 },
   { name: 'Plans', href: '/admin/plans', icon: FileText },
   { name: 'Tickets', href: '/admin/tickets', icon: Ticket },
