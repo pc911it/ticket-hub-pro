@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Phone, MapPin, User, Clock, AlertTriangle, Truck, Flame, Shield } from 'lucide-react';
+import { Phone, MapPin, User, Clock, AlertTriangle, Truck, Flame, Shield, FolderOpen } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { MaterialAssignment, MaterialAssignmentItem, saveInventoryUsage } from '@/components/MaterialAssignment';
@@ -27,6 +27,12 @@ interface Agent {
   is_available: boolean;
   is_online: boolean;
   phone: string | null;
+}
+
+interface Project {
+  id: string;
+  name: string;
+  status: string;
 }
 
 const callTypes = [
@@ -50,6 +56,7 @@ const NewCallPage = () => {
   const { toast } = useToast();
   const [clients, setClients] = useState<Client[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -58,6 +65,7 @@ const NewCallPage = () => {
   
   const [formData, setFormData] = useState({
     client_id: '',
+    project_id: '',
     title: '',
     description: '',
     call_type: '',
@@ -84,13 +92,15 @@ const NewCallPage = () => {
         setUserCompanyId(memberData.company_id);
       }
 
-      const [clientsRes, agentsRes] = await Promise.all([
-        supabase.from('clients').select('id, full_name, phone, address').order('full_name'),
+      const [clientsRes, agentsRes, projectsRes] = await Promise.all([
+        supabase.from('clients').select('id, full_name, phone, address').is('deleted_at', null).order('full_name'),
         supabase.from('agents').select('id, full_name, is_available, is_online, phone').order('full_name'),
+        supabase.from('projects').select('id, name, status').is('deleted_at', null).neq('status', 'completed').order('name'),
       ]);
 
       if (clientsRes.data) setClients(clientsRes.data);
       if (agentsRes.data) setAgents(agentsRes.data);
+      if (projectsRes.data) setProjects(projectsRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -117,6 +127,7 @@ const NewCallPage = () => {
     try {
       const { data: ticketData, error } = await supabase.from('tickets').insert({
         client_id: formData.client_id,
+        project_id: formData.project_id,
         title: formData.title,
         description: formData.description,
         call_type: formData.call_type,
@@ -212,6 +223,29 @@ const NewCallPage = () => {
           <CardContent className="space-y-4">
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
+                <Label>Project *</Label>
+                <Select
+                  value={formData.project_id}
+                  onValueChange={(value) => setFormData({ ...formData, project_id: value })}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        <div className="flex items-center gap-2">
+                          <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                          {project.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
                 <Label>Client *</Label>
                 <Select
                   value={formData.client_id}
@@ -233,7 +267,9 @@ const NewCallPage = () => {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
 
+            <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Priority</Label>
                 <Select
@@ -254,6 +290,7 @@ const NewCallPage = () => {
                   </SelectContent>
                 </Select>
               </div>
+
             </div>
 
             {selectedClient && (
@@ -384,7 +421,7 @@ const NewCallPage = () => {
           <Button type="button" variant="outline" onClick={() => navigate('/admin')}>
             Cancel
           </Button>
-          <Button type="submit" disabled={submitting || !formData.client_id || !formData.title}>
+          <Button type="submit" disabled={submitting || !formData.client_id || !formData.project_id || !formData.title}>
             {submitting ? 'Creating...' : 'Create Call'}
           </Button>
         </div>

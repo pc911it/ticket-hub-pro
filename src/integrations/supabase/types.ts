@@ -1118,7 +1118,7 @@ export type Database = {
           duration_minutes: number | null
           id: string
           priority: string | null
-          project_id: string | null
+          project_id: string
           scheduled_date: string
           scheduled_time: string
           status: string | null
@@ -1143,7 +1143,7 @@ export type Database = {
           duration_minutes?: number | null
           id?: string
           priority?: string | null
-          project_id?: string | null
+          project_id: string
           scheduled_date: string
           scheduled_time: string
           status?: string | null
@@ -1168,7 +1168,7 @@ export type Database = {
           duration_minutes?: number | null
           id?: string
           priority?: string | null
-          project_id?: string | null
+          project_id?: string
           scheduled_date?: string
           scheduled_time?: string
           status?: string | null
