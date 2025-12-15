@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
@@ -14,9 +14,13 @@ import {
   Download,
   FileText,
   Image as ImageIcon,
-  Eye
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Set the worker source for PDF.js
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 interface Document {
   id: string;
@@ -46,10 +50,122 @@ export const DocumentViewer = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // PDF-specific state
+  const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [isLoadingPdf, setIsLoadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const renderTaskRef = useRef<pdfjsLib.RenderTask | null>(null);
 
   const currentDoc = documents[currentIndex];
   const isImage = currentDoc?.file_type?.startsWith('image/');
   const isPdf = currentDoc?.file_type === 'application/pdf' || currentDoc?.file_name?.endsWith('.pdf');
+
+  // Load PDF document
+  useEffect(() => {
+    if (!open || !isPdf || !currentDoc?.file_url) {
+      setPdfDoc(null);
+      setTotalPages(0);
+      setCurrentPage(1);
+      setPdfError(null);
+      return;
+    }
+
+    const loadPdf = async () => {
+      setIsLoadingPdf(true);
+      setPdfError(null);
+      
+      try {
+        // Cancel any existing render task
+        if (renderTaskRef.current) {
+          renderTaskRef.current.cancel();
+          renderTaskRef.current = null;
+        }
+        
+        const loadingTask = pdfjsLib.getDocument({
+          url: currentDoc.file_url,
+          cMapUrl: `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+          cMapPacked: true,
+        });
+        
+        const pdf = await loadingTask.promise;
+        setPdfDoc(pdf);
+        setTotalPages(pdf.numPages);
+        setCurrentPage(1);
+      } catch (error) {
+        console.error('Error loading PDF:', error);
+        setPdfError('Failed to load PDF. The file may be corrupted or inaccessible.');
+      } finally {
+        setIsLoadingPdf(false);
+      }
+    };
+
+    loadPdf();
+
+    return () => {
+      if (renderTaskRef.current) {
+        renderTaskRef.current.cancel();
+        renderTaskRef.current = null;
+      }
+    };
+  }, [open, currentDoc?.file_url, isPdf]);
+
+  // Render PDF page
+  const renderPage = useCallback(async () => {
+    if (!pdfDoc || !canvasRef.current) return;
+
+    try {
+      // Cancel any existing render task
+      if (renderTaskRef.current) {
+        renderTaskRef.current.cancel();
+        renderTaskRef.current = null;
+      }
+
+      const page = await pdfDoc.getPage(currentPage);
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+      if (!context) return;
+
+      // Calculate scale to fit the container while maintaining aspect ratio
+      const containerWidth = containerRef.current?.clientWidth || 800;
+      const containerHeight = containerRef.current?.clientHeight || 600;
+      
+      const viewport = page.getViewport({ scale: 1, rotation: rotation });
+      
+      // Calculate scale to fit container (with some padding)
+      const scaleX = (containerWidth - 100) / viewport.width;
+      const scaleY = (containerHeight - 150) / viewport.height;
+      const baseScale = Math.min(scaleX, scaleY, 2); // Cap at 2x for initial render
+      
+      const scaledViewport = page.getViewport({ scale: baseScale * zoom, rotation: rotation });
+      
+      // Set canvas dimensions
+      canvas.width = scaledViewport.width;
+      canvas.height = scaledViewport.height;
+
+      // Render the page
+      const renderContext = {
+        canvasContext: context,
+        viewport: scaledViewport,
+      };
+
+      renderTaskRef.current = page.render(renderContext);
+      await renderTaskRef.current.promise;
+    } catch (error: any) {
+      if (error?.name !== 'RenderingCancelledException') {
+        console.error('Error rendering PDF page:', error);
+      }
+    }
+  }, [pdfDoc, currentPage, zoom, rotation]);
+
+  useEffect(() => {
+    if (pdfDoc) {
+      renderPage();
+    }
+  }, [pdfDoc, renderPage]);
 
   useEffect(() => {
     setCurrentIndex(initialIndex);
@@ -62,10 +178,18 @@ export const DocumentViewer = ({
       
       switch (e.key) {
         case 'ArrowLeft':
-          goToPrevious();
+          if (isPdf && pdfDoc) {
+            goToPreviousPage();
+          } else {
+            goToPrevious();
+          }
           break;
         case 'ArrowRight':
-          goToNext();
+          if (isPdf && pdfDoc) {
+            goToNextPage();
+          } else {
+            goToNext();
+          }
           break;
         case 'Escape':
           if (isFullscreen) {
@@ -89,12 +213,13 @@ export const DocumentViewer = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, currentIndex, documents.length, isFullscreen]);
+  }, [open, currentIndex, documents.length, isFullscreen, isPdf, pdfDoc, currentPage, totalPages]);
 
   const resetView = () => {
     setZoom(1);
     setRotation(0);
     setPosition({ x: 0, y: 0 });
+    setCurrentPage(1);
   };
 
   const handleZoomIn = () => {
@@ -120,6 +245,18 @@ export const DocumentViewer = ({
     if (currentIndex < documents.length - 1) {
       setCurrentIndex(prev => prev + 1);
       resetView();
+    }
+  };
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(prev => prev - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(prev => prev + 1);
     }
   };
 
@@ -155,7 +292,7 @@ export const DocumentViewer = ({
   }, []);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (zoom > 1 && isImage) {
+    if (zoom > 1 && (isImage || isPdf)) {
       setIsDragging(true);
       setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
     }
@@ -175,7 +312,7 @@ export const DocumentViewer = ({
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (zoom > 1 && isImage && e.touches.length === 1) {
+    if (zoom > 1 && (isImage || isPdf) && e.touches.length === 1) {
       setIsDragging(true);
       setDragStart({ 
         x: e.touches[0].clientX - position.x, 
@@ -238,9 +375,15 @@ export const DocumentViewer = ({
             <span className="text-sm font-medium truncate max-w-[200px] sm:max-w-[400px]">
               {currentDoc.file_name}
             </span>
-            <span className="text-xs text-white/60">
-              ({currentIndex + 1} / {documents.length})
-            </span>
+            {isPdf && totalPages > 0 ? (
+              <span className="text-xs text-white/60">
+                (Page {currentPage} / {totalPages})
+              </span>
+            ) : (
+              <span className="text-xs text-white/60">
+                ({currentIndex + 1} / {documents.length})
+              </span>
+            )}
           </div>
           
           <div className="flex items-center gap-1">
@@ -265,7 +408,7 @@ export const DocumentViewer = ({
 
         {/* Main content area */}
         <div 
-          className="flex-1 flex items-center justify-center overflow-hidden relative h-full"
+          className="flex-1 flex items-center justify-center overflow-hidden relative h-full pt-14 pb-20"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -273,7 +416,7 @@ export const DocumentViewer = ({
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          style={{ cursor: zoom > 1 && isImage ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
+          style={{ cursor: zoom > 1 && (isImage || isPdf) ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
         >
           {isImage ? (
             <img
@@ -286,33 +429,44 @@ export const DocumentViewer = ({
               draggable={false}
             />
           ) : isPdf ? (
-            <div className="w-full h-full flex flex-col items-center justify-center text-white p-8">
-              <FileText className="h-20 w-20 mb-6 text-red-400" />
-              <p className="text-xl font-medium mb-2">{currentDoc.file_name}</p>
-              <p className="text-sm text-white/60 mb-6 text-center max-w-md">
-                PDF preview is blocked by your browser's security settings. Click below to view the document.
-              </p>
-              <div className="flex gap-3">
-                <a 
-                  href={currentDoc.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-                >
-                  <Eye className="h-4 w-4" />
-                  Open PDF in New Tab
-                </a>
-                <a 
-                  href={currentDoc.file_url}
-                  download={currentDoc.file_name}
-                  onClick={(e) => e.stopPropagation()}
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 px-4 py-2"
-                >
-                  <Download className="h-4 w-4" />
-                  Download
-                </a>
-              </div>
+            <div className="w-full h-full flex items-center justify-center overflow-auto">
+              {isLoadingPdf ? (
+                <div className="flex flex-col items-center gap-4 text-white">
+                  <Loader2 className="h-12 w-12 animate-spin" />
+                  <p className="text-sm">Loading PDF...</p>
+                </div>
+              ) : pdfError ? (
+                <div className="flex flex-col items-center gap-4 text-white p-8 text-center">
+                  <FileText className="h-16 w-16 text-red-400" />
+                  <p className="text-lg font-medium">{pdfError}</p>
+                  <div className="flex gap-3">
+                    <a 
+                      href={currentDoc.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+                    >
+                      Open in New Tab
+                    </a>
+                    <Button 
+                      variant="secondary" 
+                      onClick={(e) => { e.stopPropagation(); handleDownload(); }}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <canvas
+                  ref={canvasRef}
+                  className="max-w-full max-h-full bg-white shadow-2xl"
+                  style={{
+                    transform: `translate(${position.x}px, ${position.y}px)`,
+                  }}
+                />
+              )}
             </div>
           ) : (
             <div className="text-white text-center p-8">
@@ -327,8 +481,42 @@ export const DocumentViewer = ({
           )}
         </div>
 
-        {/* Navigation arrows */}
-        {documents.length > 1 && (
+        {/* PDF page navigation */}
+        {isPdf && pdfDoc && totalPages > 1 && (
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => { e.stopPropagation(); goToPreviousPage(); }}
+              disabled={currentPage === 1}
+              className={cn(
+                "absolute left-2 top-1/2 -translate-y-1/2 z-40",
+                "h-12 w-12 rounded-full bg-black/50 text-white hover:bg-black/70",
+                "disabled:opacity-30 disabled:cursor-not-allowed",
+                "sm:h-14 sm:w-14"
+              )}
+            >
+              <ChevronLeft className="h-6 w-6 sm:h-8 sm:w-8" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => { e.stopPropagation(); goToNextPage(); }}
+              disabled={currentPage === totalPages}
+              className={cn(
+                "absolute right-2 top-1/2 -translate-y-1/2 z-40",
+                "h-12 w-12 rounded-full bg-black/50 text-white hover:bg-black/70",
+                "disabled:opacity-30 disabled:cursor-not-allowed",
+                "sm:h-14 sm:w-14"
+              )}
+            >
+              <ChevronRight className="h-6 w-6 sm:h-8 sm:w-8" />
+            </Button>
+          </>
+        )}
+
+        {/* Navigation arrows for multiple documents (non-PDF) */}
+        {!isPdf && documents.length > 1 && (
           <>
             <Button
               variant="ghost"
@@ -388,16 +576,14 @@ export const DocumentViewer = ({
               <ZoomIn className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
 
-            {isImage && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={(e) => { e.stopPropagation(); handleRotate(); }}
-                className="text-white hover:bg-white/20 h-8 w-8 sm:h-10 sm:w-10"
-              >
-                <RotateCw className="h-4 w-4 sm:h-5 sm:w-5" />
-              </Button>
-            )}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={(e) => { e.stopPropagation(); handleRotate(); }}
+              className="text-white hover:bg-white/20 h-8 w-8 sm:h-10 sm:w-10"
+            >
+              <RotateCw className="h-4 w-4 sm:h-5 sm:w-5" />
+            </Button>
 
             <Button 
               variant="ghost" 
