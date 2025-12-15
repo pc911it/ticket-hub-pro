@@ -13,7 +13,8 @@ import {
   RotateCw,
   Download,
   FileText,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Eye
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -285,17 +286,33 @@ export const DocumentViewer = ({
               draggable={false}
             />
           ) : isPdf ? (
-            <iframe
-              src={`${currentDoc.file_url}#toolbar=1&navpanes=0&scrollbar=1`}
-              className="w-full h-full bg-white"
-              title={currentDoc.file_name}
-              style={{
-                transform: `scale(${zoom})`,
-                transformOrigin: 'top left',
-                width: `${100 / zoom}%`,
-                height: `${100 / zoom}%`,
-              }}
-            />
+            <div className="w-full h-full flex flex-col items-center justify-center text-white p-8">
+              <FileText className="h-20 w-20 mb-6 text-red-400" />
+              <p className="text-xl font-medium mb-2">{currentDoc.file_name}</p>
+              <p className="text-sm text-white/60 mb-6 text-center max-w-md">
+                PDF preview is blocked by your browser's security settings. Click below to view the document.
+              </p>
+              <div className="flex gap-3">
+                <Button 
+                  variant="default" 
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    window.open(currentDoc.file_url, '_blank', 'noopener,noreferrer'); 
+                  }}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Open PDF in New Tab
+                </Button>
+                <Button 
+                  variant="secondary" 
+                  onClick={(e) => { e.stopPropagation(); handleDownload(); }}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download
+                </Button>
+              </div>
+            </div>
           ) : (
             <div className="text-white text-center p-8">
               <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
