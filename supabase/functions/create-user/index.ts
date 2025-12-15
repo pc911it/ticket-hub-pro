@@ -193,6 +193,7 @@ serve(async (req) => {
         user_id: userId,
         full_name: fullName,
         email: email,
+        password_changed_at: new Date().toISOString(),
       }, { onConflict: 'user_id' });
 
     if (profileError) {

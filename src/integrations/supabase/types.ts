@@ -543,6 +543,8 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          password_changed_at: string | null
+          require_monthly_password_reset: boolean | null
           updated_at: string
           user_id: string
           username: string | null
@@ -553,6 +555,8 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          password_changed_at?: string | null
+          require_monthly_password_reset?: boolean | null
           updated_at?: string
           user_id: string
           username?: string | null
@@ -563,6 +567,8 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          password_changed_at?: string | null
+          require_monthly_password_reset?: boolean | null
           updated_at?: string
           user_id?: string
           username?: string | null

@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { SignaturePad } from "@/components/SignaturePad";
 import { FileUploadPreview } from "@/components/FileUploadPreview";
+import { PasswordResetReminder } from "@/components/PasswordResetReminder";
 import { 
   FolderOpen, 
   Ticket, 
@@ -411,6 +412,7 @@ export default function ClientDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {user && <PasswordResetReminder userId={user.id} />}
             <Dialog open={isRequestDialogOpen} onOpenChange={(open) => {
               setIsRequestDialogOpen(open);
               if (!open) {
