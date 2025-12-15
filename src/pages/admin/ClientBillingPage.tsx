@@ -55,7 +55,7 @@ const ClientBillingPage = () => {
   const queryClient = useQueryClient();
   const [showAddPlan, setShowAddPlan] = useState(false);
   const [showCreateInvoice, setShowCreateInvoice] = useState(false);
-  const [selectedClient, setSelectedClient] = useState<string>('');
+  const [showCreateSubscription, setShowCreateSubscription] = useState(false);
   
   // Form states
   const [planForm, setPlanForm] = useState({
@@ -71,6 +71,12 @@ const ClientBillingPage = () => {
     description: '',
     due_date: '',
     notes: '',
+  });
+
+  const [subscriptionForm, setSubscriptionForm] = useState({
+    client_id: '',
+    payment_plan_id: '',
+    payment_method: 'invoice',
   });
 
   // Fetch company
@@ -230,6 +236,42 @@ const ClientBillingPage = () => {
     onSuccess: () => {
       toast.success('Invoice marked as paid');
       queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  // Create subscription
+  const createSubscriptionMutation = useMutation({
+    mutationFn: async () => {
+      if (!company) throw new Error('No company found');
+      const now = new Date();
+      const selectedPlan = paymentPlans?.find((p: any) => p.id === subscriptionForm.payment_plan_id);
+      
+      let periodEnd = new Date(now);
+      if (selectedPlan?.billing_interval === 'monthly') {
+        periodEnd.setMonth(periodEnd.getMonth() + 1);
+      } else if (selectedPlan?.billing_interval === 'yearly') {
+        periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+      }
+      
+      const { error } = await supabase
+        .from('client_subscriptions')
+        .insert({
+          company_id: company,
+          client_id: subscriptionForm.client_id,
+          payment_plan_id: subscriptionForm.payment_plan_id,
+          payment_method: subscriptionForm.payment_method,
+          status: 'active',
+          current_period_start: now.toISOString(),
+          current_period_end: periodEnd.toISOString(),
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Subscription created');
+      setShowCreateSubscription(false);
+      setSubscriptionForm({ client_id: '', payment_plan_id: '', payment_method: 'invoice' });
+      queryClient.invalidateQueries({ queryKey: ['client-subscriptions'] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -557,6 +599,80 @@ const ClientBillingPage = () => {
 
         {/* Subscriptions Tab */}
         <TabsContent value="subscriptions" className="space-y-4">
+          <div className="flex justify-end">
+            <Dialog open={showCreateSubscription} onOpenChange={setShowCreateSubscription}>
+              <DialogTrigger asChild>
+                <Button><Plus className="h-4 w-4 mr-2" />Create Subscription</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create Subscription</DialogTitle>
+                  <DialogDescription>Assign a client to a payment plan</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label>Client</Label>
+                    <Select 
+                      value={subscriptionForm.client_id} 
+                      onValueChange={(v) => setSubscriptionForm({ ...subscriptionForm, client_id: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select client" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {clients?.map((client) => (
+                          <SelectItem key={client.id} value={client.id}>{client.full_name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Payment Plan</Label>
+                    <Select 
+                      value={subscriptionForm.payment_plan_id} 
+                      onValueChange={(v) => setSubscriptionForm({ ...subscriptionForm, payment_plan_id: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select plan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {paymentPlans?.filter((p: any) => p.is_active).map((plan: any) => (
+                          <SelectItem key={plan.id} value={plan.id}>
+                            {plan.name} - {formatCurrency(plan.amount)}/{plan.billing_interval === 'one_time' ? 'one-time' : plan.billing_interval}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Payment Method</Label>
+                    <Select 
+                      value={subscriptionForm.payment_method} 
+                      onValueChange={(v) => setSubscriptionForm({ ...subscriptionForm, payment_method: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="invoice">Invoice</SelectItem>
+                        <SelectItem value="card_on_file">Card on File</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowCreateSubscription(false)}>Cancel</Button>
+                  <Button 
+                    onClick={() => createSubscriptionMutation.mutate()}
+                    disabled={createSubscriptionMutation.isPending || !subscriptionForm.client_id || !subscriptionForm.payment_plan_id}
+                  >
+                    {createSubscriptionMutation.isPending ? 'Creating...' : 'Create Subscription'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+
           <Card>
             <CardContent className="p-0">
               {subscriptions && subscriptions.length > 0 ? (
@@ -596,7 +712,7 @@ const ClientBillingPage = () => {
                 <div className="text-center py-12 text-muted-foreground">
                   <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p>No active subscriptions</p>
-                  <p className="text-sm">Clients will appear here when they subscribe to a plan</p>
+                  <p className="text-sm">Create a subscription to assign clients to payment plans</p>
                 </div>
               )}
             </CardContent>
