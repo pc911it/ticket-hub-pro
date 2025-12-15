@@ -27,9 +27,10 @@ interface SquareCardFormProps {
   onCardNonce: (nonce: string) => void;
   isLoading?: boolean;
   disabled?: boolean;
+  buttonText?: string;
 }
 
-export function SquareCardForm({ onCardNonce, isLoading, disabled }: SquareCardFormProps) {
+export function SquareCardForm({ onCardNonce, isLoading, disabled, buttonText = 'Save Card' }: SquareCardFormProps) {
   const [card, setCard] = useState<SquareCard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -181,7 +182,7 @@ export function SquareCardForm({ onCardNonce, isLoading, disabled }: SquareCardF
         ) : (
           <>
             <CreditCard className="mr-2 h-4 w-4" />
-            Save Card & Complete Registration
+            {buttonText}
           </>
         )}
       </Button>

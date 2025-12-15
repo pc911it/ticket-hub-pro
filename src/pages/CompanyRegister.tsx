@@ -708,6 +708,7 @@ const CompanyRegister = () => {
               <SquareCardForm
                 onCardNonce={handleCardNonce}
                 isLoading={isLoading}
+                buttonText="Save Card & Complete Registration"
               />
             </CardContent>
             <CardFooter className="flex justify-center">

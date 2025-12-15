@@ -361,6 +361,7 @@ const BillingSettingsPage = () => {
                 <SquareCardForm 
                   onCardNonce={handleCardNonce}
                   isLoading={isUpdatingCard}
+                  buttonText={hasPaymentMethod ? 'Update Payment Method' : 'Add Payment Method'}
                 />
               </DialogContent>
             </Dialog>
