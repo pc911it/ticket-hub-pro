@@ -94,7 +94,7 @@ const BillingSettingsPage = () => {
   const hasPaymentMethod = !!company?.square_card_id;
 
   // Update card mutation
-  const handleCardNonce = async (cardNonce: string, postalCode: string) => {
+  const handleCardNonce = async (cardNonce: string) => {
     if (!company) return;
     
     setIsUpdatingCard(true);
@@ -106,7 +106,6 @@ const BillingSettingsPage = () => {
           email: company.email,
           companyName: company.name,
           cardNonce,
-          postalCode,
         },
       });
 

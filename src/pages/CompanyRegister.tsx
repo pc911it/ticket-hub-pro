@@ -275,7 +275,7 @@ const CompanyRegister = () => {
     }
   };
 
-  const handleCardNonce = async (cardNonce: string, postalCode: string) => {
+  const handleCardNonce = async (cardNonce: string) => {
     if (!createdCompanyId) return;
     
     setIsLoading(true);
@@ -288,7 +288,6 @@ const CompanyRegister = () => {
           email: companyEmail || email,
           companyName,
           cardNonce,
-          postalCode,
         },
       });
 

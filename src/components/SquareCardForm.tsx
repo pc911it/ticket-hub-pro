@@ -24,7 +24,7 @@ interface SquareCard {
 }
 
 interface SquareCardFormProps {
-  onCardNonce: (nonce: string, postalCode: string) => void;
+  onCardNonce: (nonce: string) => void;
   isLoading?: boolean;
   disabled?: boolean;
 }
@@ -32,7 +32,6 @@ interface SquareCardFormProps {
 export function SquareCardForm({ onCardNonce, isLoading, disabled }: SquareCardFormProps) {
   const [card, setCard] = useState<SquareCard | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [postalCode, setPostalCode] = useState('');
   const [isInitializing, setIsInitializing] = useState(true);
   const cardContainerRef = useRef<HTMLDivElement>(null);
 
@@ -117,7 +116,7 @@ export function SquareCardForm({ onCardNonce, isLoading, disabled }: SquareCardF
       const result = await card.tokenize();
       
       if (result.status === 'OK' && result.token) {
-        onCardNonce(result.token, postalCode);
+        onCardNonce(result.token);
       } else if (result.errors) {
         setError(result.errors.map(e => e.message).join(', '));
       } else {
@@ -168,18 +167,6 @@ export function SquareCardForm({ onCardNonce, isLoading, disabled }: SquareCardF
             </div>
           )}
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="postalCode">Billing Postal Code</Label>
-        <Input
-          id="postalCode"
-          type="text"
-          placeholder="12345"
-          value={postalCode}
-          onChange={(e) => setPostalCode(e.target.value)}
-          maxLength={10}
-        />
       </div>
 
       <Button
