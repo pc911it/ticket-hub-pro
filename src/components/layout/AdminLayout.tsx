@@ -5,6 +5,7 @@ import { useRealtimeAlerts } from '@/hooks/useRealtimeAlerts';
 import { LiveAlertsBanner } from '@/components/LiveAlertsBanner';
 import { GlobalProjectChat } from '@/components/GlobalProjectChat';
 import { NotificationToggle, NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
+import { BillingAlertBanner } from '@/components/BillingAlertBanner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -233,6 +234,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
         {/* Page content */}
         <main className="p-6 space-y-6">
+          {/* Billing Alert Banner */}
+          <BillingAlertBanner />
+          
           {/* Notification Permission Banner */}
           <NotificationPermissionBanner />
           
