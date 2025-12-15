@@ -1106,7 +1106,10 @@ export type Database = {
           call_ended_at: string | null
           call_started_at: string | null
           call_type: string | null
+          client_approved_at: string | null
+          client_approved_by: string | null
           client_id: string
+          client_signature_url: string | null
           company_id: string | null
           created_at: string
           created_by: string | null
@@ -1128,7 +1131,10 @@ export type Database = {
           call_ended_at?: string | null
           call_started_at?: string | null
           call_type?: string | null
+          client_approved_at?: string | null
+          client_approved_by?: string | null
           client_id: string
+          client_signature_url?: string | null
           company_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -1150,7 +1156,10 @@ export type Database = {
           call_ended_at?: string | null
           call_started_at?: string | null
           call_type?: string | null
+          client_approved_at?: string | null
+          client_approved_by?: string | null
           client_id?: string
+          client_signature_url?: string | null
           company_id?: string | null
           created_at?: string
           created_by?: string | null
