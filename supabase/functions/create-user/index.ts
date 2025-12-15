@@ -138,6 +138,20 @@ serve(async (req) => {
         );
       }
 
+      // Update the existing user's password if provided
+      if (password) {
+        const { error: updatePasswordError } = await adminClient.auth.admin.updateUserById(
+          existingUser.id,
+          { password }
+        );
+        
+        if (updatePasswordError) {
+          console.log("Failed to update password:", updatePasswordError.message);
+        } else {
+          console.log(`Password updated for existing user: ${email}`);
+        }
+      }
+
       userId = existingUser.id;
       console.log(`Adding existing user ${email} to company ${targetCompanyId}`);
     } else {
