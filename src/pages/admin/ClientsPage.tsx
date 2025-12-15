@@ -146,13 +146,20 @@ const ClientsPage = () => {
       return;
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(selectedClientForLogin.email)) {
+      toast({ variant: 'destructive', title: 'Invalid Email', description: 'Client has an invalid email address.' });
+      return;
+    }
+
     setCreatingLogin(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-user', {
         body: {
-          email: selectedClientForLogin.email,
+          email: selectedClientForLogin.email.trim().toLowerCase(),
           password: loginPassword,
-          fullName: selectedClientForLogin.full_name,
+          fullName: selectedClientForLogin.full_name.trim(),
           role: 'client',
           companyId: userCompanyId,
         },
@@ -160,20 +167,15 @@ const ClientsPage = () => {
 
       if (error) throw error;
       if (data?.error) {
-        // Handle specific error cases
-        if (data.error.includes('already a member')) {
-          toast({ 
-            variant: 'destructive', 
-            title: 'Already Has Access', 
-            description: 'This client already has portal login credentials.' 
-          });
-        } else {
-          throw new Error(data.error);
-        }
-        return;
+        throw new Error(data.error);
       }
 
-      toast({ title: 'Success', description: 'Client portal login created successfully.' });
+      // Check if password was updated for existing user
+      const successMessage = data?.message?.includes('Password updated') 
+        ? 'Client portal password updated successfully.' 
+        : 'Client portal login created successfully.';
+      
+      toast({ title: 'Success', description: successMessage });
       setIsLoginDialogOpen(false);
       setLoginPassword('');
       setSelectedClientForLogin(null);
@@ -191,14 +193,62 @@ const ClientsPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email.trim())) {
+      toast({ variant: 'destructive', title: 'Invalid Email', description: 'Please enter a valid email address.' });
+      return;
+    }
+
+    // Check for duplicate email (excluding current client if editing)
+    try {
+      const duplicateQuery = supabase
+        .from('clients')
+        .select('id, email')
+        .eq('email', formData.email.trim().toLowerCase())
+        .is('deleted_at', null);
+      
+      if (userCompanyId) {
+        duplicateQuery.eq('company_id', userCompanyId);
+      }
+      
+      const { data: existingClients, error: checkError } = await duplicateQuery;
+
+      if (checkError) {
+        console.error('Error checking for duplicate:', checkError);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to validate email. Please try again.' });
+        return;
+      }
+
+      // Check if any existing client has this email (excluding the one being edited)
+      const duplicateClient = existingClients?.find(c => 
+        editingClient ? c.id !== editingClient.id : true
+      );
+
+      if (duplicateClient) {
+        toast({ 
+          variant: 'destructive', 
+          title: 'Email Already Exists', 
+          description: 'A client with this email already exists in your company.' 
+        });
+        return;
+      }
+    } catch (err) {
+      console.error('Duplicate check error:', err);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to validate. Please try again.' });
+      return;
+    }
+
     if (editingClient) {
       const { error } = await supabase
         .from('clients')
-        .update(formData)
+        .update({ ...formData, email: formData.email.trim().toLowerCase() })
         .eq('id', editingClient.id);
 
       if (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to update client.' });
+        console.error('Update error:', error);
+        const errorMsg = error.code === '23505' ? 'A client with this email already exists.' : 'Failed to update client.';
+        toast({ variant: 'destructive', title: 'Error', description: errorMsg });
       } else {
         toast({ title: 'Success', description: 'Client updated successfully.' });
         fetchClients();
@@ -208,11 +258,14 @@ const ClientsPage = () => {
     } else {
       const { data: newClient, error } = await supabase.from('clients').insert({
         ...formData,
+        email: formData.email.trim().toLowerCase(),
         company_id: userCompanyId,
       }).select().single();
 
       if (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to create client.' });
+        console.error('Insert error:', error);
+        const errorMsg = error.code === '23505' ? 'A client with this email already exists.' : 'Failed to create client.';
+        toast({ variant: 'destructive', title: 'Error', description: errorMsg });
         return;
       }
 
@@ -221,16 +274,16 @@ const ClientsPage = () => {
         try {
           const { data, error: loginError } = await supabase.functions.invoke('create-user', {
             body: {
-              email: formData.email,
+              email: formData.email.trim().toLowerCase(),
               password: newClientPassword,
-              fullName: formData.full_name,
+              fullName: formData.full_name.trim(),
               role: 'client',
               companyId: userCompanyId,
             },
           });
 
           if (loginError) throw loginError;
-          if (data?.error && !data.error.includes('already')) {
+          if (data?.error && !data.error.includes('already') && !data.error.includes('Password updated')) {
             throw new Error(data.error);
           }
 
