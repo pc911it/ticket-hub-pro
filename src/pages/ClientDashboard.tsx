@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +49,9 @@ export default function ClientDashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Session timeout - 30 min timeout, 5 min warning (customizable)
+  const { SessionTimeoutDialog } = useSessionTimeout({ timeoutMinutes: 30, warningMinutes: 5 });
   const [clientEmail, setClientEmail] = useState<string | null>(null);
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
@@ -1083,6 +1087,9 @@ export default function ClientDashboard() {
           />
         )}
       </main>
+      
+      {/* Session Timeout Warning */}
+      <SessionTimeoutDialog />
     </div>
   );
 }

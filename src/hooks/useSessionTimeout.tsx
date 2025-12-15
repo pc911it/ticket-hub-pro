@@ -11,10 +11,18 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
-const WARNING_BEFORE_MS = 5 * 60 * 1000; // 5 minutes warning
+interface SessionTimeoutOptions {
+  timeoutMinutes?: number;
+  warningMinutes?: number;
+}
 
-export const useSessionTimeout = () => {
+const DEFAULT_TIMEOUT_MINUTES = 30;
+const DEFAULT_WARNING_MINUTES = 5;
+
+export const useSessionTimeout = (options?: SessionTimeoutOptions) => {
+  const timeoutMs = (options?.timeoutMinutes ?? DEFAULT_TIMEOUT_MINUTES) * 60 * 1000;
+  const warningMs = (options?.warningMinutes ?? DEFAULT_WARNING_MINUTES) * 60 * 1000;
+  
   const [showWarning, setShowWarning] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const [lastActivity, setLastActivity] = useState(Date.now());
@@ -61,12 +69,12 @@ export const useSessionTimeout = () => {
     const interval = setInterval(() => {
       const now = Date.now();
       const timeSinceActivity = now - lastActivity;
-      const remaining = SESSION_TIMEOUT_MS - timeSinceActivity;
+      const remaining = timeoutMs - timeSinceActivity;
 
       if (remaining <= 0) {
         // Session expired, log out
         handleLogout();
-      } else if (remaining <= WARNING_BEFORE_MS && !showWarning) {
+      } else if (remaining <= warningMs && !showWarning) {
         // Show warning
         setShowWarning(true);
         setTimeLeft(Math.ceil(remaining / 1000));
@@ -77,7 +85,7 @@ export const useSessionTimeout = () => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [lastActivity, showWarning, handleLogout]);
+  }, [lastActivity, showWarning, handleLogout, timeoutMs, warningMs]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
