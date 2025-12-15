@@ -293,24 +293,25 @@ export const DocumentViewer = ({
                 PDF preview is blocked by your browser's security settings. Click below to view the document.
               </p>
               <div className="flex gap-3">
-                <Button 
-                  variant="default" 
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    window.open(currentDoc.file_url, '_blank', 'noopener,noreferrer'); 
-                  }}
-                  className="bg-primary hover:bg-primary/90"
+                <a 
+                  href={currentDoc.file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
                 >
-                  <Eye className="h-4 w-4 mr-2" />
+                  <Eye className="h-4 w-4" />
                   Open PDF in New Tab
-                </Button>
-                <Button 
-                  variant="secondary" 
-                  onClick={(e) => { e.stopPropagation(); handleDownload(); }}
+                </a>
+                <a 
+                  href={currentDoc.file_url}
+                  download={currentDoc.file_name}
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 px-4 py-2"
                 >
-                  <Download className="h-4 w-4 mr-2" />
+                  <Download className="h-4 w-4" />
                   Download
-                </Button>
+                </a>
               </div>
             </div>
           ) : (
