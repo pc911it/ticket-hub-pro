@@ -3,11 +3,13 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { AlertTriangle } from 'lucide-react';
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 
 interface DeleteConfirmationDialogProps {
   open: boolean;
@@ -47,6 +49,11 @@ export function DeleteConfirmationDialog({
             </div>
             <AlertDialogTitle className="text-xl">Delete {title}?</AlertDialogTitle>
           </div>
+          <VisuallyHidden.Root>
+            <AlertDialogDescription>
+              Confirm deletion of {itemName}
+            </AlertDialogDescription>
+          </VisuallyHidden.Root>
           <div className="pt-4 space-y-3">
             <div className="p-3 bg-muted rounded-lg border">
               <p className="text-sm text-muted-foreground">You are about to delete:</p>
