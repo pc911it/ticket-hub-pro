@@ -217,6 +217,11 @@ const TicketsPage = () => {
       return;
     }
 
+    if (!formData.project_id) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please select a project for this ticket.' });
+      return;
+    }
+
     const payload = {
       client_id: formData.client_id,
       project_id: formData.project_id || null,
@@ -481,16 +486,16 @@ const TicketsPage = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Project</Label>
+                <Label>Project *</Label>
                 <Select
                   value={formData.project_id}
-                  onValueChange={(value) => setFormData({ ...formData, project_id: value === 'none' ? '' : value })}
+                  onValueChange={(value) => setFormData({ ...formData, project_id: value })}
+                  required
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Assign to project (optional)" />
+                    <SelectValue placeholder="Select a project" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">No project</SelectItem>
                     {projects.map((project) => (
                       <SelectItem key={project.id} value={project.id}>
                         <span className="flex items-center gap-2">
