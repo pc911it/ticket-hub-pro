@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { 
   X, 
   ZoomIn, 
@@ -217,7 +218,12 @@ export const DocumentViewer = ({
             ? "w-screen h-screen max-w-none max-h-none rounded-none" 
             : "w-[95vw] h-[90vh] max-w-6xl"
         )}
+        onInteractOutside={(e) => e.preventDefault()}
+        aria-describedby={undefined}
       >
+        <VisuallyHidden>
+          <DialogTitle>Document Viewer - {currentDoc?.file_name}</DialogTitle>
+        </VisuallyHidden>
         {/* Header toolbar */}
         <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between p-3 bg-gradient-to-b from-black/80 to-transparent">
           <div className="flex items-center gap-2 text-white">
