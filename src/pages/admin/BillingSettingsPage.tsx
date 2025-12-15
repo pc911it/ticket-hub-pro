@@ -303,15 +303,15 @@ const BillingSettingsPage = () => {
             </Dialog>
 
             {company.subscription_status !== 'cancelled' && (
-              <div className="space-y-2">
+              <div className="space-y-2 pt-2 border-t border-destructive/20">
                 {company.subscription_status === 'trial' && (
-                  <p className="text-xs text-destructive text-center">
+                  <p className="text-xs text-destructive text-center font-medium">
                     Cancellation fee: ${currentPlan.monthlyPrice} (one month)
                   </p>
                 )}
                 <Button 
-                  variant="ghost" 
-                  className="w-full text-destructive hover:text-destructive"
+                  variant="outline" 
+                  className="w-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
                   onClick={() => cancelMutation.mutate()}
                   disabled={cancelMutation.isPending}
                 >
