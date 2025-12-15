@@ -12,11 +12,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useToast } from '@/hooks/use-toast';
 import { 
   MapPin, Clock, User, Package, Plus, Minus, CheckCircle, 
-  Truck, AlertTriangle, ArrowLeft, Phone, Navigation
+  Truck, AlertTriangle, ArrowLeft, Phone, Navigation, PenTool
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
+import { SignaturePad } from '@/components/SignaturePad';
 
 interface Ticket {
   id: string;
@@ -26,6 +27,8 @@ interface Ticket {
   priority: string | null;
   scheduled_date: string;
   scheduled_time: string;
+  client_signature_url: string | null;
+  client_approved_at: string | null;
   clients: { full_name: string; phone: string | null; address: string | null } | null;
 }
 
@@ -64,6 +67,8 @@ const AgentJobPage = () => {
   const [isAddMaterialOpen, setIsAddMaterialOpen] = useState(false);
   const [newMaterial, setNewMaterial] = useState({ item_id: '', quantity: 1 });
   const [notes, setNotes] = useState('');
+  const [isSignatureOpen, setIsSignatureOpen] = useState(false);
+  const [savingSignature, setSavingSignature] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -87,12 +92,12 @@ const AgentJobPage = () => {
       // Fetch assigned tickets
       const { data: ticketsData } = await supabase
         .from('tickets')
-        .select('id, title, description, status, priority, scheduled_date, scheduled_time, clients(full_name, phone, address)')
+        .select('id, title, description, status, priority, scheduled_date, scheduled_time, client_signature_url, client_approved_at, clients(full_name, phone, address)')
         .eq('assigned_agent_id', agentData.id)
         .in('status', ['assigned', 'en_route', 'on_site', 'working', 'pending'])
         .order('scheduled_date', { ascending: true });
 
-      if (ticketsData) setTickets(ticketsData);
+      if (ticketsData) setTickets(ticketsData as Ticket[]);
     }
 
     // Fetch inventory for adding materials
@@ -122,6 +127,17 @@ const AgentJobPage = () => {
   const updateTicketStatus = async (newStatus: string) => {
     if (!selectedTicket || !agent) return;
 
+    // Block completion if no signature
+    if (newStatus === 'completed' && !selectedTicket.client_signature_url) {
+      toast({ 
+        variant: 'destructive', 
+        title: 'Signature Required', 
+        description: 'Client signature is required before completing this ticket.' 
+      });
+      setIsSignatureOpen(true);
+      return;
+    }
+
     const { error } = await supabase
       .from('tickets')
       .update({ status: newStatus })
@@ -146,6 +162,60 @@ const AgentJobPage = () => {
     if (newStatus === 'completed') {
       fetchAgentAndTickets();
       setSelectedTicket(null);
+    }
+  };
+
+  const handleSignatureSave = async (signatureDataUrl: string) => {
+    if (!selectedTicket || !user) return;
+    setSavingSignature(true);
+
+    try {
+      // Upload signature to storage
+      const fileName = `${selectedTicket.id}-${Date.now()}.png`;
+      const base64Data = signatureDataUrl.split(',')[1];
+      const byteCharacters = atob(base64Data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'image/png' });
+
+      const { error: uploadError } = await supabase.storage
+        .from('client-signatures')
+        .upload(fileName, blob, { contentType: 'image/png' });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('client-signatures')
+        .getPublicUrl(fileName);
+
+      // Update ticket with signature
+      const { error: updateError } = await supabase
+        .from('tickets')
+        .update({
+          client_signature_url: publicUrl,
+          client_approved_at: new Date().toISOString(),
+          client_approved_by: user.id,
+        })
+        .eq('id', selectedTicket.id);
+
+      if (updateError) throw updateError;
+
+      setSelectedTicket({
+        ...selectedTicket,
+        client_signature_url: publicUrl,
+        client_approved_at: new Date().toISOString(),
+      });
+
+      toast({ title: 'Signature Saved', description: 'Client signature has been captured. You can now complete the ticket.' });
+      setIsSignatureOpen(false);
+    } catch (error) {
+      console.error('Error saving signature:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to save signature.' });
+    } finally {
+      setSavingSignature(false);
     }
   };
 
@@ -438,6 +508,54 @@ const AgentJobPage = () => {
               )}
             </CardContent>
           </Card>
+
+          {/* Client Signature */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <PenTool className="h-4 w-4" />
+                  Client Signature
+                </CardTitle>
+                {selectedTicket.client_signature_url ? (
+                  <Badge variant="outline" className="bg-success/10 text-success border-success/30">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Signed
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30">
+                    Required
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {selectedTicket.client_signature_url ? (
+                <div className="space-y-2">
+                  <div className="border rounded-lg p-2 bg-white">
+                    <img 
+                      src={selectedTicket.client_signature_url} 
+                      alt="Client signature" 
+                      className="w-full h-24 object-contain"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Signed on {selectedTicket.client_approved_at ? format(new Date(selectedTicket.client_approved_at), 'MMM d, yyyy h:mm a') : 'N/A'}
+                  </p>
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Client signature is required to complete this ticket
+                  </p>
+                  <Button onClick={() => setIsSignatureOpen(true)}>
+                    <PenTool className="h-4 w-4 mr-2" />
+                    Capture Signature
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Add Material Dialog */}
@@ -485,6 +603,18 @@ const AgentJobPage = () => {
                 Add Material
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Signature Dialog */}
+        <Dialog open={isSignatureOpen} onOpenChange={setIsSignatureOpen}>
+          <DialogContent className="max-w-md p-0 overflow-hidden">
+            <SignaturePad
+              onSave={handleSignatureSave}
+              onCancel={() => setIsSignatureOpen(false)}
+              title="Client Signature"
+              isLoading={savingSignature}
+            />
           </DialogContent>
         </Dialog>
       </div>
