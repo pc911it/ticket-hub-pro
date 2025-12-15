@@ -302,15 +302,24 @@ const BillingSettingsPage = () => {
               </DialogContent>
             </Dialog>
 
-            {company.subscription_status === 'active' && (
-              <Button 
-                variant="ghost" 
-                className="w-full text-destructive hover:text-destructive"
-                onClick={() => cancelMutation.mutate()}
-                disabled={cancelMutation.isPending}
-              >
-                Cancel Subscription
-              </Button>
+            {company.subscription_status !== 'cancelled' && (
+              <div className="space-y-2">
+                {company.subscription_status === 'trial' && (
+                  <p className="text-xs text-destructive text-center">
+                    Cancellation fee: ${currentPlan.monthlyPrice} (one month)
+                  </p>
+                )}
+                <Button 
+                  variant="ghost" 
+                  className="w-full text-destructive hover:text-destructive"
+                  onClick={() => cancelMutation.mutate()}
+                  disabled={cancelMutation.isPending}
+                >
+                  {company.subscription_status === 'trial' 
+                    ? `Cancel & Pay $${currentPlan.monthlyPrice} Fee`
+                    : 'Cancel Subscription'}
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
