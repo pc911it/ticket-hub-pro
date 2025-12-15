@@ -175,11 +175,11 @@ export const ProjectAttachments = ({ projectId, readOnly = false }: ProjectAttac
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => openViewer(allDocuments.findIndex(d => d.id === attachment.id))}>
+                  <Button variant="ghost" size="sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openViewer(allDocuments.findIndex(d => d.id === attachment.id)); }}>
                     <Eye className="h-4 w-4" />
                   </Button>
                   {!readOnly && (
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(attachment)}>
+                    <Button variant="ghost" size="sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(attachment); }}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   )}
@@ -230,11 +230,11 @@ export const ProjectAttachments = ({ projectId, readOnly = false }: ProjectAttac
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <Button variant="secondary" size="sm" onClick={() => openViewer(allDocuments.findIndex(d => d.id === attachment.id))}>
+                  <Button variant="secondary" size="sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openViewer(allDocuments.findIndex(d => d.id === attachment.id)); }}>
                     <Eye className="h-4 w-4" />
                   </Button>
                   {!readOnly && (
-                    <Button variant="destructive" size="sm" onClick={() => handleDelete(attachment)}>
+                    <Button variant="destructive" size="sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(attachment); }}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
