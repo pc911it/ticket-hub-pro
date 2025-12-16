@@ -446,6 +446,7 @@ export type Database = {
           full_name: string
           id: string
           notes: string | null
+          notification_preferences: Json | null
           phone: string | null
           square_card_id: string | null
           square_customer_id: string | null
@@ -460,6 +461,7 @@ export type Database = {
           full_name: string
           id?: string
           notes?: string | null
+          notification_preferences?: Json | null
           phone?: string | null
           square_card_id?: string | null
           square_customer_id?: string | null
@@ -474,6 +476,7 @@ export type Database = {
           full_name?: string
           id?: string
           notes?: string | null
+          notification_preferences?: Json | null
           phone?: string | null
           square_card_id?: string | null
           square_customer_id?: string | null

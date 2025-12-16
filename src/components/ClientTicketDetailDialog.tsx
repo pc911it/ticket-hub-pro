@@ -4,19 +4,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { TicketProgressTracker } from "@/components/TicketProgressTracker";
+import { WorkOrderPDF } from "@/components/WorkOrderPDF";
 import { 
   Calendar, 
   Clock, 
   User, 
   FolderOpen, 
-  MapPin, 
   FileText,
   CheckCircle,
   AlertCircle,
   Wrench,
   CircleDot,
   Paperclip,
-  Image as ImageIcon,
   File
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
@@ -107,22 +107,35 @@ export function ClientTicketDetailDialog({ ticket, open, onOpenChange }: ClientT
 
         <ScrollArea className="flex-1 -mx-6 px-6">
           <div className="space-y-6 pb-4">
-            {/* Status and Priority */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <Badge variant="outline" className={cn(statusConfig.color)}>
-                {statusConfig.label}
-              </Badge>
-              <Badge variant="outline" className={cn(
-                ticket.priority === "high" && "border-destructive text-destructive",
-                ticket.priority === "low" && "border-muted-foreground text-muted-foreground"
-              )}>
-                {ticket.priority || "normal"} priority
-              </Badge>
-              {ticket.client_approved_at && (
-                <Badge variant="outline" className="border-success text-success">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Client Approved
+            {/* Progress Tracker */}
+            <div className="bg-muted/30 p-4 rounded-lg border">
+              <TicketProgressTracker 
+                status={ticket.status} 
+                adminApprovalStatus={ticket.admin_approval_status}
+              />
+            </div>
+
+            {/* Status and Priority with PDF Download */}
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
+                <Badge variant="outline" className={cn(statusConfig.color)}>
+                  {statusConfig.label}
                 </Badge>
+                <Badge variant="outline" className={cn(
+                  ticket.priority === "high" && "border-destructive text-destructive",
+                  ticket.priority === "low" && "border-muted-foreground text-muted-foreground"
+                )}>
+                  {ticket.priority || "normal"} priority
+                </Badge>
+                {ticket.client_approved_at && (
+                  <Badge variant="outline" className="border-success text-success">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Client Approved
+                  </Badge>
+                )}
+              </div>
+              {ticket.status === "completed" && (
+                <WorkOrderPDF ticket={ticket} />
               )}
             </div>
 

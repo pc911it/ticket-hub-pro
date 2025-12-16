@@ -9,16 +9,36 @@ const corsHeaders = {
 };
 
 interface ClientNotificationRequest {
-  type: 'status_change' | 'work_completed' | 'work_started' | 'agent_assigned';
-  ticketId: string;
+  type: 'status_change' | 'work_completed' | 'work_started' | 'agent_assigned' | 'new_invoice';
+  ticketId?: string;
+  clientId?: string;
   clientEmail: string;
   clientName: string;
-  ticketTitle: string;
+  ticketTitle?: string;
   newStatus?: string;
   previousStatus?: string;
   agentName?: string;
   notes?: string;
   companyName?: string;
+}
+
+interface NotificationPreferences {
+  status_updates: boolean;
+  work_completed: boolean;
+  agent_assigned: boolean;
+  new_invoice: boolean;
+}
+
+// Map notification type to preference key
+function getPreferenceKey(type: string): keyof NotificationPreferences | null {
+  const mapping: Record<string, keyof NotificationPreferences> = {
+    status_change: 'status_updates',
+    work_completed: 'work_completed',
+    work_started: 'status_updates',
+    agent_assigned: 'agent_assigned',
+    new_invoice: 'new_invoice',
+  };
+  return mapping[type] || null;
 }
 
 // Verify that the request is from an internal service or authenticated user
@@ -100,7 +120,8 @@ Deno.serve(async (req) => {
   try {
     const { 
       type, 
-      ticketId, 
+      ticketId,
+      clientId,
       clientEmail, 
       clientName, 
       ticketTitle, 
@@ -112,7 +133,7 @@ Deno.serve(async (req) => {
     }: ClientNotificationRequest = await req.json();
 
     // Validate required fields
-    if (!type || !clientEmail || !ticketTitle) {
+    if (!type || !clientEmail) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -127,7 +148,32 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Sending ${type} notification to ${clientEmail} for ticket: ${ticketTitle}`);
+    // Check client notification preferences
+    const preferenceKey = getPreferenceKey(type);
+    if (preferenceKey && clientId) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const adminClient = createClient(supabaseUrl, serviceRoleKey);
+      
+      const { data: client } = await adminClient
+        .from("clients")
+        .select("notification_preferences")
+        .eq("id", clientId)
+        .single();
+      
+      if (client?.notification_preferences) {
+        const prefs = client.notification_preferences as NotificationPreferences;
+        if (prefs[preferenceKey] === false) {
+          console.log(`Client ${clientId} has disabled ${preferenceKey} notifications, skipping`);
+          return new Response(
+            JSON.stringify({ message: "Notification skipped due to user preferences" }),
+            { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+      }
+    }
+
+    console.log(`Sending ${type} notification to ${clientEmail}${ticketTitle ? ` for ticket: ${ticketTitle}` : ''}`);
 
     let subject = '';
     let html = '';
