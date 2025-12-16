@@ -1529,6 +1529,117 @@ export type Database = {
           },
         ]
       }
+      time_clock_entries: {
+        Row: {
+          agent_id: string
+          break_minutes: number | null
+          clock_in: string
+          clock_out: string | null
+          company_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          break_minutes?: number | null
+          clock_in?: string
+          clock_out?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          break_minutes?: number | null
+          clock_in?: string
+          clock_out?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_clock_entries_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_clock_entries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_report_submissions: {
+        Row: {
+          agent_id: string
+          company_id: string
+          id: string
+          notes: string | null
+          period_end: string
+          period_start: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string | null
+          submitted_at: string
+          total_clock_minutes: number | null
+          total_ticket_minutes: number | null
+        }
+        Insert: {
+          agent_id: string
+          company_id: string
+          id?: string
+          notes?: string | null
+          period_end: string
+          period_start: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          submitted_at?: string
+          total_clock_minutes?: number | null
+          total_ticket_minutes?: number | null
+        }
+        Update: {
+          agent_id?: string
+          company_id?: string
+          id?: string
+          notes?: string | null
+          period_end?: string
+          period_start?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          submitted_at?: string
+          total_clock_minutes?: number | null
+          total_ticket_minutes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_report_submissions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_report_submissions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string

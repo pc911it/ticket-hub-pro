@@ -33,7 +33,8 @@ import {
   DollarSign,
   Trash2,
   FileText,
-  Briefcase
+  Briefcase,
+  Clock
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -45,6 +46,7 @@ const navigation = [
   { name: 'New Call', href: '/admin/new-call', icon: Plus },
   { name: 'Notifications', href: '/admin/notifications', icon: Bell },
   { name: 'Employees', href: '/admin/employees', icon: UserCircle },
+  { name: 'Time Reports', href: '/admin/time-reports', icon: Clock },
   { name: 'Updates', href: '/admin/updates', icon: LayoutDashboard },
   { name: 'Calendar', href: '/admin/calendar', icon: Calendar },
   { name: 'Clients', href: '/admin/clients', icon: Users },
