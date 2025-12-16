@@ -700,7 +700,7 @@ const ClientBillingPage = () => {
                     </Select>
                   </div>
                   <div>
-                    <Label>Payment Method</Label>
+                    <Label>Billing Type</Label>
                     <Select 
                       value={subscriptionForm.payment_method} 
                       onValueChange={(v) => setSubscriptionForm({ ...subscriptionForm, payment_method: v })}
@@ -709,10 +709,26 @@ const ClientBillingPage = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="invoice">Invoice</SelectItem>
-                        <SelectItem value="card_on_file">Card on File</SelectItem>
+                        <SelectItem value="card_on_file">
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">Recurring (Card on File)</span>
+                            <span className="text-xs text-muted-foreground">Automatically charge card each billing cycle</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="invoice">
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">Per Invoice</span>
+                            <span className="text-xs text-muted-foreground">Send invoice manually each billing cycle</span>
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {subscriptionForm.payment_method === 'card_on_file' 
+                        ? 'Client card will be charged automatically on each billing date'
+                        : 'You will need to create and send invoices manually each period'
+                      }
+                    </p>
                   </div>
                 </div>
                 <DialogFooter>
