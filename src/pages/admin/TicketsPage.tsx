@@ -19,6 +19,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { TicketAttachments } from '@/components/TicketAttachments';
 import { DeleteConfirmationDialog } from '@/components/DeleteConfirmationDialog';
 import { TicketDetailSheet } from '@/components/TicketDetailSheet';
+import { TicketProgressTracker } from '@/components/TicketProgressTracker';
 
 interface Agent {
   id: string;
@@ -837,6 +838,16 @@ const TicketsPage = () => {
                         </div>
                       )}
                     </div>
+                    {/* Progress Tracker */}
+                    {ticket.admin_approval_status === 'approved' && (
+                      <div className="mt-3">
+                        <TicketProgressTracker 
+                          status={ticket.status} 
+                          adminApprovalStatus={ticket.admin_approval_status}
+                          compact
+                        />
+                      </div>
+                    )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
