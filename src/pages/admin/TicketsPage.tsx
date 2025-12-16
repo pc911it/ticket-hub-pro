@@ -311,10 +311,12 @@ const TicketsPage = () => {
   };
 
   const handleStatusChange = async (ticketId: string, newStatus: string) => {
+    const ticket = tickets.find(t => t.id === ticketId);
+    if (!ticket) return;
+
     // Block completion if no signature
     if (newStatus === 'completed') {
-      const ticket = tickets.find(t => t.id === ticketId);
-      if (ticket && !ticket.client_signature_url) {
+      if (!ticket.client_signature_url) {
         toast({ 
           variant: 'destructive', 
           title: 'Signature Required', 
@@ -324,6 +326,47 @@ const TicketsPage = () => {
       }
     }
 
+    // Statuses that require location verification
+    const locationRequiredStatuses = ['on_site', 'working', 'completed'];
+    let location: { lat: number; lng: number } | null = null;
+
+    // Request location for on-site statuses
+    if (locationRequiredStatuses.includes(newStatus)) {
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          if (!navigator.geolocation) {
+            reject(new Error('Geolocation not supported'));
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          });
+        });
+        location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+      } catch (error) {
+        // For admin users, allow skipping location
+        if (canRollbackStatus) {
+          const proceed = window.confirm(
+            `Location unavailable. As an admin, you can proceed without location verification. Continue?`
+          );
+          if (!proceed) return;
+        } else {
+          toast({ 
+            variant: 'destructive', 
+            title: 'Location Required', 
+            description: `Please enable location services to mark as "${newStatus.replace('_', ' ')}". This verifies you are on site.`
+          });
+          return;
+        }
+      }
+    }
+
+    // Update ticket status
     const { error } = await supabase
       .from('tickets')
       .update({ status: newStatus })
@@ -332,10 +375,38 @@ const TicketsPage = () => {
     if (error) {
       console.error('Status update error:', error);
       toast({ variant: 'destructive', title: 'Error', description: `Failed to update status: ${error.message}` });
-    } else {
-      toast({ title: 'Status Updated', description: `Ticket status changed to ${newStatus.replace('_', ' ')}.` });
-      fetchData();
+      return;
     }
+
+    // Create job_update record to track progress
+    if (ticket.assigned_agent_id) {
+      const jobUpdateData: any = {
+        ticket_id: ticketId,
+        agent_id: ticket.assigned_agent_id,
+        status: newStatus as any,
+        notes: `Status changed to ${newStatus.replace('_', ' ')} by ${canRollbackStatus ? 'admin' : 'staff'}`,
+      };
+
+      if (location) {
+        jobUpdateData.location_lat = location.lat;
+        jobUpdateData.location_lng = location.lng;
+      }
+
+      const { error: updateError } = await supabase
+        .from('job_updates')
+        .insert(jobUpdateData);
+
+      if (updateError) {
+        console.error('Job update tracking error:', updateError);
+        // Don't fail the status change, just log the tracking error
+      }
+    }
+
+    toast({ 
+      title: 'Status Updated', 
+      description: `Ticket status changed to ${newStatus.replace('_', ' ')}.${location ? ' Location verified.' : ''}`
+    });
+    fetchData();
   };
 
   const handleDelete = async () => {
