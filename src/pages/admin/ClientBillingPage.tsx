@@ -61,6 +61,9 @@ const ClientBillingPage = () => {
   const [showAddCard, setShowAddCard] = useState(false);
   const [selectedSubscriptionForCard, setSelectedSubscriptionForCard] = useState<any>(null);
   const [isSavingCard, setIsSavingCard] = useState(false);
+  const [showAddClientCard, setShowAddClientCard] = useState(false);
+  const [selectedClientForCard, setSelectedClientForCard] = useState<any>(null);
+  const [isSavingClientCard, setIsSavingClientCard] = useState(false);
   
   // Form states
   const [planForm, setPlanForm] = useState({
@@ -115,14 +118,14 @@ const ClientBillingPage = () => {
     enabled: !!company,
   });
 
-  // Fetch clients
-  const { data: clients } = useQuery({
+  // Fetch clients with card info
+  const { data: clients, refetch: refetchClients } = useQuery({
     queryKey: ['clients-for-billing', company],
     queryFn: async () => {
       if (!company) return [];
       const { data } = await supabase
         .from('clients')
-        .select('id, full_name, email')
+        .select('id, full_name, email, square_customer_id, square_card_id')
         .eq('company_id', company)
         .is('deleted_at', null)
         .order('full_name');
@@ -310,6 +313,34 @@ const ClientBillingPage = () => {
     }
   };
 
+  // Save card directly for client (not through subscription)
+  const handleSaveClientCard = async (cardNonce: string) => {
+    if (!selectedClientForCard) return;
+    
+    setIsSavingClientCard(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('save-client-card-direct', {
+        body: {
+          clientId: selectedClientForCard.id,
+          cardNonce,
+        },
+      });
+      
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      toast.success(`Card saved (${data.cardBrand || 'Card'} ****${data.cardLast4})`);
+      setShowAddClientCard(false);
+      setSelectedClientForCard(null);
+      refetchClients();
+      queryClient.invalidateQueries({ queryKey: ['client-subscriptions'] });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save card');
+    } finally {
+      setIsSavingClientCard(false);
+    }
+  };
+
   // Charge subscription now
   const chargeSubscriptionMutation = useMutation({
     mutationFn: async (subscriptionId: string) => {
@@ -411,6 +442,7 @@ const ClientBillingPage = () => {
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="plans">Payment Plans</TabsTrigger>
           <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
+          <TabsTrigger value="client-cards">Client Cards</TabsTrigger>
         </TabsList>
 
         {/* Invoices Tab */}
@@ -876,6 +908,99 @@ const ClientBillingPage = () => {
                 onCardNonce={handleSaveCard}
                 isLoading={isSavingCard}
                 buttonText="Save Card"
+              />
+            </DialogContent>
+          </Dialog>
+        </TabsContent>
+
+        {/* Client Cards Tab */}
+        <TabsContent value="client-cards" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Saved Client Cards
+              </CardTitle>
+              <CardDescription>
+                Manage payment cards stored for each client. Cards can be used for subscriptions and one-time charges.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              {clients && clients.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Card Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {clients.map((client: any) => (
+                      <TableRow key={client.id}>
+                        <TableCell className="font-medium">{client.full_name}</TableCell>
+                        <TableCell className="text-muted-foreground">{client.email}</TableCell>
+                        <TableCell>
+                          {client.square_card_id ? (
+                            <Badge className="bg-green-500/20 text-green-700 border-green-500/30">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Card on File
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-muted-foreground">
+                              No Card
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            size="sm" 
+                            variant={client.square_card_id ? "outline" : "default"}
+                            onClick={() => {
+                              setSelectedClientForCard(client);
+                              setShowAddClientCard(true);
+                            }}
+                          >
+                            <CreditCard className="h-4 w-4 mr-1" />
+                            {client.square_card_id ? 'Update Card' : 'Add Card'}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>No clients found</p>
+                  <p className="text-sm">Add clients to manage their payment cards</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Add Client Card Dialog */}
+          <Dialog open={showAddClientCard} onOpenChange={(open) => {
+            setShowAddClientCard(open);
+            if (!open) setSelectedClientForCard(null);
+          }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {selectedClientForCard?.square_card_id ? 'Update Payment Card' : 'Add Payment Card'}
+                </DialogTitle>
+                <DialogDescription>
+                  {selectedClientForCard?.square_card_id 
+                    ? `Replace the existing card for ${selectedClientForCard?.full_name}`
+                    : `Save a payment card for ${selectedClientForCard?.full_name}`
+                  }
+                </DialogDescription>
+              </DialogHeader>
+              <SquareCardForm 
+                onCardNonce={handleSaveClientCard}
+                isLoading={isSavingClientCard}
+                buttonText={selectedClientForCard?.square_card_id ? "Update Card" : "Save Card"}
               />
             </DialogContent>
           </Dialog>
