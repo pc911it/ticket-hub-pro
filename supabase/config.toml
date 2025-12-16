@@ -50,3 +50,9 @@ verify_jwt = false
 
 [functions.save-client-card-direct]
 verify_jwt = false
+
+[functions.send-employee-welcome]
+verify_jwt = false
+
+[functions.send-time-report-notification]
+verify_jwt = false
