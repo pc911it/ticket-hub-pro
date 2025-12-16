@@ -380,31 +380,102 @@ export default function EmployeePortal() {
     },
   });
 
-  // Update ticket status
+  // Update ticket status with GPS and timestamps
   const updateTicketStatus = useMutation({
     mutationFn: async ({ ticketId, status }: { ticketId: string; status: string }) => {
+      // Get current GPS location for location-required statuses
+      const locationRequiredStatuses = ['en_route', 'on_site', 'working', 'completed'];
+      let location: { lat: number; lng: number } | null = null;
+
+      if (locationRequiredStatuses.includes(status)) {
+        try {
+          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            if (!navigator.geolocation) {
+              reject(new Error('Geolocation not supported'));
+              return;
+            }
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 0,
+            });
+          });
+          location = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+        } catch (error) {
+          console.warn('Could not get location:', error);
+          // Allow proceeding without location for employees
+        }
+      }
+
+      // Build update object with timestamps
+      const updateData: any = { status };
+      
+      // Set call_started_at when status becomes en_route (first time)
+      if (status === 'en_route') {
+        const { data: ticket } = await supabase
+          .from('tickets')
+          .select('call_started_at')
+          .eq('id', ticketId)
+          .single();
+        
+        if (!ticket?.call_started_at) {
+          updateData.call_started_at = new Date().toISOString();
+        }
+      }
+      
+      // Set call_ended_at when completed
+      if (status === 'completed') {
+        updateData.call_ended_at = new Date().toISOString();
+      }
+
       const { error } = await supabase
-        .from("tickets")
-        .update({ status })
-        .eq("id", ticketId);
+        .from('tickets')
+        .update(updateData)
+        .eq('id', ticketId);
       
       if (error) throw error;
       
-      // Create job update
+      // Create job update with location
       if (agentRecord?.id) {
-        await supabase.from("job_updates").insert({
+        const jobUpdateData: any = {
           ticket_id: ticketId,
           agent_id: agentRecord.id,
           status: status as any,
-        });
+          notes: `Status updated to ${status.replace('_', ' ')} from Employee Portal`,
+        };
+
+        if (location) {
+          jobUpdateData.location_lat = location.lat;
+          jobUpdateData.location_lng = location.lng;
+        }
+
+        await supabase.from('job_updates').insert(jobUpdateData);
+
+        // Update agent's current location
+        if (location) {
+          await supabase
+            .from('agents')
+            .update({
+              current_location_lat: location.lat,
+              current_location_lng: location.lng,
+              last_location_update: new Date().toISOString(),
+            })
+            .eq('id', agentRecord.id);
+        }
       }
     },
-    onSuccess: () => {
-      toast({ title: "Status Updated" });
-      queryClient.invalidateQueries({ queryKey: ["employee-tickets"] });
+    onSuccess: (_, variables) => {
+      toast({ 
+        title: 'Status Updated', 
+        description: `Ticket status changed to ${variables.status.replace('_', ' ')}`
+      });
+      queryClient.invalidateQueries({ queryKey: ['employee-tickets'] });
     },
     onError: (error: any) => {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      toast({ variant: 'destructive', title: 'Error', description: error.message });
     },
   });
 

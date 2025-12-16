@@ -368,10 +368,23 @@ const TicketsPage = () => {
       }
     }
 
+    // Build update object with timestamps
+    const updateData: any = { status: newStatus };
+    
+    // Set call_started_at when status becomes en_route (first time)
+    if (newStatus === 'en_route' && !ticket.call_started_at) {
+      updateData.call_started_at = new Date().toISOString();
+    }
+    
+    // Set call_ended_at when completed
+    if (newStatus === 'completed') {
+      updateData.call_ended_at = new Date().toISOString();
+    }
+
     // Update ticket status
     const { error } = await supabase
       .from('tickets')
-      .update({ status: newStatus })
+      .update(updateData)
       .eq('id', ticketId);
 
     if (error) {

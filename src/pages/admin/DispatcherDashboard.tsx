@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { LiveAgentMap } from '@/components/LiveAgentMap';
 import { 
   MapPin, 
   Users, 
@@ -279,6 +280,9 @@ const DispatcherDashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Live Agent Map */}
+      <LiveAgentMap companyId={userCompany?.company_id || null} />
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Agents Panel */}
