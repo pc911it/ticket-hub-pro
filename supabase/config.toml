@@ -41,3 +41,9 @@ verify_jwt = false
 
 [functions.send-client-invoice]
 verify_jwt = false
+
+[functions.charge-client-subscription]
+verify_jwt = false
+
+[functions.save-client-card]
+verify_jwt = false
