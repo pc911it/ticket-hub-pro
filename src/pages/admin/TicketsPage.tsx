@@ -319,8 +319,10 @@ const TicketsPage = () => {
       .eq('id', ticketId);
 
     if (error) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to update status.' });
+      console.error('Status update error:', error);
+      toast({ variant: 'destructive', title: 'Error', description: `Failed to update status: ${error.message}` });
     } else {
+      toast({ title: 'Status Updated', description: `Ticket status changed to ${newStatus.replace('_', ' ')}.` });
       fetchData();
     }
   };
@@ -880,11 +882,11 @@ const TicketsPage = () => {
                     {/* Status Change Dropdown */}
                     {ticket.admin_approval_status === 'approved' && ticket.status !== 'completed' && ticket.status !== 'cancelled' && (
                       <Select
-                        value={ticket.status}
+                        value={ticket.status || 'pending'}
                         onValueChange={(value) => handleStatusChange(ticket.id, value)}
                       >
                         <SelectTrigger className="w-32 h-8 text-xs">
-                          <SelectValue />
+                          <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                         <SelectContent className="bg-background border shadow-lg z-50">
                           <SelectItem value="pending">Pending</SelectItem>
