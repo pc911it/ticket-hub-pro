@@ -9,8 +9,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Send, MessageCircle, Users, CheckCheck } from 'lucide-react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { Send, MessageCircle, Users, CheckCheck, Paperclip, X, FileText, Image as ImageIcon, Download } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -32,6 +32,10 @@ interface ChatMessage {
   content: string;
   user_id: string;
   created_at: string;
+  file_url?: string | null;
+  file_name?: string | null;
+  file_type?: string | null;
+  file_size?: number | null;
   profiles?: {
     full_name: string | null;
     email: string | null;
@@ -49,7 +53,10 @@ export function EmployeeTeamChat({ companyId, projectId }: EmployeeTeamChatProps
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch chat messages with read receipts
   const { data: messages, isLoading } = useQuery({
@@ -62,7 +69,11 @@ export function EmployeeTeamChat({ companyId, projectId }: EmployeeTeamChatProps
           content,
           user_id,
           created_at,
-          company_id
+          company_id,
+          file_url,
+          file_name,
+          file_type,
+          file_size
         `)
         .eq('company_id', companyId)
         .order('created_at', { ascending: true })
@@ -160,35 +171,74 @@ export function EmployeeTeamChat({ companyId, projectId }: EmployeeTeamChatProps
     });
   };
 
+  // Upload file to storage
+  const uploadFile = async (file: File): Promise<{ url: string; name: string; type: string; size: number } | null> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('project-chat-files')
+      .upload(fileName, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('project-chat-files')
+      .getPublicUrl(fileName);
+
+    return {
+      url: publicUrl,
+      name: file.name,
+      type: file.type,
+      size: file.size,
+    };
+  };
+
   // Send message mutation
   const sendMessage = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async ({ content, file }: { content: string; file: File | null }) => {
       if (!user?.id || !companyId) throw new Error('Not authenticated');
 
-      let targetProjectId = projectId;
-      if (!targetProjectId) {
-        const { data: projects } = await supabase
-          .from('projects')
-          .select('id')
-          .eq('company_id', companyId)
-          .limit(1)
-          .single();
-        
-        if (!projects?.id) throw new Error('No project found for chat');
-        targetProjectId = projects.id;
+      setUploading(true);
+      let fileData = null;
+
+      try {
+        if (file) {
+          fileData = await uploadFile(file);
+        }
+
+        let targetProjectId = projectId;
+        if (!targetProjectId) {
+          const { data: projects } = await supabase
+            .from('projects')
+            .select('id')
+            .eq('company_id', companyId)
+            .limit(1)
+            .single();
+          
+          if (!projects?.id) throw new Error('No project found for chat');
+          targetProjectId = projects.id;
+        }
+
+        const { error } = await supabase.from('project_comments').insert({
+          project_id: targetProjectId,
+          company_id: companyId,
+          user_id: user.id,
+          content: content || (fileData ? `Shared a file: ${fileData.name}` : ''),
+          file_url: fileData?.url || null,
+          file_name: fileData?.name || null,
+          file_type: fileData?.type || null,
+          file_size: fileData?.size || null,
+        });
+
+        if (error) throw error;
+      } finally {
+        setUploading(false);
       }
-
-      const { error } = await supabase.from('project_comments').insert({
-        project_id: targetProjectId,
-        company_id: companyId,
-        user_id: user.id,
-        content,
-      });
-
-      if (error) throw error;
     },
     onSuccess: () => {
       setMessage('');
+      setSelectedFile(null);
       queryClient.invalidateQueries({ queryKey: ['employee-team-chat'] });
     },
     onError: (error: any) => {
@@ -247,9 +297,30 @@ export function EmployeeTeamChat({ companyId, projectId }: EmployeeTeamChatProps
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
-    if (message.trim()) {
-      sendMessage.mutate(message.trim());
+    if (message.trim() || selectedFile) {
+      sendMessage.mutate({ content: message.trim(), file: selectedFile });
     }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast({ variant: 'destructive', title: 'File too large', description: 'Maximum file size is 10MB' });
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const isImageFile = (type: string | null | undefined) => {
+    return type?.startsWith('image/');
   };
 
   const getInitials = (name: string | null | undefined) => {
@@ -342,6 +413,42 @@ export function EmployeeTeamChat({ companyId, projectId }: EmployeeTeamChatProps
                             : 'bg-muted'
                         )}>
                           {msg.content}
+                          
+                          {/* File attachment */}
+                          {msg.file_url && (
+                            <div className="mt-2">
+                              {isImageFile(msg.file_type) ? (
+                                <a href={msg.file_url} target="_blank" rel="noopener noreferrer">
+                                  <img 
+                                    src={msg.file_url} 
+                                    alt={msg.file_name || 'Shared image'} 
+                                    className="max-w-full rounded-md max-h-48 object-cover"
+                                  />
+                                </a>
+                              ) : (
+                                <a 
+                                  href={msg.file_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className={cn(
+                                    "flex items-center gap-2 p-2 rounded border",
+                                    isOwn 
+                                      ? "border-primary-foreground/20 hover:bg-primary-foreground/10" 
+                                      : "border-border hover:bg-accent"
+                                  )}
+                                >
+                                  <FileText className="h-4 w-4 flex-shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium truncate">{msg.file_name}</p>
+                                    {msg.file_size && (
+                                      <p className="text-xs opacity-70">{formatFileSize(msg.file_size)}</p>
+                                    )}
+                                  </div>
+                                  <Download className="h-4 w-4 flex-shrink-0" />
+                                </a>
+                              )}
+                            </div>
+                          )}
                         </div>
                         
                         {/* Read receipts */}
@@ -373,18 +480,56 @@ export function EmployeeTeamChat({ companyId, projectId }: EmployeeTeamChatProps
           </ScrollArea>
 
           <form onSubmit={handleSend} className="p-4 border-t bg-muted/30">
+            {/* Selected file preview */}
+            {selectedFile && (
+              <div className="flex items-center gap-2 mb-2 p-2 bg-muted rounded-md">
+                {selectedFile.type.startsWith('image/') ? (
+                  <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                )}
+                <span className="text-sm flex-1 truncate">{selectedFile.name}</span>
+                <span className="text-xs text-muted-foreground">{formatFileSize(selectedFile.size)}</span>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6"
+                  onClick={() => setSelectedFile(null)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+            
             <div className="flex gap-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                className="hidden"
+                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+              />
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="icon"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={sendMessage.isPending || uploading}
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
               <Input
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Type a message..."
                 className="flex-1"
-                disabled={sendMessage.isPending}
+                disabled={sendMessage.isPending || uploading}
               />
               <Button 
                 type="submit" 
                 size="icon"
-                disabled={!message.trim() || sendMessage.isPending}
+                disabled={(!message.trim() && !selectedFile) || sendMessage.isPending || uploading}
               >
                 <Send className="h-4 w-4" />
               </Button>
