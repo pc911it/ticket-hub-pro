@@ -59,9 +59,19 @@ interface Ticket {
   agents: { full_name: string } | null;
 }
 
+// Status progression order (can only move forward unless admin)
+const STATUS_ORDER = ['pending', 'assigned', 'en_route', 'on_site', 'working', 'completed'];
+
+const getStatusIndex = (status: string | null): number => {
+  if (!status) return 0;
+  const index = STATUS_ORDER.indexOf(status);
+  return index === -1 ? 0 : index;
+};
+
 const TicketsPage = () => {
   const { user, isCompanyOwner, isSuperAdmin, isCompanyAdmin } = useAuth();
   const canDelete = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
+  const canRollbackStatus = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -900,18 +910,35 @@ const TicketsPage = () => {
                           <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                         <SelectContent className="bg-background border shadow-lg z-50">
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="assigned">Assigned</SelectItem>
-                          <SelectItem value="en_route">En Route</SelectItem>
-                          <SelectItem value="on_site">On Site</SelectItem>
-                          <SelectItem value="working">Working</SelectItem>
-                          <SelectItem 
-                            value="completed" 
-                            disabled={!ticket.client_signature_url}
-                          >
-                            {ticket.client_signature_url ? 'Completed' : 'Completed (needs signature)'}
-                          </SelectItem>
-                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                          {(() => {
+                            const currentIndex = getStatusIndex(ticket.status);
+                            return (
+                              <>
+                                <SelectItem value="pending" disabled={!canRollbackStatus && currentIndex > 0}>
+                                  Pending {!canRollbackStatus && currentIndex > 0 && '🔒'}
+                                </SelectItem>
+                                <SelectItem value="assigned" disabled={!canRollbackStatus && currentIndex > 1}>
+                                  Assigned {!canRollbackStatus && currentIndex > 1 && '🔒'}
+                                </SelectItem>
+                                <SelectItem value="en_route" disabled={!canRollbackStatus && currentIndex > 2}>
+                                  En Route {!canRollbackStatus && currentIndex > 2 && '🔒'}
+                                </SelectItem>
+                                <SelectItem value="on_site" disabled={!canRollbackStatus && currentIndex > 3}>
+                                  On Site {!canRollbackStatus && currentIndex > 3 && '🔒'}
+                                </SelectItem>
+                                <SelectItem value="working" disabled={!canRollbackStatus && currentIndex > 4}>
+                                  Working {!canRollbackStatus && currentIndex > 4 && '🔒'}
+                                </SelectItem>
+                                <SelectItem 
+                                  value="completed" 
+                                  disabled={!ticket.client_signature_url}
+                                >
+                                  {ticket.client_signature_url ? 'Completed' : 'Completed (needs signature)'}
+                                </SelectItem>
+                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                              </>
+                            );
+                          })()}
                         </SelectContent>
                       </Select>
                     )}
