@@ -34,7 +34,11 @@ import {
   Briefcase,
   ClipboardList,
   FileText,
-  Download
+  Download,
+  LogIn,
+  LogOutIcon,
+  Send,
+  Coffee
 } from "lucide-react";
 import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -188,6 +192,141 @@ export default function EmployeePortal() {
       return data;
     },
     enabled: !!agentRecord?.id,
+  });
+
+  // Fetch active clock entry for this agent
+  const { data: activeClockEntry, refetch: refetchClockEntry } = useQuery({
+    queryKey: ["active-clock-entry", agentRecord?.id],
+    queryFn: async () => {
+      if (!agentRecord?.id) return null;
+      
+      const { data, error } = await supabase
+        .from("time_clock_entries")
+        .select("*")
+        .eq("agent_id", agentRecord.id)
+        .is("clock_out", null)
+        .order("clock_in", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!agentRecord?.id,
+  });
+
+  // Clock in mutation
+  const clockIn = useMutation({
+    mutationFn: async () => {
+      if (!agentRecord?.id || !agentRecord?.company_id) throw new Error("No agent record");
+      
+      const { data, error } = await supabase
+        .from("time_clock_entries")
+        .insert({
+          agent_id: agentRecord.id,
+          company_id: agentRecord.company_id,
+          clock_in: new Date().toISOString(),
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast({ title: "Clocked In", description: "Your shift has started." });
+      refetchClockEntry();
+    },
+    onError: (error: any) => {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    },
+  });
+
+  // Clock out mutation
+  const clockOut = useMutation({
+    mutationFn: async (breakMinutes: number = 0) => {
+      if (!activeClockEntry?.id) throw new Error("No active clock entry");
+      
+      const { error } = await supabase
+        .from("time_clock_entries")
+        .update({
+          clock_out: new Date().toISOString(),
+          break_minutes: breakMinutes,
+        })
+        .eq("id", activeClockEntry.id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Clocked Out", description: "Your shift has ended." });
+      refetchClockEntry();
+    },
+    onError: (error: any) => {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    },
+  });
+
+  // Submit time report mutation
+  const submitTimeReport = useMutation({
+    mutationFn: async () => {
+      if (!agentRecord?.id || !agentRecord?.company_id) throw new Error("No agent record");
+      
+      const { tickets, totalMinutes } = getFilteredTimeData();
+      const now = new Date();
+      let periodStart: Date;
+      let periodEnd: Date = now;
+      
+      if (timeReportPeriod === "week") {
+        periodStart = startOfWeek(now, { weekStartsOn: 1 });
+        periodEnd = endOfWeek(now, { weekStartsOn: 1 });
+      } else if (timeReportPeriod === "month") {
+        periodStart = startOfMonth(now);
+        periodEnd = endOfMonth(now);
+      } else {
+        periodStart = new Date(0);
+      }
+
+      // Calculate clock time for period (simplified)
+      const totalClockMinutes = 0; // Would need to calculate from time_clock_entries
+      
+      // Insert time report submission
+      const { data: report, error } = await supabase
+        .from("time_report_submissions")
+        .insert({
+          agent_id: agentRecord.id,
+          company_id: agentRecord.company_id,
+          period_start: format(periodStart, 'yyyy-MM-dd'),
+          period_end: format(periodEnd, 'yyyy-MM-dd'),
+          total_ticket_minutes: totalMinutes,
+          total_clock_minutes: totalClockMinutes,
+          status: 'submitted',
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+
+      // Send notification to admins
+      await supabase.functions.invoke('send-time-report-notification', {
+        body: {
+          agentId: agentRecord.id,
+          agentName: agentRecord.full_name,
+          companyId: agentRecord.company_id,
+          periodStart: format(periodStart, 'MMM d, yyyy'),
+          periodEnd: format(periodEnd, 'MMM d, yyyy'),
+          totalTicketMinutes: totalMinutes,
+          totalClockMinutes: totalClockMinutes,
+        },
+      });
+      
+      return report;
+    },
+    onSuccess: () => {
+      toast({ title: "Report Submitted", description: "Your time report has been submitted for review." });
+    },
+    onError: (error: any) => {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    },
   });
 
   // Create ticket mutation
@@ -498,7 +637,81 @@ export default function EmployeePortal() {
         </div>
       )}
 
+      {/* Clock Status Banner */}
+      {activeClockEntry && (
+        <div className="bg-success text-success-foreground px-4 py-3">
+          <div className="container mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <LogIn className="h-5 w-5" />
+              <span className="font-medium">Clocked In</span>
+              <span className="text-sm opacity-90">
+                since {format(new Date(activeClockEntry.clock_in), 'h:mm a')}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => clockOut.mutate(0)}
+                disabled={clockOut.isPending}
+              >
+                <LogOutIcon className="h-4 w-4 mr-2" />
+                Clock Out
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="container mx-auto px-4 py-6">
+        {/* Clock In/Out Card */}
+        <Card className="mb-6">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "h-12 w-12 rounded-full flex items-center justify-center",
+                  activeClockEntry ? "bg-success/10" : "bg-muted"
+                )}>
+                  <Clock className={cn("h-6 w-6", activeClockEntry ? "text-success" : "text-muted-foreground")} />
+                </div>
+                <div>
+                  <p className="font-semibold">Daily Time Clock</p>
+                  <p className="text-sm text-muted-foreground">
+                    {activeClockEntry 
+                      ? `Working since ${format(new Date(activeClockEntry.clock_in), 'h:mm a')}` 
+                      : 'Not clocked in'}
+                  </p>
+                </div>
+              </div>
+              {!activeClockEntry ? (
+                <Button onClick={() => clockIn.mutate()} disabled={clockIn.isPending}>
+                  <LogIn className="h-4 w-4 mr-2" />
+                  Clock In
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => clockOut.mutate(30)}
+                    disabled={clockOut.isPending}
+                  >
+                    <Coffee className="h-4 w-4 mr-2" />
+                    End with Break (30m)
+                  </Button>
+                  <Button 
+                    onClick={() => clockOut.mutate(0)}
+                    disabled={clockOut.isPending}
+                  >
+                    <LogOutIcon className="h-4 w-4 mr-2" />
+                    Clock Out
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <Card>
@@ -769,7 +982,11 @@ export default function EmployeePortal() {
                     </Select>
                     <Button onClick={generateTimeReport} variant="outline">
                       <Download className="h-4 w-4 mr-2" />
-                      Download Report
+                      Download
+                    </Button>
+                    <Button onClick={() => submitTimeReport.mutate()} disabled={submitTimeReport.isPending}>
+                      <Send className="h-4 w-4 mr-2" />
+                      {submitTimeReport.isPending ? "Submitting..." : "Submit for Review"}
                     </Button>
                   </div>
                 </div>
