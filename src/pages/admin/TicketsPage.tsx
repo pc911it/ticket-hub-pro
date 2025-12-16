@@ -52,6 +52,8 @@ interface Ticket {
   status: string;
   client_signature_url: string | null;
   client_approved_at: string | null;
+  call_started_at: string | null;
+  call_ended_at: string | null;
   admin_approval_status: string | null;
   admin_rejection_reason: string | null;
   clients: { full_name: string } | null;
