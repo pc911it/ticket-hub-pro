@@ -886,7 +886,7 @@ const TicketsPage = () => {
                         <SelectTrigger className="w-32 h-8 text-xs">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-background border shadow-lg z-50">
                           <SelectItem value="pending">Pending</SelectItem>
                           <SelectItem value="assigned">Assigned</SelectItem>
                           <SelectItem value="en_route">En Route</SelectItem>
@@ -898,6 +898,7 @@ const TicketsPage = () => {
                           >
                             {ticket.client_signature_url ? 'Completed' : 'Completed (needs signature)'}
                           </SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
                         </SelectContent>
                       </Select>
                     )}
