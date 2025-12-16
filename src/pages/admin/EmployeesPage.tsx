@@ -21,7 +21,9 @@ import {
   SignalZero,
   UserPlus,
   Power,
-  UserCheck
+  UserCheck,
+  Mail,
+  Lock
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -59,6 +61,8 @@ const EmployeesPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [creatingUser, setCreatingUser] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [formData, setFormData] = useState({
     full_name: '',
@@ -67,6 +71,13 @@ const EmployeesPage = () => {
   });
   const [addFormData, setAddFormData] = useState({
     user_id: '',
+    full_name: '',
+    phone: '',
+    vehicle_info: '',
+  });
+  const [createFormData, setCreateFormData] = useState({
+    email: '',
+    password: '',
     full_name: '',
     phone: '',
     vehicle_info: '',
@@ -236,6 +247,90 @@ const EmployeesPage = () => {
     }
   };
 
+  const handleCreateEmployee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!companyId) {
+      toast({ variant: 'destructive', title: 'Error', description: 'No company found.' });
+      return;
+    }
+
+    if (!createFormData.email || !createFormData.password || !createFormData.full_name) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please fill in all required fields.' });
+      return;
+    }
+
+    if (createFormData.password.length < 6) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Password must be at least 6 characters.' });
+      return;
+    }
+
+    setCreatingUser(true);
+
+    try {
+      // Create user account via edge function
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: {
+          email: createFormData.email.toLowerCase().trim(),
+          password: createFormData.password,
+          fullName: createFormData.full_name,
+          role: 'staff',
+          companyId: companyId,
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to create user');
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      const userId = data?.user?.id;
+      if (!userId) {
+        throw new Error('No user ID returned');
+      }
+
+      // Create agent record
+      const { error: agentError } = await supabase
+        .from('agents')
+        .insert({
+          company_id: companyId,
+          user_id: userId,
+          full_name: createFormData.full_name,
+          phone: createFormData.phone || null,
+          vehicle_info: createFormData.vehicle_info || null,
+        });
+
+      if (agentError) {
+        console.error('Agent creation error:', agentError);
+        toast({ 
+          title: 'Partial Success', 
+          description: `User account created for ${createFormData.email}. You may need to add them as an agent separately.` 
+        });
+      } else {
+        toast({ 
+          title: 'Employee Created', 
+          description: `${createFormData.full_name} can now log in at /employee with email: ${createFormData.email}` 
+        });
+      }
+
+      fetchCompanyAndAgents();
+      setIsCreateDialogOpen(false);
+      setCreateFormData({ email: '', password: '', full_name: '', phone: '', vehicle_info: '' });
+    } catch (error: any) {
+      console.error('Create employee error:', error);
+      toast({ 
+        variant: 'destructive', 
+        title: 'Error', 
+        description: error.message || 'Failed to create employee' 
+      });
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
   const handleToggleOnline = async (agent: Agent) => {
     const { error } = await supabase
       .from('agents')
@@ -290,89 +385,171 @@ const EmployeesPage = () => {
             {onlineCount} online, {availableCount} available of {agents.length} total agents.
           </p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <UserPlus className="h-4 w-4" />
-              Add Agent
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="font-display">Add New Agent</DialogTitle>
-              <DialogDescription>Add a company member as a field agent.</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleAddAgent} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="user">Select User *</Label>
-                <Select 
-                  value={addFormData.user_id} 
-                  onValueChange={(value) => {
-                    const selectedUser = companyUsers.find(u => u.user_id === value);
-                    setAddFormData({ 
-                      ...addFormData, 
-                      user_id: value,
-                      full_name: selectedUser?.profiles?.full_name || ''
-                    });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a user" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {companyUsers.length === 0 ? (
-                      <SelectItem value="none" disabled>No available users</SelectItem>
-                    ) : (
-                      companyUsers.map((u) => (
-                        <SelectItem key={u.user_id} value={u.user_id}>
-                          {u.profiles?.full_name || u.profiles?.email || 'Unknown User'}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-                {companyUsers.length === 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    All company members are already agents, or no users exist yet.
-                  </p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="addName">Full Name *</Label>
-                <Input
-                  id="addName"
-                  value={addFormData.full_name}
-                  onChange={(e) => setAddFormData({ ...addFormData, full_name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="addPhone">Phone</Label>
-                <Input
-                  id="addPhone"
-                  value={addFormData.phone}
-                  onChange={(e) => setAddFormData({ ...addFormData, phone: e.target.value })}
-                  placeholder="+1 (555) 000-0000"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="addVehicle">Vehicle Info</Label>
-                <Input
-                  id="addVehicle"
-                  value={addFormData.vehicle_info}
-                  onChange={(e) => setAddFormData({ ...addFormData, vehicle_info: e.target.value })}
-                  placeholder="e.g., White Ford F-150"
-                />
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={companyUsers.length === 0}>Add Agent</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          {/* Create New Employee Dialog */}
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <UserPlus className="h-4 w-4" />
+                Create Employee
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="font-display">Create New Employee</DialogTitle>
+                <DialogDescription>
+                  Create a new employee account with login credentials. They can access the Employee Portal at /employee.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreateEmployee} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="createEmail">Email Address *</Label>
+                  <Input
+                    id="createEmail"
+                    type="email"
+                    value={createFormData.email}
+                    onChange={(e) => setCreateFormData({ ...createFormData, email: e.target.value })}
+                    placeholder="employee@company.com"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="createPassword">Password *</Label>
+                  <Input
+                    id="createPassword"
+                    type="password"
+                    value={createFormData.password}
+                    onChange={(e) => setCreateFormData({ ...createFormData, password: e.target.value })}
+                    placeholder="Minimum 6 characters"
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="createName">Full Name *</Label>
+                  <Input
+                    id="createName"
+                    value={createFormData.full_name}
+                    onChange={(e) => setCreateFormData({ ...createFormData, full_name: e.target.value })}
+                    placeholder="John Smith"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="createPhone">Phone</Label>
+                  <Input
+                    id="createPhone"
+                    value={createFormData.phone}
+                    onChange={(e) => setCreateFormData({ ...createFormData, phone: e.target.value })}
+                    placeholder="+1 (555) 000-0000"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="createVehicle">Vehicle Info</Label>
+                  <Input
+                    id="createVehicle"
+                    value={createFormData.vehicle_info}
+                    onChange={(e) => setCreateFormData({ ...createFormData, vehicle_info: e.target.value })}
+                    placeholder="e.g., White Ford F-150"
+                  />
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={creatingUser}>
+                    {creatingUser ? 'Creating...' : 'Create Employee'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* Add Existing User as Agent Dialog */}
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <UserCheck className="h-4 w-4" />
+                Add Existing User
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="font-display">Add Existing User as Agent</DialogTitle>
+                <DialogDescription>Add an existing company member as a field agent.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleAddAgent} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="user">Select User *</Label>
+                  <Select 
+                    value={addFormData.user_id} 
+                    onValueChange={(value) => {
+                      const selectedUser = companyUsers.find(u => u.user_id === value);
+                      setAddFormData({ 
+                        ...addFormData, 
+                        user_id: value,
+                        full_name: selectedUser?.profiles?.full_name || ''
+                      });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a user" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companyUsers.length === 0 ? (
+                        <SelectItem value="none" disabled>No available users</SelectItem>
+                      ) : (
+                        companyUsers.map((u) => (
+                          <SelectItem key={u.user_id} value={u.user_id}>
+                            {u.profiles?.full_name || u.profiles?.email || 'Unknown User'}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {companyUsers.length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      All company members are already agents. Use "Create Employee" to add new users.
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="addName">Full Name *</Label>
+                  <Input
+                    id="addName"
+                    value={addFormData.full_name}
+                    onChange={(e) => setAddFormData({ ...addFormData, full_name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="addPhone">Phone</Label>
+                  <Input
+                    id="addPhone"
+                    value={addFormData.phone}
+                    onChange={(e) => setAddFormData({ ...addFormData, phone: e.target.value })}
+                    placeholder="+1 (555) 000-0000"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="addVehicle">Vehicle Info</Label>
+                  <Input
+                    id="addVehicle"
+                    value={addFormData.vehicle_info}
+                    onChange={(e) => setAddFormData({ ...addFormData, vehicle_info: e.target.value })}
+                    placeholder="e.g., White Ford F-150"
+                  />
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={companyUsers.length === 0}>Add Agent</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Search */}
