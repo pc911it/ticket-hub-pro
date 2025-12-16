@@ -23,6 +23,9 @@ import { PasswordResetReminder } from "@/components/PasswordResetReminder";
 import { ClientProjectDetails } from "@/components/ClientProjectDetails";
 import { SquareCardForm } from "@/components/SquareCardForm";
 import { ClientTicketDetailDialog } from "@/components/ClientTicketDetailDialog";
+import { TicketProgressTracker } from "@/components/TicketProgressTracker";
+import { ClientNotificationPreferences } from "@/components/ClientNotificationPreferences";
+import { WorkOrderPDF } from "@/components/WorkOrderPDF";
 import { 
   FolderOpen, 
   Ticket, 
@@ -936,6 +939,14 @@ export default function ClientDashboard() {
                                             {ticket.description}
                                           </p>
                                         )}
+                                        {/* Progress Tracker */}
+                                        <div className="mt-2">
+                                          <TicketProgressTracker 
+                                            status={ticket.status} 
+                                            adminApprovalStatus={(ticket as any).admin_approval_status}
+                                            compact
+                                          />
+                                        </div>
                                         <div className="flex items-center justify-between mt-2">
                                           <div className="flex items-center gap-3 text-xs text-muted-foreground">
                                             <span className="flex items-center gap-1">
@@ -1020,15 +1031,18 @@ export default function ClientDashboard() {
                                             </span>
                                           )}
                                         </div>
-                                        <Button 
-                                          variant="ghost" 
-                                          size="sm" 
-                                          className="text-xs h-7"
-                                          onClick={() => setSelectedTicketForView(ticket)}
-                                        >
-                                          <Eye className="h-3 w-3 mr-1" />
-                                          View
-                                        </Button>
+                                        <div className="flex items-center gap-1">
+                                          <WorkOrderPDF ticket={ticket} variant="icon" />
+                                          <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="text-xs h-7"
+                                            onClick={() => setSelectedTicketForView(ticket)}
+                                          >
+                                            <Eye className="h-3 w-3 mr-1" />
+                                            View
+                                          </Button>
+                                        </div>
                                       </div>
                                       {(ticket as any).client_approved_at && (
                                         <p className="text-xs text-success mt-1">
@@ -1496,6 +1510,14 @@ export default function ClientDashboard() {
                       </div>
                     </CardContent>
                   </Card>
+                )}
+
+                {/* Notification Preferences */}
+                {clientRecord && (
+                  <ClientNotificationPreferences 
+                    clientId={clientRecord.id}
+                    initialPreferences={clientRecord.notification_preferences as any}
+                  />
                 )}
               </div>
             </div>
