@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { SignaturePad } from '@/components/SignaturePad';
+import { JobTimelineMap } from '@/components/JobTimelineMap';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -30,6 +31,8 @@ interface JobUpdate {
   status: string;
   notes: string | null;
   created_at: string;
+  location_lat: number | null;
+  location_lng: number | null;
   agents: { full_name: string } | null;
 }
 
@@ -44,6 +47,8 @@ interface Ticket {
   total_time_minutes: number | null;
   client_signature_url: string | null;
   client_approved_at: string | null;
+  call_started_at: string | null;
+  call_ended_at: string | null;
   clients: { full_name: string } | null;
   projects: { name: string } | null;
   agents: { full_name: string } | null;
@@ -141,11 +146,11 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, onUpdate }: Tick
 
     const { data } = await supabase
       .from('job_updates')
-      .select('*, agents(full_name)')
+      .select('id, status, notes, created_at, location_lat, location_lng, agents(full_name)')
       .eq('ticket_id', ticket.id)
       .order('created_at', { ascending: true });
 
-    if (data) setJobUpdates(data);
+    if (data) setJobUpdates(data as JobUpdate[]);
   };
 
   const handleSignatureSave = async (signatureDataUrl: string) => {
@@ -336,6 +341,13 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, onUpdate }: Tick
             </div>
           )}
 
+          {/* Location Timeline Map */}
+          <JobTimelineMap 
+            jobUpdates={jobUpdates}
+            callStartedAt={ticket.call_started_at}
+            callEndedAt={ticket.call_ended_at}
+          />
+
           {/* Activity Timeline */}
           <div className="space-y-3">
             <h4 className="font-medium text-sm">Activity Timeline</h4>
@@ -348,6 +360,7 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, onUpdate }: Tick
                 <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
                 {jobUpdates.map((update, index) => {
                   const UpdateIcon = getStatusIcon(update.status);
+                  const hasLocation = update.location_lat && update.location_lng;
                   return (
                     <div key={update.id} className="relative flex gap-4 pb-4">
                       <div className={cn(
@@ -358,9 +371,17 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, onUpdate }: Tick
                       </div>
                       <div className="flex-1 pt-1">
                         <div className="flex items-center justify-between">
-                          <span className="font-medium text-sm capitalize">
-                            {update.status.replace('_', ' ')}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm capitalize">
+                              {update.status.replace('_', ' ')}
+                            </span>
+                            {hasLocation && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                <MapPin className="h-2.5 w-2.5 mr-0.5" />
+                                GPS
+                              </Badge>
+                            )}
+                          </div>
                           <span className="text-xs text-muted-foreground">
                             {format(new Date(update.created_at), 'MMM d, h:mm a')}
                           </span>
