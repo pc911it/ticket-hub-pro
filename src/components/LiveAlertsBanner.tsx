@@ -42,7 +42,7 @@ const alertConfig = {
 export function LiveAlertsBanner() {
   const { user } = useAuth();
   const [alerts, setAlerts] = useState<LiveAlert[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
   const { showCriticalAlert, isEnabled } = usePushNotifications();
 
   const addAlert = useCallback((alert: LiveAlert) => {
@@ -131,7 +131,14 @@ export function LiveAlertsBanner() {
         }
       )
       .subscribe((status) => {
-        setIsConnected(status === 'SUBSCRIBED');
+        console.log('Realtime subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          setConnectionStatus('connected');
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          setConnectionStatus('error');
+        } else {
+          setConnectionStatus('connecting');
+        }
       });
 
     return () => {
@@ -143,13 +150,15 @@ export function LiveAlertsBanner() {
     setAlerts((prev) => prev.filter((a) => a.id !== id));
   };
 
+  const isConnected = connectionStatus === 'connected';
+
   if (alerts.length === 0) {
     return (
       <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50">
         <div className="relative">
           <Radio className={cn(
             "h-4 w-4 transition-colors",
-            isConnected ? "text-success" : "text-muted-foreground"
+            isConnected ? "text-success" : connectionStatus === 'error' ? "text-destructive" : "text-muted-foreground"
           )} />
           {isConnected && (
             <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-success animate-pulse" />
@@ -157,9 +166,9 @@ export function LiveAlertsBanner() {
         </div>
         <span className={cn(
           "text-sm font-medium",
-          isConnected ? "text-success" : "text-muted-foreground"
+          isConnected ? "text-success" : connectionStatus === 'error' ? "text-destructive" : "text-muted-foreground"
         )}>
-          {isConnected ? 'Live' : 'Connecting...'}
+          {isConnected ? 'Live' : connectionStatus === 'error' ? 'Offline' : 'Connecting...'}
         </span>
       </div>
     );
