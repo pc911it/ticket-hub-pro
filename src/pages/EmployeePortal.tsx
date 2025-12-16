@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { TicketProgressTracker } from "@/components/TicketProgressTracker";
+import { EmployeeTeamChat } from "@/components/EmployeeTeamChat";
 import { 
   FolderOpen, 
   Ticket, 
@@ -38,7 +39,8 @@ import {
   LogIn,
   LogOutIcon,
   Send,
-  Coffee
+  Coffee,
+  MessageCircle
 } from "lucide-react";
 import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -847,6 +849,10 @@ export default function EmployeePortal() {
               <TabsTrigger value="tickets">My Tickets</TabsTrigger>
               <TabsTrigger value="projects">Assigned Projects</TabsTrigger>
               <TabsTrigger value="time-history">Time History</TabsTrigger>
+              <TabsTrigger value="team-chat" className="gap-1">
+                <MessageCircle className="h-4 w-4" />
+                Team Chat
+              </TabsTrigger>
             </TabsList>
             <Button onClick={() => setIsCreateTicketOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
@@ -1132,6 +1138,15 @@ export default function EmployeePortal() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Team Chat Tab */}
+          <TabsContent value="team-chat">
+            <div className="h-[600px]">
+              {agentRecord?.company_id && (
+                <EmployeeTeamChat companyId={agentRecord.company_id} />
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </main>

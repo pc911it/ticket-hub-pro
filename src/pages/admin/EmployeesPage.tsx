@@ -23,7 +23,8 @@ import {
   Power,
   UserCheck,
   Mail,
-  Lock
+  Lock,
+  Key
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -62,6 +63,10 @@ const EmployeesPage = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const [resetPasswordAgent, setResetPasswordAgent] = useState<Agent | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [formData, setFormData] = useState({
@@ -268,6 +273,13 @@ const EmployeesPage = () => {
     setCreatingUser(true);
 
     try {
+      // Get company name for welcome email
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('name')
+        .eq('id', companyId)
+        .single();
+
       // Create user account via edge function
       const { data, error } = await supabase.functions.invoke('create-user', {
         body: {
@@ -303,16 +315,31 @@ const EmployeesPage = () => {
           vehicle_info: createFormData.vehicle_info || null,
         });
 
+      // Send welcome email
+      try {
+        await supabase.functions.invoke('send-employee-welcome', {
+          body: {
+            employeeEmail: createFormData.email.toLowerCase().trim(),
+            employeeName: createFormData.full_name,
+            companyName: companyData?.name || 'Your Company',
+            temporaryPassword: createFormData.password,
+            portalUrl: `${window.location.origin}/employee`,
+          },
+        });
+      } catch (emailError) {
+        console.warn('Failed to send welcome email:', emailError);
+      }
+
       if (agentError) {
         console.error('Agent creation error:', agentError);
         toast({ 
           title: 'Partial Success', 
-          description: `User account created for ${createFormData.email}. You may need to add them as an agent separately.` 
+          description: `User account created for ${createFormData.email}. Welcome email sent. You may need to add them as an agent separately.` 
         });
       } else {
         toast({ 
           title: 'Employee Created', 
-          description: `${createFormData.full_name} can now log in at /employee with email: ${createFormData.email}` 
+          description: `${createFormData.full_name} has been created and a welcome email has been sent.` 
         });
       }
 
@@ -329,6 +356,64 @@ const EmployeesPage = () => {
     } finally {
       setCreatingUser(false);
     }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!resetPasswordAgent || !newPassword || !companyId) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Missing required information.' });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Password must be at least 6 characters.' });
+      return;
+    }
+
+    setResettingPassword(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        body: {
+          userId: resetPasswordAgent.user_id,
+          newPassword: newPassword,
+          companyId: companyId,
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to reset password');
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      toast({ 
+        title: 'Password Reset', 
+        description: `Password for ${resetPasswordAgent.full_name} has been reset successfully.` 
+      });
+      
+      setIsResetPasswordOpen(false);
+      setResetPasswordAgent(null);
+      setNewPassword('');
+    } catch (error: any) {
+      console.error('Reset password error:', error);
+      toast({ 
+        variant: 'destructive', 
+        title: 'Error', 
+        description: error.message || 'Failed to reset password' 
+      });
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
+  const openResetPasswordDialog = (agent: Agent) => {
+    setResetPasswordAgent(agent);
+    setNewPassword('');
+    setIsResetPasswordOpen(true);
   };
 
   const handleToggleOnline = async (agent: Agent) => {
@@ -611,55 +696,65 @@ const EmployeesPage = () => {
                       </Badge>
                     </div>
                   </div>
-                  <Dialog open={isDialogOpen && editingAgent?.id === agent.id} onOpenChange={(open) => {
-                    if (!open) setIsDialogOpen(false);
-                  }}>
-                    <DialogTrigger asChild>
-                      <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(agent)}>
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle className="font-display">Edit Agent</DialogTitle>
-                        <DialogDescription>Update agent information.</DialogDescription>
-                      </DialogHeader>
-                      <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="name">Full Name</Label>
-                          <Input
-                            id="name"
-                            value={formData.full_name}
-                            onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="phone">Phone</Label>
-                          <Input
-                            id="phone"
-                            value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="vehicle">Vehicle Info</Label>
-                          <Input
-                            id="vehicle"
-                            value={formData.vehicle_info}
-                            onChange={(e) => setFormData({ ...formData, vehicle_info: e.target.value })}
-                            placeholder="e.g., White Ford F-150"
-                          />
-                        </div>
-                        <DialogFooter>
-                          <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                            Cancel
-                          </Button>
-                          <Button type="submit">Save</Button>
-                        </DialogFooter>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
+                  <div className="flex gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => openResetPasswordDialog(agent)}
+                      title="Reset Password"
+                    >
+                      <Key className="h-4 w-4" />
+                    </Button>
+                    <Dialog open={isDialogOpen && editingAgent?.id === agent.id} onOpenChange={(open) => {
+                      if (!open) setIsDialogOpen(false);
+                    }}>
+                      <DialogTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(agent)}>
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle className="font-display">Edit Agent</DialogTitle>
+                          <DialogDescription>Update agent information.</DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="name">Full Name</Label>
+                            <Input
+                              id="name"
+                              value={formData.full_name}
+                              onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="phone">Phone</Label>
+                            <Input
+                              id="phone"
+                              value={formData.phone}
+                              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="vehicle">Vehicle Info</Label>
+                            <Input
+                              id="vehicle"
+                              value={formData.vehicle_info}
+                              onChange={(e) => setFormData({ ...formData, vehicle_info: e.target.value })}
+                              placeholder="e.g., White Ford F-150"
+                            />
+                          </div>
+                          <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                              Cancel
+                            </Button>
+                            <Button type="submit">Save</Button>
+                          </DialogFooter>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </div>
 
                 <div className="mt-4 space-y-3">
@@ -713,6 +808,48 @@ const EmployeesPage = () => {
           ))}
         </div>
       )}
+
+      {/* Reset Password Dialog */}
+      <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display">Reset Password</DialogTitle>
+            <DialogDescription>
+              Set a new password for {resetPasswordAgent?.full_name}. They will need to use this password to log in.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleResetPassword} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New Password</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Minimum 6 characters"
+                required
+                minLength={6}
+              />
+            </div>
+            <DialogFooter>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => {
+                  setIsResetPasswordOpen(false);
+                  setResetPasswordAgent(null);
+                  setNewPassword('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={resettingPassword}>
+                {resettingPassword ? 'Resetting...' : 'Reset Password'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
