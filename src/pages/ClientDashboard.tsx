@@ -22,6 +22,7 @@ import { FileUploadPreview } from "@/components/FileUploadPreview";
 import { PasswordResetReminder } from "@/components/PasswordResetReminder";
 import { ClientProjectDetails } from "@/components/ClientProjectDetails";
 import { SquareCardForm } from "@/components/SquareCardForm";
+import { ClientTicketDetailDialog } from "@/components/ClientTicketDetailDialog";
 import { 
   FolderOpen, 
   Ticket, 
@@ -45,7 +46,8 @@ import {
   CreditCard,
   DollarSign,
   Receipt,
-  RefreshCw
+  RefreshCw,
+  Eye
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -68,6 +70,7 @@ export default function ClientDashboard() {
   const [showAddCardDialog, setShowAddCardDialog] = useState(false);
   const [isSavingCard, setIsSavingCard] = useState(false);
   const [activeMainTab, setActiveMainTab] = useState("dashboard");
+  const [selectedTicketForView, setSelectedTicketForView] = useState<any>(null);
   const [requestForm, setRequestForm] = useState({
     title: '',
     description: '',
@@ -683,6 +686,13 @@ export default function ClientDashboard() {
         </DialogContent>
       </Dialog>
 
+      {/* Ticket Detail Dialog */}
+      <ClientTicketDetailDialog
+        ticket={selectedTicketForView}
+        open={!!selectedTicketForView}
+        onOpenChange={(open) => !open && setSelectedTicketForView(null)}
+      />
+
       <main className="container mx-auto px-4 py-6 space-y-6">
         {/* Main Navigation Tabs */}
         <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="space-y-6">
@@ -864,14 +874,23 @@ export default function ClientDashboard() {
                                           </span>
                                         )}
                                       </div>
-                                      <Button
-                                        className="mt-3"
-                                        size="sm"
-                                        onClick={() => handleOpenApproval(ticket)}
-                                      >
-                                        <PenTool className="h-4 w-4 mr-2" />
-                                        Sign & Approve
-                                      </Button>
+                                      <div className="flex items-center gap-2 mt-3">
+                                        <Button
+                                          size="sm"
+                                          onClick={() => handleOpenApproval(ticket)}
+                                        >
+                                          <PenTool className="h-4 w-4 mr-2" />
+                                          Sign & Approve
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => setSelectedTicketForView(ticket)}
+                                        >
+                                          <Eye className="h-4 w-4 mr-2" />
+                                          View Details
+                                        </Button>
+                                      </div>
                                     </div>
                                   </div>
                                 </CardContent>
@@ -917,23 +936,34 @@ export default function ClientDashboard() {
                                             {ticket.description}
                                           </p>
                                         )}
-                                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                                          <span className="flex items-center gap-1">
-                                            <Calendar className="h-3 w-3" />
-                                            {format(new Date(ticket.scheduled_date), "MMM d")}
-                                          </span>
-                                          {(ticket as any).agents?.full_name && (
+                                        <div className="flex items-center justify-between mt-2">
+                                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
                                             <span className="flex items-center gap-1">
-                                              <User className="h-3 w-3" />
-                                              {(ticket as any).agents.full_name}
+                                              <Calendar className="h-3 w-3" />
+                                              {format(new Date(ticket.scheduled_date), "MMM d")}
                                             </span>
-                                          )}
-                                          {(ticket as any).projects?.name && (
-                                            <span className="flex items-center gap-1">
-                                              <FolderOpen className="h-3 w-3" />
-                                              {(ticket as any).projects.name}
-                                            </span>
-                                          )}
+                                            {(ticket as any).agents?.full_name && (
+                                              <span className="flex items-center gap-1">
+                                                <User className="h-3 w-3" />
+                                                {(ticket as any).agents.full_name}
+                                              </span>
+                                            )}
+                                            {(ticket as any).projects?.name && (
+                                              <span className="flex items-center gap-1">
+                                                <FolderOpen className="h-3 w-3" />
+                                                {(ticket as any).projects.name}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="text-xs h-7"
+                                            onClick={() => setSelectedTicketForView(ticket)}
+                                          >
+                                            <Eye className="h-3 w-3 mr-1" />
+                                            View
+                                          </Button>
                                         </div>
                                       </div>
                                     </div>
@@ -980,14 +1010,25 @@ export default function ClientDashboard() {
                                           </Button>
                                         )}
                                       </div>
-                                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                                        <span>Completed {format(new Date(ticket.scheduled_date), "MMM d, yyyy")}</span>
-                                        {(ticket as any).projects?.name && (
-                                          <span className="flex items-center gap-1">
-                                            <FolderOpen className="h-3 w-3" />
-                                            {(ticket as any).projects.name}
-                                          </span>
-                                        )}
+                                      <div className="flex items-center justify-between mt-1">
+                                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                          <span>Completed {format(new Date(ticket.scheduled_date), "MMM d, yyyy")}</span>
+                                          {(ticket as any).projects?.name && (
+                                            <span className="flex items-center gap-1">
+                                              <FolderOpen className="h-3 w-3" />
+                                              {(ticket as any).projects.name}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm" 
+                                          className="text-xs h-7"
+                                          onClick={() => setSelectedTicketForView(ticket)}
+                                        >
+                                          <Eye className="h-3 w-3 mr-1" />
+                                          View
+                                        </Button>
                                       </div>
                                       {(ticket as any).client_approved_at && (
                                         <p className="text-xs text-success mt-1">
@@ -1029,14 +1070,25 @@ export default function ClientDashboard() {
                                             {statusConfig.label}
                                           </Badge>
                                         </div>
-                                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                                          <span>{format(new Date(ticket.scheduled_date), "MMM d, yyyy")}</span>
-                                          {(ticket as any).projects?.name && (
-                                            <span className="flex items-center gap-1">
-                                              <FolderOpen className="h-3 w-3" />
-                                              {(ticket as any).projects.name}
-                                            </span>
-                                          )}
+                                        <div className="flex items-center justify-between mt-2">
+                                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                            <span>{format(new Date(ticket.scheduled_date), "MMM d, yyyy")}</span>
+                                            {(ticket as any).projects?.name && (
+                                              <span className="flex items-center gap-1">
+                                                <FolderOpen className="h-3 w-3" />
+                                                {(ticket as any).projects.name}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="text-xs h-7"
+                                            onClick={() => setSelectedTicketForView(ticket)}
+                                          >
+                                            <Eye className="h-3 w-3 mr-1" />
+                                            View
+                                          </Button>
                                         </div>
                                       </div>
                                     </div>
