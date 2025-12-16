@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { TicketProgressTracker } from "@/components/TicketProgressTracker";
 import { 
@@ -31,15 +32,26 @@ import {
   Square,
   Timer,
   Briefcase,
-  ClipboardList
+  ClipboardList,
+  FileText,
+  Download
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface TimeEntry {
   ticketId: string;
   startTime: Date;
   isRunning: boolean;
+}
+
+interface TimeLog {
+  id: string;
+  ticketId: string;
+  ticketTitle: string;
+  projectName: string;
+  minutes: number;
+  loggedAt: Date;
 }
 
 export default function EmployeePortal() {
@@ -52,6 +64,7 @@ export default function EmployeePortal() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [activeTimeEntry, setActiveTimeEntry] = useState<TimeEntry | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [timeReportPeriod, setTimeReportPeriod] = useState<"week" | "month" | "all">("week");
   const [ticketForm, setTicketForm] = useState({
     title: '',
     description: '',
@@ -149,6 +162,32 @@ export default function EmployeePortal() {
       return data;
     },
     enabled: !!agentRecord?.id && !!assignedProjects?.length,
+  });
+
+  // Fetch job updates (time tracking history) for this agent
+  const { data: timeHistory, isLoading: timeHistoryLoading } = useQuery({
+    queryKey: ["employee-time-history", agentRecord?.id],
+    queryFn: async () => {
+      if (!agentRecord?.id) return [];
+      
+      const { data, error } = await supabase
+        .from("job_updates")
+        .select(`
+          *,
+          tickets (
+            id,
+            title,
+            total_time_minutes,
+            projects (name)
+          )
+        `)
+        .eq("agent_id", agentRecord.id)
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!agentRecord?.id,
   });
 
   // Create ticket mutation
@@ -301,6 +340,79 @@ export default function EmployeePortal() {
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const formatMinutes = (minutes: number) => {
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+  };
+
+  // Calculate time for reports
+  const getFilteredTimeData = () => {
+    if (!myTickets) return { tickets: [], totalMinutes: 0 };
+    
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date = now;
+    
+    if (timeReportPeriod === "week") {
+      startDate = startOfWeek(now, { weekStartsOn: 1 });
+      endDate = endOfWeek(now, { weekStartsOn: 1 });
+    } else if (timeReportPeriod === "month") {
+      startDate = startOfMonth(now);
+      endDate = endOfMonth(now);
+    } else {
+      startDate = new Date(0); // All time
+    }
+    
+    const filteredTickets = myTickets.filter(ticket => {
+      if (!ticket.total_time_minutes || ticket.total_time_minutes === 0) return false;
+      const ticketDate = parseISO(ticket.scheduled_date);
+      return isWithinInterval(ticketDate, { start: startDate, end: endDate });
+    });
+    
+    const totalMinutes = filteredTickets.reduce((acc, t) => acc + (t.total_time_minutes || 0), 0);
+    
+    return { tickets: filteredTickets, totalMinutes };
+  };
+
+  const generateTimeReport = () => {
+    const { tickets, totalMinutes } = getFilteredTimeData();
+    
+    let reportContent = `TIME REPORT - ${timeReportPeriod.toUpperCase()}\n`;
+    reportContent += `Generated: ${format(new Date(), 'PPP')}\n`;
+    reportContent += `Employee: ${agentRecord?.full_name || user?.email}\n`;
+    reportContent += `=`.repeat(50) + '\n\n';
+    
+    reportContent += `SUMMARY\n`;
+    reportContent += `-`.repeat(30) + '\n';
+    reportContent += `Total Hours: ${formatMinutes(totalMinutes)}\n`;
+    reportContent += `Total Tickets: ${tickets.length}\n\n`;
+    
+    reportContent += `DETAILED BREAKDOWN\n`;
+    reportContent += `-`.repeat(30) + '\n';
+    
+    tickets.forEach(ticket => {
+      reportContent += `\nTicket: ${ticket.title}\n`;
+      reportContent += `Project: ${ticket.projects?.name || 'N/A'}\n`;
+      reportContent += `Date: ${format(parseISO(ticket.scheduled_date), 'PPP')}\n`;
+      reportContent += `Time Logged: ${formatMinutes(ticket.total_time_minutes || 0)}\n`;
+      reportContent += `Status: ${ticket.status}\n`;
+    });
+    
+    // Download report
+    const blob = new Blob([reportContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `time-report-${timeReportPeriod}-${format(new Date(), 'yyyy-MM-dd')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast({ title: "Report Downloaded", description: "Time report has been downloaded." });
+  };
+
   const getStatusColor = (status: string | null) => {
     switch (status) {
       case 'completed': return 'bg-success/10 text-success';
@@ -446,10 +558,11 @@ export default function EmployeePortal() {
         </div>
 
         <Tabs defaultValue="tickets" className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <TabsList>
               <TabsTrigger value="tickets">My Tickets</TabsTrigger>
               <TabsTrigger value="projects">Assigned Projects</TabsTrigger>
+              <TabsTrigger value="time-history">Time History</TabsTrigger>
             </TabsList>
             <Button onClick={() => setIsCreateTicketOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
@@ -629,6 +742,108 @@ export default function EmployeePortal() {
                 })}
               </div>
             )}
+          </TabsContent>
+
+          {/* Time History Tab */}
+          <TabsContent value="time-history" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Clock className="h-5 w-5" />
+                      Time Tracking History
+                    </CardTitle>
+                    <CardDescription>View your logged hours and generate payroll reports</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select value={timeReportPeriod} onValueChange={(v: "week" | "month" | "all") => setTimeReportPeriod(v)}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="week">This Week</SelectItem>
+                        <SelectItem value="month">This Month</SelectItem>
+                        <SelectItem value="all">All Time</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button onClick={generateTimeReport} variant="outline">
+                      <Download className="h-4 w-4 mr-2" />
+                      Download Report
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {/* Summary Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="p-4 rounded-lg bg-primary/5 border">
+                    <p className="text-sm text-muted-foreground">Total Hours ({timeReportPeriod})</p>
+                    <p className="text-2xl font-bold text-primary">{formatMinutes(getFilteredTimeData().totalMinutes)}</p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-success/5 border">
+                    <p className="text-sm text-muted-foreground">Tickets Worked</p>
+                    <p className="text-2xl font-bold text-success">{getFilteredTimeData().tickets.length}</p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-warning/5 border">
+                    <p className="text-sm text-muted-foreground">Avg per Ticket</p>
+                    <p className="text-2xl font-bold text-warning">
+                      {getFilteredTimeData().tickets.length > 0 
+                        ? formatMinutes(Math.round(getFilteredTimeData().totalMinutes / getFilteredTimeData().tickets.length))
+                        : '0m'}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-info/5 border">
+                    <p className="text-sm text-muted-foreground">All Time Total</p>
+                    <p className="text-2xl font-bold text-info">
+                      {formatMinutes(myTickets?.reduce((acc, t) => acc + (t.total_time_minutes || 0), 0) || 0)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Time Entries Table */}
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Ticket</TableHead>
+                        <TableHead>Project</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Time Logged</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {getFilteredTimeData().tickets.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                            No time entries for this period
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        getFilteredTimeData().tickets.map((ticket) => (
+                          <TableRow key={ticket.id}>
+                            <TableCell className="font-medium">{ticket.title}</TableCell>
+                            <TableCell>{ticket.projects?.name || 'N/A'}</TableCell>
+                            <TableCell>{format(parseISO(ticket.scheduled_date), 'MMM d, yyyy')}</TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="font-mono">
+                                {formatMinutes(ticket.total_time_minutes || 0)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={getStatusColor(ticket.status)}>
+                                {ticket.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </main>
