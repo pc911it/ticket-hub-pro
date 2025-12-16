@@ -15,11 +15,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { SignaturePad } from "@/components/SignaturePad";
 import { FileUploadPreview } from "@/components/FileUploadPreview";
 import { PasswordResetReminder } from "@/components/PasswordResetReminder";
 import { ClientProjectDetails } from "@/components/ClientProjectDetails";
+import { SquareCardForm } from "@/components/SquareCardForm";
 import { 
   FolderOpen, 
   Ticket, 
@@ -39,7 +41,11 @@ import {
   PenTool,
   CheckCircle2,
   Paperclip,
-  ChevronRight
+  ChevronRight,
+  CreditCard,
+  DollarSign,
+  Receipt,
+  RefreshCw
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -59,6 +65,9 @@ export default function ClientDashboard() {
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAddCardDialog, setShowAddCardDialog] = useState(false);
+  const [isSavingCard, setIsSavingCard] = useState(false);
+  const [activeMainTab, setActiveMainTab] = useState("dashboard");
   const [requestForm, setRequestForm] = useState({
     title: '',
     description: '',
@@ -110,6 +119,61 @@ export default function ClientDashboard() {
       return data;
     },
     enabled: !!clientEmail,
+  });
+
+  // Fetch client invoices
+  const { data: clientInvoices, isLoading: invoicesLoading } = useQuery({
+    queryKey: ["client-invoices", clientRecord?.id],
+    queryFn: async () => {
+      if (!clientRecord?.id) return [];
+      
+      const { data, error } = await supabase
+        .from("client_invoices")
+        .select("*")
+        .eq("client_id", clientRecord.id)
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!clientRecord?.id,
+  });
+
+  // Fetch client subscriptions
+  const { data: clientSubscriptions } = useQuery({
+    queryKey: ["client-subscriptions", clientRecord?.id],
+    queryFn: async () => {
+      if (!clientRecord?.id) return [];
+      
+      const { data, error } = await supabase
+        .from("client_subscriptions")
+        .select("*, client_payment_plans(name, amount, billing_interval)")
+        .eq("client_id", clientRecord.id)
+        .eq("status", "active");
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!clientRecord?.id,
+  });
+
+  // Fetch client payments
+  const { data: clientPayments } = useQuery({
+    queryKey: ["client-payments", clientRecord?.id],
+    queryFn: async () => {
+      if (!clientRecord?.id) return [];
+      
+      const { data, error } = await supabase
+        .from("client_payments")
+        .select("*")
+        .eq("client_id", clientRecord.id)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!clientRecord?.id,
   });
 
   // Fetch projects for this client with ticket counts for progress tracking
@@ -391,6 +455,34 @@ export default function ClientDashboard() {
     }
   };
 
+  // Save payment card for client
+  const handleSaveClientCard = async (cardNonce: string) => {
+    if (!clientRecord?.id) return;
+    
+    setIsSavingCard(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('save-client-card-direct', {
+        body: {
+          clientId: clientRecord.id,
+          cardNonce,
+        },
+      });
+      
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      toast({ title: "Card Saved", description: `Card ending in ${data.cardLast4} has been saved successfully.` });
+      setShowAddCardDialog(false);
+      queryClient.invalidateQueries({ queryKey: ["client-record"] });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message || "Failed to save card" });
+    } finally {
+      setIsSavingCard(false);
+    }
+  };
+
+  const formatCurrency = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+
   const getStatusConfig = (status: string | null, adminApprovalStatus?: string | null) => {
     // Check admin approval status first
     if (adminApprovalStatus === 'pending_approval') {
@@ -592,8 +684,22 @@ export default function ClientDashboard() {
       </Dialog>
 
       <main className="container mx-auto px-4 py-6 space-y-6">
-        {/* Quick Stats */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {/* Main Navigation Tabs */}
+        <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="space-y-6">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="dashboard" className="gap-2">
+              <Activity className="h-4 w-4" />
+              Dashboard
+            </TabsTrigger>
+            <TabsTrigger value="billing" className="gap-2">
+              <CreditCard className="h-4 w-4" />
+              Billing & Payments
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard" className="space-y-6 m-0">
+            {/* Quick Stats */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card className="border-l-4 border-l-warning">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -1086,6 +1192,285 @@ export default function ClientDashboard() {
             onOpenChange={(open) => !open && setSelectedProject(null)}
           />
         )}
+          </TabsContent>
+
+          {/* Billing Tab */}
+          <TabsContent value="billing" className="space-y-6 m-0">
+            {/* Billing Stats */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Card className="border-l-4 border-l-primary">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Active Subscriptions</p>
+                      <p className="text-2xl font-bold">{clientSubscriptions?.length || 0}</p>
+                    </div>
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <RefreshCw className="h-5 w-5 text-primary" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-l-4 border-l-amber-500">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Outstanding</p>
+                      <p className="text-2xl font-bold">
+                        {formatCurrency(clientInvoices?.filter(i => i.status === 'sent').reduce((sum, i) => sum + i.amount, 0) || 0)}
+                      </p>
+                    </div>
+                    <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
+                      <Receipt className="h-5 w-5 text-amber-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-l-4 border-l-success">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Paid</p>
+                      <p className="text-2xl font-bold">
+                        {formatCurrency(clientInvoices?.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.amount, 0) || 0)}
+                      </p>
+                    </div>
+                    <div className="h-10 w-10 rounded-full bg-success/10 flex items-center justify-center">
+                      <CheckCircle className="h-5 w-5 text-success" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-l-4 border-l-blue-500">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Payment Card</p>
+                      <p className="text-lg font-bold">
+                        {clientRecord?.square_card_id ? 'On File' : 'Not Set'}
+                      </p>
+                    </div>
+                    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                      <CreditCard className="h-5 w-5 text-blue-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-3">
+              {/* Payment Card Management */}
+              <div className="lg:col-span-1 space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="h-5 w-5" />
+                      Payment Method
+                    </CardTitle>
+                    <CardDescription>
+                      Manage your payment card for automatic billing
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {clientRecord?.square_card_id ? (
+                      <div className="p-4 bg-muted rounded-lg space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <CreditCard className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium">Card on File</p>
+                            <p className="text-sm text-muted-foreground">Your card is saved for payments</p>
+                          </div>
+                        </div>
+                        <Badge className="bg-green-500/20 text-green-700">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Active
+                        </Badge>
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-muted rounded-lg space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-lg bg-muted-foreground/10 flex items-center justify-center">
+                            <CreditCard className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="font-medium">No Card Saved</p>
+                            <p className="text-sm text-muted-foreground">Add a card for automatic payments</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <Button 
+                      className="w-full" 
+                      onClick={() => setShowAddCardDialog(true)}
+                      variant={clientRecord?.square_card_id ? "outline" : "default"}
+                    >
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      {clientRecord?.square_card_id ? 'Update Card' : 'Add Payment Card'}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Active Subscriptions */}
+                {clientSubscriptions && clientSubscriptions.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <RefreshCw className="h-4 w-4" />
+                        Active Subscriptions
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {clientSubscriptions.map((sub: any) => (
+                          <div key={sub.id} className="p-3 border rounded-lg">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-medium">{sub.client_payment_plans?.name || 'Subscription'}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {formatCurrency(sub.client_payment_plans?.amount || 0)}/{sub.client_payment_plans?.billing_interval || 'month'}
+                                </p>
+                              </div>
+                              <Badge className="bg-green-500/20 text-green-700">Active</Badge>
+                            </div>
+                            {sub.current_period_end && (
+                              <p className="text-xs text-muted-foreground mt-2">
+                                Next billing: {format(new Date(sub.current_period_end), 'MMM d, yyyy')}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              {/* Invoices */}
+              <div className="lg:col-span-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      Invoices & Payments
+                    </CardTitle>
+                    <CardDescription>
+                      View your billing history and outstanding invoices
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {invoicesLoading ? (
+                      <div className="flex justify-center py-8">
+                        <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : clientInvoices && clientInvoices.length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Invoice #</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Due Date</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {clientInvoices.map((invoice: any) => (
+                            <TableRow key={invoice.id}>
+                              <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
+                              <TableCell>{formatCurrency(invoice.amount)}</TableCell>
+                              <TableCell>{format(new Date(invoice.due_date), 'MMM d, yyyy')}</TableCell>
+                              <TableCell>
+                                {invoice.status === 'paid' ? (
+                                  <Badge className="bg-green-500/20 text-green-700 border-green-500/30">
+                                    <CheckCircle className="h-3 w-3 mr-1" />Paid
+                                  </Badge>
+                                ) : invoice.status === 'sent' ? (
+                                  <Badge className="bg-amber-500/20 text-amber-700 border-amber-500/30">
+                                    <Clock className="h-3 w-3 mr-1" />Pending
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline">{invoice.status}</Badge>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                        <p>No invoices yet</p>
+                        <p className="text-sm">Your invoices will appear here</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Recent Payments */}
+                {clientPayments && clientPayments.length > 0 && (
+                  <Card className="mt-6">
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <DollarSign className="h-4 w-4" />
+                        Recent Payments
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {clientPayments.map((payment: any) => (
+                          <div key={payment.id} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <div className={cn(
+                                "h-8 w-8 rounded-full flex items-center justify-center",
+                                payment.status === 'completed' ? 'bg-green-100' : 'bg-amber-100'
+                              )}>
+                                {payment.status === 'completed' ? (
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                ) : (
+                                  <Clock className="h-4 w-4 text-amber-600" />
+                                )}
+                              </div>
+                              <div>
+                                <p className="font-medium">{formatCurrency(payment.amount)}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {format(new Date(payment.created_at), 'MMM d, yyyy')}
+                                </p>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className="capitalize">{payment.payment_method}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Add Card Dialog */}
+        <Dialog open={showAddCardDialog} onOpenChange={setShowAddCardDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {clientRecord?.square_card_id ? 'Update Payment Card' : 'Add Payment Card'}
+              </DialogTitle>
+              <DialogDescription>
+                {clientRecord?.square_card_id 
+                  ? 'Replace your existing card with a new one'
+                  : 'Save a payment card for automatic billing'
+                }
+              </DialogDescription>
+            </DialogHeader>
+            <SquareCardForm 
+              onCardNonce={handleSaveClientCard}
+              isLoading={isSavingCard}
+              buttonText={clientRecord?.square_card_id ? "Update Card" : "Save Card"}
+            />
+          </DialogContent>
+        </Dialog>
       </main>
       
       {/* Session Timeout Warning */}
