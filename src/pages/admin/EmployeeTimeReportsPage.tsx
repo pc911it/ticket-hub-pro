@@ -248,66 +248,66 @@ export default function EmployeeTimeReportsPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Employee Time Reports</h1>
+            <h1 className="text-2xl font-bold text-foreground">Employee Time Reports</h1>
             <p className="text-muted-foreground">View and manage employee time tracking across your company</p>
           </div>
-          <Button onClick={generateCSVReport}>
+          <Button onClick={generateCSVReport} className="w-full sm:w-auto">
             <Download className="h-4 w-4 mr-2" />
             Export CSV
           </Button>
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="border-border">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                   <Users className="h-5 w-5 text-primary" />
                 </div>
-                <div>
-                  <p className="text-2xl font-bold">{agents?.length || 0}</p>
+                <div className="min-w-0">
+                  <p className="text-2xl font-bold text-foreground">{agents?.length || 0}</p>
                   <p className="text-xs text-muted-foreground">Employees</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-border">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center">
+                <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
                   <Clock className="h-5 w-5 text-success" />
                 </div>
-                <div>
-                  <p className="text-2xl font-bold">{formatMinutes(totalCompanyClockMinutes)}</p>
+                <div className="min-w-0">
+                  <p className="text-2xl font-bold text-foreground truncate">{formatMinutes(totalCompanyClockMinutes)}</p>
                   <p className="text-xs text-muted-foreground">Clock Hours</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-border">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-warning/10 flex items-center justify-center">
-                  <Timer className="h-5 w-5 text-warning" />
+                <div className="h-10 w-10 rounded-lg bg-secondary/20 flex items-center justify-center shrink-0">
+                  <Timer className="h-5 w-5 text-secondary-foreground" />
                 </div>
-                <div>
-                  <p className="text-2xl font-bold">{formatMinutes(totalCompanyTicketMinutes)}</p>
+                <div className="min-w-0">
+                  <p className="text-2xl font-bold text-foreground truncate">{formatMinutes(totalCompanyTicketMinutes)}</p>
                   <p className="text-xs text-muted-foreground">Ticket Hours</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-border">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-info/10 flex items-center justify-center">
+                <div className="h-10 w-10 rounded-lg bg-info/10 flex items-center justify-center shrink-0">
                   <Briefcase className="h-5 w-5 text-info" />
                 </div>
-                <div>
-                  <p className="text-2xl font-bold">{filteredReports.filter(r => r.status === 'submitted').length}</p>
+                <div className="min-w-0">
+                  <p className="text-2xl font-bold text-foreground">{filteredReports.filter(r => r.status === 'submitted').length}</p>
                   <p className="text-xs text-muted-foreground">Pending Reviews</p>
                 </div>
               </div>
@@ -316,8 +316,8 @@ export default function EmployeeTimeReportsPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-4">
-          <div className="relative flex-1 min-w-[200px]">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search employees..."
@@ -327,7 +327,7 @@ export default function EmployeeTimeReportsPage() {
             />
           </div>
           <Select value={periodFilter} onValueChange={(v: "week" | "month" | "all") => setPeriodFilter(v)}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-full sm:w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -346,17 +346,17 @@ export default function EmployeeTimeReportsPage() {
           </TabsList>
 
           <TabsContent value="summary">
-            <Card>
+            <Card className="border-border">
               <CardHeader>
-                <CardTitle>Employee Time Summary</CardTitle>
+                <CardTitle className="text-foreground">Employee Time Summary</CardTitle>
                 <CardDescription>Overview of hours worked per employee</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="rounded-md border">
+                <div className="rounded-md border border-border overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Employee</TableHead>
+                        <TableHead className="min-w-[150px]">Employee</TableHead>
                         <TableHead>Clock Hours</TableHead>
                         <TableHead>Ticket Hours</TableHead>
                         <TableHead>Tickets</TableHead>
@@ -366,7 +366,7 @@ export default function EmployeeTimeReportsPage() {
                     <TableBody>
                       {agentsLoading ? (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8">Loading...</TableCell>
+                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
                         </TableRow>
                       ) : agentSummary.length === 0 ? (
                         <TableRow>
@@ -379,10 +379,10 @@ export default function EmployeeTimeReportsPage() {
                           <TableRow key={agent.id}>
                             <TableCell>
                               <div className="flex items-center gap-2">
-                                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
+                                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary shrink-0">
                                   {agent.full_name.charAt(0)}
                                 </div>
-                                <span className="font-medium">{agent.full_name}</span>
+                                <span className="font-medium text-foreground">{agent.full_name}</span>
                               </div>
                             </TableCell>
                             <TableCell>
@@ -395,9 +395,9 @@ export default function EmployeeTimeReportsPage() {
                                 {formatMinutes(agent.totalTicketMinutes)}
                               </Badge>
                             </TableCell>
-                            <TableCell>{agent.ticketCount}</TableCell>
+                            <TableCell className="text-foreground">{agent.ticketCount}</TableCell>
                             <TableCell>
-                              <Badge className={agent.is_online ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}>
+                              <Badge variant={agent.is_online ? "default" : "secondary"} className={agent.is_online ? "bg-success text-success-foreground" : ""}>
                                 {agent.is_online ? "Online" : "Offline"}
                               </Badge>
                             </TableCell>
@@ -412,15 +412,15 @@ export default function EmployeeTimeReportsPage() {
           </TabsContent>
 
           <TabsContent value="submissions">
-            <Card>
+            <Card className="border-border">
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <CardTitle>Time Report Submissions</CardTitle>
+                    <CardTitle className="text-foreground">Time Report Submissions</CardTitle>
                     <CardDescription>Review and approve employee time reports</CardDescription>
                   </div>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-32">
+                    <SelectTrigger className="w-full sm:w-32">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -433,12 +433,12 @@ export default function EmployeeTimeReportsPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="rounded-md border">
+                <div className="rounded-md border border-border overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Employee</TableHead>
-                        <TableHead>Period</TableHead>
+                        <TableHead className="min-w-[120px]">Employee</TableHead>
+                        <TableHead className="min-w-[140px]">Period</TableHead>
                         <TableHead>Clock Hours</TableHead>
                         <TableHead>Ticket Hours</TableHead>
                         <TableHead>Status</TableHead>
@@ -448,7 +448,7 @@ export default function EmployeeTimeReportsPage() {
                     <TableBody>
                       {reportsLoading ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8">Loading...</TableCell>
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
                         </TableRow>
                       ) : filteredReports.length === 0 ? (
                         <TableRow>
@@ -459,8 +459,8 @@ export default function EmployeeTimeReportsPage() {
                       ) : (
                         filteredReports.map((report: any) => (
                           <TableRow key={report.id}>
-                            <TableCell className="font-medium">{report.agents?.full_name}</TableCell>
-                            <TableCell>
+                            <TableCell className="font-medium text-foreground">{report.agents?.full_name}</TableCell>
+                            <TableCell className="text-foreground">
                               {format(parseISO(report.period_start), 'MMM d')} - {format(parseISO(report.period_end), 'MMM d, yyyy')}
                             </TableCell>
                             <TableCell>
@@ -474,12 +474,11 @@ export default function EmployeeTimeReportsPage() {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              <Badge className={
-                                report.status === 'approved' ? "bg-success/10 text-success" :
-                                report.status === 'rejected' ? "bg-destructive/10 text-destructive" :
-                                "bg-warning/10 text-warning"
-                              }>
-                                {report.status}
+                              <Badge 
+                                variant={report.status === 'approved' ? "default" : report.status === 'rejected' ? "destructive" : "secondary"}
+                                className={report.status === 'approved' ? "bg-success text-success-foreground" : ""}
+                              >
+                                {report.status === 'submitted' ? 'Pending' : report.status}
                               </Badge>
                             </TableCell>
                             <TableCell>
@@ -488,7 +487,7 @@ export default function EmployeeTimeReportsPage() {
                                   <Button 
                                     size="sm" 
                                     variant="outline"
-                                    className="text-success hover:text-success"
+                                    className="text-success hover:text-success hover:bg-success/10"
                                     onClick={() => updateReportStatus.mutate({ reportId: report.id, status: 'approved' })}
                                   >
                                     <CheckCircle className="h-4 w-4" />
@@ -496,7 +495,7 @@ export default function EmployeeTimeReportsPage() {
                                   <Button 
                                     size="sm" 
                                     variant="outline"
-                                    className="text-destructive hover:text-destructive"
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                     onClick={() => updateReportStatus.mutate({ reportId: report.id, status: 'rejected' })}
                                   >
                                     <XCircle className="h-4 w-4" />
@@ -515,28 +514,28 @@ export default function EmployeeTimeReportsPage() {
           </TabsContent>
 
           <TabsContent value="clock-entries">
-            <Card>
+            <Card className="border-border">
               <CardHeader>
-                <CardTitle>Clock-In/Out History</CardTitle>
+                <CardTitle className="text-foreground">Clock-In/Out History</CardTitle>
                 <CardDescription>All employee clock entries</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="rounded-md border">
+                <div className="rounded-md border border-border overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Employee</TableHead>
-                        <TableHead>Clock In</TableHead>
+                        <TableHead className="min-w-[120px]">Employee</TableHead>
+                        <TableHead className="min-w-[130px]">Clock In</TableHead>
                         <TableHead>Clock Out</TableHead>
                         <TableHead>Break</TableHead>
                         <TableHead>Total</TableHead>
-                        <TableHead>Notes</TableHead>
+                        <TableHead className="min-w-[150px]">Notes</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {clockLoading ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8">Loading...</TableCell>
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
                         </TableRow>
                       ) : !timeClockEntries?.length ? (
                         <TableRow>
@@ -551,18 +550,20 @@ export default function EmployeeTimeReportsPage() {
                             : null;
                           return (
                             <TableRow key={entry.id}>
-                              <TableCell className="font-medium">{entry.agents?.full_name}</TableCell>
-                              <TableCell>{format(new Date(entry.clock_in), 'MMM d, h:mm a')}</TableCell>
+                              <TableCell className="font-medium text-foreground">{entry.agents?.full_name}</TableCell>
+                              <TableCell className="text-foreground">{format(new Date(entry.clock_in), 'MMM d, h:mm a')}</TableCell>
                               <TableCell>
-                                {entry.clock_out ? format(new Date(entry.clock_out), 'h:mm a') : (
-                                  <Badge className="bg-success/10 text-success">Active</Badge>
+                                {entry.clock_out ? (
+                                  <span className="text-foreground">{format(new Date(entry.clock_out), 'h:mm a')}</span>
+                                ) : (
+                                  <Badge className="bg-success text-success-foreground">Active</Badge>
                                 )}
                               </TableCell>
-                              <TableCell>{entry.break_minutes || 0}m</TableCell>
-                              <TableCell>
+                              <TableCell className="text-foreground">{entry.break_minutes || 0}m</TableCell>
+                              <TableCell className="text-foreground">
                                 {totalMins !== null ? formatMinutes(totalMins) : '-'}
                               </TableCell>
-                              <TableCell className="max-w-[200px] truncate">{entry.notes || '-'}</TableCell>
+                              <TableCell className="max-w-[200px] truncate text-muted-foreground">{entry.notes || '-'}</TableCell>
                             </TableRow>
                           );
                         })
