@@ -325,6 +325,24 @@ export default function ClientDashboard() {
         throw new Error("Client record not found");
       }
 
+      // Check 3-ticket limit per project for clients
+      if (data.project_id) {
+        const { data: existingTickets, error: countError } = await supabase
+          .from("tickets")
+          .select("id")
+          .eq("client_id", clientRecord.id)
+          .eq("project_id", data.project_id)
+          .is("deleted_at", null)
+          .neq("status", "completed")
+          .is("client_signature_url", null);
+        
+        if (countError) throw countError;
+        
+        if (existingTickets && existingTickets.length >= 3) {
+          throw new Error("You have reached the maximum of 3 pending tickets for this project. Please wait for existing tickets to be completed and signed before creating new ones.");
+        }
+      }
+
       setIsSubmitting(true);
 
       // Upload files first

@@ -37,6 +37,7 @@ import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
 import SuperAdminBillingPage from "./pages/admin/SuperAdminBillingPage";
 import AgentJobPage from "./pages/AgentJobPage";
 import ClientDashboard from "./pages/ClientDashboard";
+import EmployeePortal from "./pages/EmployeePortal";
 import TrashPage from "./pages/admin/TrashPage";
 import ConstructionPlansPage from "./pages/admin/ConstructionPlansPage";
 const queryClient = new QueryClient();
@@ -313,6 +314,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <AgentJobPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/employee"
+              element={
+                <ProtectedRoute>
+                  <EmployeePortal />
                 </ProtectedRoute>
               }
             />
