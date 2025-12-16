@@ -46,9 +46,11 @@ import {
   Clock,
   RefreshCw,
   Trash2,
-  Edit
+  Edit,
+  Zap
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { SquareCardForm } from '@/components/SquareCardForm';
 
 const ClientBillingPage = () => {
   const { user } = useAuth();
@@ -56,6 +58,9 @@ const ClientBillingPage = () => {
   const [showAddPlan, setShowAddPlan] = useState(false);
   const [showCreateInvoice, setShowCreateInvoice] = useState(false);
   const [showCreateSubscription, setShowCreateSubscription] = useState(false);
+  const [showAddCard, setShowAddCard] = useState(false);
+  const [selectedSubscriptionForCard, setSelectedSubscriptionForCard] = useState<any>(null);
+  const [isSavingCard, setIsSavingCard] = useState(false);
   
   // Form states
   const [planForm, setPlanForm] = useState({
@@ -272,6 +277,56 @@ const ClientBillingPage = () => {
       setShowCreateSubscription(false);
       setSubscriptionForm({ client_id: '', payment_plan_id: '', payment_method: 'invoice' });
       queryClient.invalidateQueries({ queryKey: ['client-subscriptions'] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  // Save card for subscription
+  const handleSaveCard = async (cardNonce: string) => {
+    if (!selectedSubscriptionForCard) return;
+    
+    setIsSavingCard(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('save-client-card', {
+        body: {
+          clientId: selectedSubscriptionForCard.client_id,
+          subscriptionId: selectedSubscriptionForCard.id,
+          cardNonce,
+        },
+      });
+      
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      toast.success(`Card saved (****${data.cardLast4})`);
+      setShowAddCard(false);
+      setSelectedSubscriptionForCard(null);
+      queryClient.invalidateQueries({ queryKey: ['client-subscriptions'] });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save card');
+    } finally {
+      setIsSavingCard(false);
+    }
+  };
+
+  // Charge subscription now
+  const chargeSubscriptionMutation = useMutation({
+    mutationFn: async (subscriptionId: string) => {
+      const { data, error } = await supabase.functions.invoke('charge-client-subscription', {
+        body: { subscriptionId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data.results?.[0]?.success) {
+        toast.success(`Payment successful: ${formatCurrency(data.results[0].amount)}`);
+      } else {
+        toast.error(data.results?.[0]?.error || 'Payment failed');
+      }
+      queryClient.invalidateQueries({ queryKey: ['client-subscriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -684,7 +739,8 @@ const ClientBillingPage = () => {
                       <TableHead>Amount</TableHead>
                       <TableHead>Payment Method</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Started</TableHead>
+                      <TableHead>Next Billing</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -694,16 +750,54 @@ const ClientBillingPage = () => {
                         <TableCell>{sub.client_payment_plans?.name || 'Unknown'}</TableCell>
                         <TableCell>{formatCurrency(sub.client_payment_plans?.amount || 0)}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">
-                            {sub.payment_method === 'card_on_file' ? 'Card on File' : 'Invoice'}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">
+                              {sub.payment_method === 'card_on_file' ? 'Card on File' : 'Invoice'}
+                            </Badge>
+                            {sub.payment_method === 'card_on_file' && sub.square_card_id && (
+                              <Badge className="bg-green-500/20 text-green-700 text-xs">Card saved</Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
-                          <Badge className={sub.status === 'active' ? 'bg-green-500/20 text-green-700' : 'bg-gray-500/20 text-gray-700'}>
+                          <Badge className={
+                            sub.status === 'active' ? 'bg-green-500/20 text-green-700' : 
+                            sub.status === 'payment_failed' ? 'bg-red-500/20 text-red-700' :
+                            'bg-gray-500/20 text-gray-700'
+                          }>
                             {sub.status}
                           </Badge>
                         </TableCell>
-                        <TableCell>{format(new Date(sub.created_at), 'MMM d, yyyy')}</TableCell>
+                        <TableCell>
+                          {sub.current_period_end 
+                            ? format(new Date(sub.current_period_end), 'MMM d, yyyy')
+                            : '-'
+                          }
+                        </TableCell>
+                        <TableCell className="text-right space-x-2">
+                          {sub.payment_method === 'card_on_file' && !sub.square_card_id && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedSubscriptionForCard(sub);
+                                setShowAddCard(true);
+                              }}
+                            >
+                              <CreditCard className="h-4 w-4 mr-1" />Add Card
+                            </Button>
+                          )}
+                          {sub.payment_method === 'card_on_file' && sub.square_card_id && sub.status === 'active' && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => chargeSubscriptionMutation.mutate(sub.id)}
+                              disabled={chargeSubscriptionMutation.isPending}
+                            >
+                              <Zap className="h-4 w-4 mr-1" />Charge Now
+                            </Button>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -717,6 +811,26 @@ const ClientBillingPage = () => {
               )}
             </CardContent>
           </Card>
+
+          {/* Add Card Dialog */}
+          <Dialog open={showAddCard} onOpenChange={(open) => {
+            setShowAddCard(open);
+            if (!open) setSelectedSubscriptionForCard(null);
+          }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Payment Card</DialogTitle>
+                <DialogDescription>
+                  Save a card for {selectedSubscriptionForCard?.clients?.full_name}'s subscription
+                </DialogDescription>
+              </DialogHeader>
+              <SquareCardForm 
+                onCardNonce={handleSaveCard}
+                isLoading={isSavingCard}
+                buttonText="Save Card"
+              />
+            </DialogContent>
+          </Dialog>
         </TabsContent>
       </Tabs>
     </div>
