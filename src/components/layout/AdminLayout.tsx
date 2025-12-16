@@ -32,7 +32,8 @@ import {
   CheckSquare,
   DollarSign,
   Trash2,
-  FileText
+  FileText,
+  Briefcase
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -56,6 +57,10 @@ const navigation = [
   { name: 'Users', href: '/admin/users', icon: Shield },
   { name: 'Billing', href: '/admin/billing', icon: CreditCard },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
+];
+
+const staffNavigation = [
+  { name: 'Employee Portal', href: '/employee', icon: Briefcase },
 ];
 
 const superAdminNavigation = [
@@ -125,6 +130,36 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                   Super Admin
                 </div>
                 {superAdminNavigation.map((item) => {
+                  const isActive = location.pathname === item.href;
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      onClick={() => setSidebarOpen(false)}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                        isActive 
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md" 
+                          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      )}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      {item.name}
+                      {isActive && <ChevronRight className="ml-auto h-4 w-4" />}
+                    </Link>
+                  );
+                })}
+                <div className="my-3 border-t border-sidebar-border" />
+              </>
+            )}
+
+            {/* Staff Quick Access */}
+            {(userRole === 'staff' || userRole === 'admin') && !isSuperAdmin && (
+              <>
+                <div className="px-3 py-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
+                  Quick Access
+                </div>
+                {staffNavigation.map((item) => {
                   const isActive = location.pathname === item.href;
                   return (
                     <Link

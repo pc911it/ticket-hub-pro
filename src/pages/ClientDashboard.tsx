@@ -626,6 +626,33 @@ export default function ClientDashboard() {
                           ))}
                         </SelectContent>
                       </Select>
+                      {/* Ticket Limit Indicator */}
+                      {requestForm.project_id && requestForm.project_id !== "none" && (() => {
+                        const projectTickets = tickets?.filter(
+                          t => t.project_id === requestForm.project_id && 
+                               t.status !== 'completed' && 
+                               !t.client_signature_url
+                        ) || [];
+                        const remaining = 3 - projectTickets.length;
+                        return (
+                          <div className={cn(
+                            "mt-2 p-3 rounded-lg text-sm flex items-center gap-2",
+                            remaining <= 0 
+                              ? "bg-destructive/10 text-destructive border border-destructive/20"
+                              : remaining === 1 
+                                ? "bg-warning/10 text-warning border border-warning/20"
+                                : "bg-muted text-muted-foreground"
+                          )}>
+                            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                            <span>
+                              {remaining <= 0 
+                                ? "Ticket limit reached for this project. Please wait for existing tickets to be completed and signed."
+                                : `${remaining} ticket${remaining !== 1 ? 's' : ''} remaining for this project (max 3 pending)`
+                              }
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                   <div className="space-y-2">
