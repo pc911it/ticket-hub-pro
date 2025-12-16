@@ -443,14 +443,14 @@ export default function InventoryPage() {
                 <div className="space-y-2">
                   <Label>Supplier</Label>
                   <Select
-                    value={newItem.supplier_id}
-                    onValueChange={(value) => setNewItem({ ...newItem, supplier_id: value })}
+                    value={newItem.supplier_id || "none"}
+                    onValueChange={(value) => setNewItem({ ...newItem, supplier_id: value === "none" ? "" : value })}
                   >
                     <SelectTrigger className="bg-background">
                       <SelectValue placeholder="Select supplier" />
                     </SelectTrigger>
                     <SelectContent className="bg-background border shadow-lg z-50">
-                      <SelectItem value="">No supplier</SelectItem>
+                      <SelectItem value="none">No supplier</SelectItem>
                       {suppliers?.map((supplier) => (
                         <SelectItem key={supplier.id} value={supplier.id}>
                           {supplier.name}
@@ -824,14 +824,14 @@ export default function InventoryPage() {
                 <div className="space-y-2">
                   <Label>Supplier</Label>
                   <Select
-                    value={editingItem.supplier_id || ""}
-                    onValueChange={(value) => setEditingItem({ ...editingItem, supplier_id: value || null })}
+                    value={editingItem.supplier_id || "none"}
+                    onValueChange={(value) => setEditingItem({ ...editingItem, supplier_id: value === "none" ? null : value })}
                   >
                     <SelectTrigger className="bg-background">
                       <SelectValue placeholder="Select supplier" />
                     </SelectTrigger>
                     <SelectContent className="bg-background border shadow-lg z-50">
-                      <SelectItem value="">No supplier</SelectItem>
+                      <SelectItem value="none">No supplier</SelectItem>
                       {suppliers?.map((supplier) => (
                         <SelectItem key={supplier.id} value={supplier.id}>
                           {supplier.name}
