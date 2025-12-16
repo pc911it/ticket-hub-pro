@@ -76,6 +76,7 @@ const ClientBillingPage = () => {
     description: '',
     due_date: '',
     notes: '',
+    payment_method: 'invoice',
   });
 
   const [subscriptionForm, setSubscriptionForm] = useState({
@@ -206,7 +207,7 @@ const ClientBillingPage = () => {
     onSuccess: () => {
       toast.success('Invoice created');
       setShowCreateInvoice(false);
-      setInvoiceForm({ client_id: '', amount: '', description: '', due_date: '', notes: '' });
+      setInvoiceForm({ client_id: '', amount: '', description: '', due_date: '', notes: '', payment_method: 'invoice' });
       queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -471,6 +472,37 @@ const ClientBillingPage = () => {
                       onChange={(e) => setInvoiceForm({ ...invoiceForm, notes: e.target.value })}
                       placeholder="Additional notes..."
                     />
+                  </div>
+                  <div>
+                    <Label>Payment Type</Label>
+                    <Select 
+                      value={invoiceForm.payment_method} 
+                      onValueChange={(v) => setInvoiceForm({ ...invoiceForm, payment_method: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="invoice">
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">One-time Invoice</span>
+                            <span className="text-xs text-muted-foreground">Send invoice via email for manual payment</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="card_on_file">
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">Charge Card on File</span>
+                            <span className="text-xs text-muted-foreground">Charge client's saved card immediately</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {invoiceForm.payment_method === 'card_on_file' 
+                        ? 'Client must have an active subscription with a saved card'
+                        : 'Invoice will be emailed to client when you click Send'
+                      }
+                    </p>
                   </div>
                 </div>
                 <DialogFooter>
