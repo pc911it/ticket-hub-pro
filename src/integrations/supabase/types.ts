@@ -447,6 +447,8 @@ export type Database = {
           id: string
           notes: string | null
           phone: string | null
+          square_card_id: string | null
+          square_customer_id: string | null
           updated_at: string
         }
         Insert: {
@@ -459,6 +461,8 @@ export type Database = {
           id?: string
           notes?: string | null
           phone?: string | null
+          square_card_id?: string | null
+          square_customer_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -471,6 +475,8 @@ export type Database = {
           id?: string
           notes?: string | null
           phone?: string | null
+          square_card_id?: string | null
+          square_customer_id?: string | null
           updated_at?: string
         }
         Relationships: [

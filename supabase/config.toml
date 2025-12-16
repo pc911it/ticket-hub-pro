@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.save-client-card]
 verify_jwt = false
+
+[functions.save-client-card-direct]
+verify_jwt = false
