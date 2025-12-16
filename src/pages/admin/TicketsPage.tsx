@@ -877,41 +877,29 @@ const TicketsPage = () => {
                         </Button>
                       </>
                     )}
-                    {ticket.status === 'pending' && ticket.admin_approval_status === 'approved' && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="text-success border-success/30 hover:bg-success/10"
-                        onClick={() => handleStatusChange(ticket.id, 'confirmed')}
+                    {/* Status Change Dropdown */}
+                    {ticket.admin_approval_status === 'approved' && ticket.status !== 'completed' && ticket.status !== 'cancelled' && (
+                      <Select
+                        value={ticket.status}
+                        onValueChange={(value) => handleStatusChange(ticket.id, value)}
                       >
-                        <CheckCircle2 className="h-4 w-4 mr-1" />
-                        Confirm
-                      </Button>
-                    )}
-                    {ticket.status === 'confirmed' && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className={cn(
-                          ticket.client_signature_url
-                            ? "text-info border-info/30 hover:bg-info/10"
-                            : "text-muted-foreground border-muted hover:bg-muted/50"
-                        )}
-                        onClick={() => handleStatusChange(ticket.id, 'completed')}
-                        title={!ticket.client_signature_url ? "Signature required" : undefined}
-                      >
-                        {ticket.client_signature_url ? (
-                          <>
-                            <CheckCircle2 className="h-4 w-4 mr-1" />
-                            Complete
-                          </>
-                        ) : (
-                          <>
-                            <PenTool className="h-4 w-4 mr-1" />
-                            Needs Signature
-                          </>
-                        )}
-                      </Button>
+                        <SelectTrigger className="w-32 h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="assigned">Assigned</SelectItem>
+                          <SelectItem value="en_route">En Route</SelectItem>
+                          <SelectItem value="on_site">On Site</SelectItem>
+                          <SelectItem value="working">Working</SelectItem>
+                          <SelectItem 
+                            value="completed" 
+                            disabled={!ticket.client_signature_url}
+                          >
+                            {ticket.client_signature_url ? 'Completed' : 'Completed (needs signature)'}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                     )}
                     <Button 
                       variant="ghost" 
