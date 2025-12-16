@@ -617,7 +617,10 @@ const TicketsPage = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="confirmed">Confirmed</SelectItem>
+                    <SelectItem value="assigned">Assigned</SelectItem>
+                    <SelectItem value="en_route">En Route</SelectItem>
+                    <SelectItem value="on_site">On Site</SelectItem>
+                    <SelectItem value="working">Working</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
@@ -684,7 +687,10 @@ const TicketsPage = () => {
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="confirmed">Confirmed</SelectItem>
+            <SelectItem value="assigned">Assigned</SelectItem>
+            <SelectItem value="en_route">En Route</SelectItem>
+            <SelectItem value="on_site">On Site</SelectItem>
+            <SelectItem value="working">Working</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
