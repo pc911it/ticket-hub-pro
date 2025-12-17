@@ -141,20 +141,42 @@ export function LiveAgentMap({ companyId }: LiveAgentMapProps) {
       // Pulse animation for online agents
       el.style.animation = 'pulse 2s infinite';
 
-      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-        <div style="padding: 8px; min-width: 150px;">
-          <strong style="font-size: 14px;">${agent.full_name}</strong>
-          <p style="margin: 4px 0; font-size: 12px; color: ${agent.is_available ? '#22c55e' : '#f59e0b'};">
-            ${agent.is_available ? '● Available' : '● Busy'}
-          </p>
-          ${agent.phone ? `<p style="margin: 4px 0; font-size: 12px; color: #666;">📞 ${agent.phone}</p>` : ''}
-          ${agent.last_location_update ? `
-            <p style="margin: 4px 0; font-size: 11px; color: #999;">
-              Updated ${formatDistanceToNow(new Date(agent.last_location_update), { addSuffix: true })}
-            </p>
-          ` : ''}
-        </div>
-      `);
+      // Create popup content safely using DOM to prevent XSS
+      const popupContent = document.createElement('div');
+      popupContent.style.padding = '8px';
+      popupContent.style.minWidth = '150px';
+      
+      const nameEl = document.createElement('strong');
+      nameEl.style.fontSize = '14px';
+      nameEl.textContent = agent.full_name;
+      popupContent.appendChild(nameEl);
+      
+      const statusEl = document.createElement('p');
+      statusEl.style.margin = '4px 0';
+      statusEl.style.fontSize = '12px';
+      statusEl.style.color = agent.is_available ? '#22c55e' : '#f59e0b';
+      statusEl.textContent = agent.is_available ? '● Available' : '● Busy';
+      popupContent.appendChild(statusEl);
+      
+      if (agent.phone) {
+        const phoneEl = document.createElement('p');
+        phoneEl.style.margin = '4px 0';
+        phoneEl.style.fontSize = '12px';
+        phoneEl.style.color = '#666';
+        phoneEl.textContent = `📞 ${agent.phone}`;
+        popupContent.appendChild(phoneEl);
+      }
+      
+      if (agent.last_location_update) {
+        const updateEl = document.createElement('p');
+        updateEl.style.margin = '4px 0';
+        updateEl.style.fontSize = '11px';
+        updateEl.style.color = '#999';
+        updateEl.textContent = `Updated ${formatDistanceToNow(new Date(agent.last_location_update), { addSuffix: true })}`;
+        popupContent.appendChild(updateEl);
+      }
+      
+      const popup = new mapboxgl.Popup({ offset: 25 }).setDOMContent(popupContent);
 
       const marker = new mapboxgl.Marker(el)
         .setLngLat([agent.current_location_lng!, agent.current_location_lat!])
