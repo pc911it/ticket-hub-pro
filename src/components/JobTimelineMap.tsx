@@ -96,15 +96,31 @@ export function JobTimelineMap({ jobUpdates, callStartedAt, callEndedAt }: JobTi
         el.style.fontWeight = 'bold';
         el.innerHTML = `${index + 1}`;
 
-        const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-          <div style="padding: 8px;">
-            <strong style="text-transform: capitalize;">${update.status.replace('_', ' ')}</strong>
-            <p style="margin: 4px 0 0; font-size: 12px; color: #666;">
-              ${format(new Date(update.created_at), 'MMM d, h:mm a')}
-            </p>
-            ${update.notes ? `<p style="margin: 4px 0 0; font-size: 12px;">${update.notes}</p>` : ''}
-          </div>
-        `);
+        // Create popup content safely using DOM to prevent XSS
+        const popupContent = document.createElement('div');
+        popupContent.style.padding = '8px';
+        
+        const statusEl = document.createElement('strong');
+        statusEl.style.textTransform = 'capitalize';
+        statusEl.textContent = update.status.replace('_', ' ');
+        popupContent.appendChild(statusEl);
+        
+        const timeEl = document.createElement('p');
+        timeEl.style.margin = '4px 0 0';
+        timeEl.style.fontSize = '12px';
+        timeEl.style.color = '#666';
+        timeEl.textContent = format(new Date(update.created_at), 'MMM d, h:mm a');
+        popupContent.appendChild(timeEl);
+        
+        if (update.notes) {
+          const notesEl = document.createElement('p');
+          notesEl.style.margin = '4px 0 0';
+          notesEl.style.fontSize = '12px';
+          notesEl.textContent = update.notes;
+          popupContent.appendChild(notesEl);
+        }
+        
+        const popup = new mapboxgl.Popup({ offset: 25 }).setDOMContent(popupContent);
 
         new mapboxgl.Marker(el)
           .setLngLat([update.location_lng!, update.location_lat!])
