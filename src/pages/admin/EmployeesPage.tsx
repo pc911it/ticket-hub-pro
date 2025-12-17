@@ -24,8 +24,10 @@ import {
   UserCheck,
   Mail,
   Lock,
-  Key
+  Key,
+  Trash2
 } from 'lucide-react';
+import { DeleteConfirmationDialog } from '@/components/DeleteConfirmationDialog';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -64,6 +66,9 @@ const EmployeesPage = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingAgent, setDeletingAgent] = useState<Agent | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [resetPasswordAgent, setResetPasswordAgent] = useState<Agent | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [resettingPassword, setResettingPassword] = useState(false);
@@ -416,6 +421,44 @@ const EmployeesPage = () => {
     setIsResetPasswordOpen(true);
   };
 
+  const openDeleteDialog = (agent: Agent) => {
+    setDeletingAgent(agent);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteAgent = async () => {
+    if (!deletingAgent || !companyId) return;
+
+    setDeleting(true);
+    try {
+      // Delete the agent record
+      const { error } = await supabase
+        .from('agents')
+        .delete()
+        .eq('id', deletingAgent.id);
+
+      if (error) throw error;
+
+      toast({ 
+        title: 'Employee Deleted', 
+        description: `${deletingAgent.full_name} has been removed.` 
+      });
+      
+      fetchCompanyAndAgents();
+      setIsDeleteDialogOpen(false);
+      setDeletingAgent(null);
+    } catch (error: any) {
+      console.error('Delete agent error:', error);
+      toast({ 
+        variant: 'destructive', 
+        title: 'Error', 
+        description: error.message || 'Failed to delete employee' 
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleToggleOnline = async (agent: Agent) => {
     const { error } = await supabase
       .from('agents')
@@ -754,6 +797,15 @@ const EmployeesPage = () => {
                         </form>
                       </DialogContent>
                     </Dialog>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => openDeleteDialog(agent)}
+                      title="Delete Employee"
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
 
@@ -850,6 +902,18 @@ const EmployeesPage = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        onConfirm={handleDeleteAgent}
+        title="Employee"
+        itemName={deletingAgent?.full_name || ''}
+        itemType="item"
+        description="This will remove the employee from your field agents. Their user account will remain active."
+        loading={deleting}
+      />
     </div>
   );
 };
