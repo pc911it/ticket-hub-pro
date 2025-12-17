@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Phone, MapPin, User, Clock, AlertTriangle, Truck, Flame, Shield, FolderOpen } from 'lucide-react';
+import { Phone, MapPin, User, Clock, AlertTriangle, Flame, Shield, FolderOpen, Droplets, Zap, Camera, Square, HardHat } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { MaterialAssignment, MaterialAssignmentItem, saveInventoryUsage } from '@/components/MaterialAssignment';
@@ -38,7 +38,11 @@ interface Project {
 const callTypes = [
   { value: 'fire_alarm', label: 'Fire Alarm', icon: Flame, color: 'text-destructive' },
   { value: 'security_alarm', label: 'Security Alarm', icon: Shield, color: 'text-warning' },
-  { value: 'tow_service', label: 'Tow Service', icon: Truck, color: 'text-info' },
+  { value: 'plumbing', label: 'Plumbing', icon: Droplets, color: 'text-info' },
+  { value: 'electrical', label: 'Electrical', icon: Zap, color: 'text-warning' },
+  { value: 'security_cameras', label: 'Security Cameras', icon: Camera, color: 'text-primary' },
+  { value: 'dry_wall', label: 'Dry Wall', icon: Square, color: 'text-muted-foreground' },
+  { value: 'concrete_service', label: 'Concrete Service', icon: HardHat, color: 'text-accent-foreground' },
   { value: 'emergency', label: 'Emergency', icon: AlertTriangle, color: 'text-destructive' },
   { value: 'routine', label: 'Routine Check', icon: Clock, color: 'text-muted-foreground' },
 ];
