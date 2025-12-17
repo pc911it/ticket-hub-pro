@@ -36,6 +36,7 @@ import CompanyApprovalsPage from "./pages/admin/CompanyApprovalsPage";
 import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
 import SuperAdminBillingPage from "./pages/admin/SuperAdminBillingPage";
 import SupportTicketsPage from "./pages/admin/SupportTicketsPage";
+import CompanySupportPage from "./pages/admin/CompanySupportPage";
 import AgentJobPage from "./pages/AgentJobPage";
 import ClientDashboard from "./pages/ClientDashboard";
 import EmployeePortal from "./pages/EmployeePortal";
@@ -298,6 +299,14 @@ const App = () => (
                   <AdminLayout>
                     <SupportTicketsPage />
                   </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/support"
+              element={
+                <ProtectedRoute>
+                  <CompanySupportPage />
                 </ProtectedRoute>
               }
             />

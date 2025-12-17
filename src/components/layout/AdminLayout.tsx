@@ -58,6 +58,7 @@ const navigation = [
   { name: 'Tickets', href: '/admin/tickets', icon: Ticket },
   { name: 'Inventory', href: '/admin/inventory', icon: Package },
   { name: 'Trash', href: '/admin/trash', icon: Trash2 },
+  { name: 'Support', href: '/admin/support', icon: HeadphonesIcon },
   { name: 'Users', href: '/admin/users', icon: Shield },
   { name: 'Billing', href: '/admin/billing', icon: CreditCard },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
