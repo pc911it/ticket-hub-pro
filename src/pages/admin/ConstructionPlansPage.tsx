@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DocumentViewer } from '@/components/DocumentViewer';
+import { DeleteConfirmationDialog } from '@/components/DeleteConfirmationDialog';
+import { toast } from 'sonner';
 import { 
   Search, 
   FolderOpen, 
@@ -15,12 +17,12 @@ import {
   Image, 
   File, 
   ChevronRight,
-  ChevronLeft,
   Building2,
   Filter,
   Grid,
   List,
-  Eye
+  Eye,
+  Trash2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -57,7 +59,8 @@ const PLAN_CATEGORIES = [
 ];
 
 const ConstructionPlansPage = () => {
-  const { user, isSuperAdmin } = useAuth();
+  const { user, isSuperAdmin, isCompanyOwner } = useAuth();
+  const canDelete = isSuperAdmin || isCompanyOwner;
   const [projects, setProjects] = useState<Project[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,6 +69,9 @@ const ConstructionPlansPage = () => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [viewingDocument, setViewingDocument] = useState<Attachment | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingAttachment, setDeletingAttachment] = useState<Attachment | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -98,6 +104,34 @@ const ConstructionPlansPage = () => {
       setAttachments(data as Attachment[]);
     }
     setLoading(false);
+  };
+
+  const handleDeleteAttachment = async () => {
+    if (!deletingAttachment) return;
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('project_attachments')
+        .delete()
+        .eq('id', deletingAttachment.id);
+      
+      if (error) throw error;
+      
+      setAttachments(prev => prev.filter(a => a.id !== deletingAttachment.id));
+      toast.success('Plan deleted successfully');
+    } catch (error: any) {
+      toast.error('Failed to delete plan', { description: error.message });
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setDeletingAttachment(null);
+    }
+  };
+
+  const openDeleteDialog = (attachment: Attachment, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeletingAttachment(attachment);
+    setDeleteDialogOpen(true);
   };
 
   const filteredAttachments = attachments.filter(attachment => {
@@ -330,9 +364,19 @@ const ConstructionPlansPage = () => {
               {filteredAttachments.map((attachment) => (
                 <Card 
                   key={attachment.id} 
-                  className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer group"
+                  className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer group relative"
                   onClick={() => setViewingDocument(attachment)}
                 >
+                  {canDelete && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-2 z-10 h-8 w-8 bg-background/80 hover:bg-destructive hover:text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => openDeleteDialog(attachment, e)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                   <CardContent className="p-4">
                     {/* Preview */}
                     <div className="aspect-[4/3] bg-muted rounded-lg mb-3 flex items-center justify-center overflow-hidden relative">
@@ -386,10 +430,10 @@ const ConstructionPlansPage = () => {
               <CardContent className="p-0">
                 <div className="divide-y">
                   {filteredAttachments.map((attachment) => (
-                    <button
+                    <div
                       key={attachment.id}
                       onClick={() => setViewingDocument(attachment)}
-                      className="w-full flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors text-left"
+                      className="w-full flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors text-left cursor-pointer"
                     >
                       <div className="h-12 w-12 bg-muted rounded-lg flex items-center justify-center shrink-0">
                         {getFileIcon(attachment.file_type, attachment.category)}
@@ -411,7 +455,17 @@ const ConstructionPlansPage = () => {
                         {attachment.category.replace('_', ' ')}
                       </Badge>
                       <Eye className="h-4 w-4 text-muted-foreground" />
-                    </button>
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:bg-destructive hover:text-destructive-foreground"
+                          onClick={(e) => openDeleteDialog(attachment, e)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   ))}
                 </div>
               </CardContent>
@@ -433,6 +487,18 @@ const ConstructionPlansPage = () => {
           onClose={() => setViewingDocument(null)}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDeleteAttachment}
+        title="Plan"
+        itemName={deletingAttachment?.file_name || ''}
+        itemType="item"
+        description="This will permanently delete this construction plan. This action cannot be undone."
+        loading={isDeleting}
+      />
     </div>
   );
 };

@@ -34,7 +34,9 @@ import {
   Trash2,
   FileText,
   Briefcase,
-  Clock
+  Clock,
+  MessageSquare,
+  HeadphonesIcon
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -68,6 +70,7 @@ const staffNavigation = [
 const superAdminNavigation = [
   { name: 'Platform Overview', href: '/admin/super-dashboard', icon: LayoutDashboard },
   { name: 'Company Approvals', href: '/admin/company-approvals', icon: CheckSquare },
+  { name: 'Support Tickets', href: '/admin/support-tickets', icon: HeadphonesIcon },
   { name: 'Platform Billing', href: '/admin/platform-billing', icon: DollarSign },
 ];
 
