@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -121,6 +121,68 @@ export default function SupportTicketsPage() {
     },
     enabled: !!selectedTicket,
   });
+
+  // Real-time subscription for new tickets and messages
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+
+    const channel = supabase
+      .channel('super-admin-support-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'support_tickets',
+        },
+        async (payload) => {
+          const newTicket = payload.new as any;
+          // Fetch company name for the notification
+          const { data: company } = await supabase
+            .from('companies')
+            .select('name')
+            .eq('id', newTicket.company_id)
+            .single();
+          
+          toast.success("New Support Ticket", {
+            description: `${company?.name || 'A company'}: ${newTicket.subject}`,
+            duration: 8000,
+          });
+          queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'support_ticket_messages',
+        },
+        async (payload) => {
+          const newMessage = payload.new as any;
+          // Only notify for non-staff replies (customer messages)
+          if (!newMessage.is_staff_reply) {
+            const { data: ticket } = await supabase
+              .from('support_tickets')
+              .select('subject, companies(name)')
+              .eq('id', newMessage.ticket_id)
+              .single();
+            
+            toast.info("New message on ticket", {
+              description: `${(ticket as any)?.companies?.name || 'Customer'} replied to: ${ticket?.subject}`,
+              duration: 5000,
+            });
+            queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+            queryClient.invalidateQueries({ queryKey: ["ticket-messages"] });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isSuperAdmin, queryClient]);
 
   // Update ticket status
   const updateStatusMutation = useMutation({

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -121,6 +121,65 @@ export function CompanySupportTickets() {
     },
     enabled: !!selectedTicket,
   });
+
+  // Real-time subscription for new messages (staff replies)
+  useEffect(() => {
+    if (!userCompanyId) return;
+
+    const channel = supabase
+      .channel('company-support-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'support_ticket_messages',
+        },
+        async (payload) => {
+          const newMessage = payload.new as any;
+          // Check if this message is a staff reply for one of our tickets
+          if (newMessage.is_staff_reply) {
+            // Verify this is for our company's ticket
+            const { data: ticket } = await supabase
+              .from('support_tickets')
+              .select('company_id, subject')
+              .eq('id', newMessage.ticket_id)
+              .single();
+            
+            if (ticket?.company_id === userCompanyId) {
+              toast.success("New support response", {
+                description: `Staff replied to: ${ticket.subject}`,
+                duration: 5000,
+              });
+              queryClient.invalidateQueries({ queryKey: ["company-support-tickets"] });
+              queryClient.invalidateQueries({ queryKey: ["company-ticket-messages"] });
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'support_tickets',
+        },
+        async (payload) => {
+          const updated = payload.new as any;
+          if (updated.company_id === userCompanyId) {
+            toast.info("Ticket updated", {
+              description: `Status changed to: ${updated.status}`,
+            });
+            queryClient.invalidateQueries({ queryKey: ["company-support-tickets"] });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userCompanyId, queryClient]);
 
   // Create new ticket
   const createTicketMutation = useMutation({
