@@ -126,8 +126,10 @@ export function CompanySupportTickets() {
   useEffect(() => {
     if (!userCompanyId) return;
 
+    console.log("Setting up company support realtime subscription for company:", userCompanyId);
+
     const channel = supabase
-      .channel('company-support-realtime')
+      .channel(`company-support-realtime-${userCompanyId}`)
       .on(
         'postgres_changes',
         {
@@ -136,6 +138,7 @@ export function CompanySupportTickets() {
           table: 'support_ticket_messages',
         },
         async (payload) => {
+          console.log("New support message received:", payload);
           const newMessage = payload.new as any;
           // Check if this message is a staff reply for one of our tickets
           if (newMessage.is_staff_reply) {
@@ -147,9 +150,9 @@ export function CompanySupportTickets() {
               .single();
             
             if (ticket?.company_id === userCompanyId) {
-              toast.success("New support response", {
+              toast.success("🎉 New support response!", {
                 description: `Staff replied to: ${ticket.subject}`,
-                duration: 5000,
+                duration: 10000,
               });
               queryClient.invalidateQueries({ queryKey: ["company-support-tickets"] });
               queryClient.invalidateQueries({ queryKey: ["company-ticket-messages"] });
@@ -165,18 +168,23 @@ export function CompanySupportTickets() {
           table: 'support_tickets',
         },
         async (payload) => {
+          console.log("Support ticket updated:", payload);
           const updated = payload.new as any;
           if (updated.company_id === userCompanyId) {
-            toast.info("Ticket updated", {
+            toast.info("📋 Ticket updated", {
               description: `Status changed to: ${updated.status}`,
+              duration: 5000,
             });
             queryClient.invalidateQueries({ queryKey: ["company-support-tickets"] });
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Company support realtime subscription status:", status);
+      });
 
     return () => {
+      console.log("Cleaning up company support realtime subscription");
       supabase.removeChannel(channel);
     };
   }, [userCompanyId, queryClient]);
