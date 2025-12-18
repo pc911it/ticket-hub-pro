@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +44,9 @@ export function LiveAlertsBanner() {
   const [alerts, setAlerts] = useState<LiveAlert[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
   const { showCriticalAlert, isEnabled } = usePushNotifications();
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const wasConnectedRef = useRef(false);
 
   const addAlert = useCallback((alert: LiveAlert) => {
     setAlerts((prev) => {
@@ -62,11 +65,16 @@ export function LiveAlertsBanner() {
     }, 15000);
   }, [isEnabled, showCriticalAlert]);
 
-  useEffect(() => {
-    if (!user) return;
+  const setupChannel = useCallback(() => {
+    if (!user) return null;
+    
+    // Clean up existing channel
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
 
     const channel = supabase
-      .channel('live-banner-alerts')
+      .channel(`live-banner-alerts-${Date.now()}`) // Unique channel name to avoid conflicts
       .on(
         'postgres_changes',
         {
@@ -134,17 +142,50 @@ export function LiveAlertsBanner() {
         console.log('Realtime subscription status:', status);
         if (status === 'SUBSCRIBED') {
           setConnectionStatus('connected');
+          wasConnectedRef.current = true;
+          // Clear any pending reconnect
+          if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = null;
+          }
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          setConnectionStatus('error');
+          // Only show error after a brief delay to avoid flicker on transient issues
+          if (wasConnectedRef.current) {
+            setConnectionStatus('connecting'); // Show connecting instead of immediate error
+            // Attempt reconnection after delay
+            if (!reconnectTimeoutRef.current) {
+              reconnectTimeoutRef.current = setTimeout(() => {
+                console.log('Attempting to reconnect realtime...');
+                setupChannel();
+                reconnectTimeoutRef.current = null;
+              }, 3000);
+            }
+          } else {
+            setConnectionStatus('error');
+          }
         } else {
           setConnectionStatus('connecting');
         }
       });
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    channelRef.current = channel;
+    return channel;
   }, [user, addAlert]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    setupChannel();
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+    };
+  }, [user, setupChannel]);
 
   const dismissAlert = (id: string) => {
     setAlerts((prev) => prev.filter((a) => a.id !== id));
