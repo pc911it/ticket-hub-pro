@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { SuperAdminCompanyProvider } from "@/contexts/SuperAdminCompanyContext";
 import { SubscriptionGuard } from "@/components/SubscriptionGuard";
 import { ApprovalGuard } from "@/components/ApprovalGuard";
 import Index from "./pages/Index";
@@ -76,6 +77,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <SuperAdminCompanyProvider>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
@@ -359,6 +361,7 @@ const App = () => (
             <Route path="/client" element={<ClientDashboard />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </SuperAdminCompanyProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
