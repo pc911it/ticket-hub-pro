@@ -126,6 +126,8 @@ export default function SupportTicketsPage() {
   useEffect(() => {
     if (!isSuperAdmin) return;
 
+    console.log("Setting up super admin support realtime subscription");
+
     const channel = supabase
       .channel('super-admin-support-realtime')
       .on(
@@ -136,6 +138,7 @@ export default function SupportTicketsPage() {
           table: 'support_tickets',
         },
         async (payload) => {
+          console.log("New support ticket received:", payload);
           const newTicket = payload.new as any;
           // Fetch company name for the notification
           const { data: company } = await supabase
@@ -144,9 +147,9 @@ export default function SupportTicketsPage() {
             .eq('id', newTicket.company_id)
             .single();
           
-          toast.success("New Support Ticket", {
+          toast.success("🆕 New Support Ticket!", {
             description: `${company?.name || 'A company'}: ${newTicket.subject}`,
-            duration: 8000,
+            duration: 10000,
           });
           queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
         }
@@ -159,6 +162,7 @@ export default function SupportTicketsPage() {
           table: 'support_ticket_messages',
         },
         async (payload) => {
+          console.log("New support message received:", payload);
           const newMessage = payload.new as any;
           // Only notify for non-staff replies (customer messages)
           if (!newMessage.is_staff_reply) {
@@ -168,18 +172,21 @@ export default function SupportTicketsPage() {
               .eq('id', newMessage.ticket_id)
               .single();
             
-            toast.info("New message on ticket", {
+            toast.info("💬 New customer message!", {
               description: `${(ticket as any)?.companies?.name || 'Customer'} replied to: ${ticket?.subject}`,
-              duration: 5000,
+              duration: 8000,
             });
             queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
             queryClient.invalidateQueries({ queryKey: ["ticket-messages"] });
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Super admin support realtime subscription status:", status);
+      });
 
     return () => {
+      console.log("Cleaning up super admin support realtime subscription");
       supabase.removeChannel(channel);
     };
   }, [isSuperAdmin, queryClient]);
