@@ -9,6 +9,7 @@ import { GlobalProjectChat } from '@/components/GlobalProjectChat';
 import { NotificationToggle, NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
 import { BillingAlertBanner } from '@/components/BillingAlertBanner';
 import { PasswordResetReminder } from '@/components/PasswordResetReminder';
+import { SuperAdminCompanySelector } from '@/components/SuperAdminCompanySelector';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -277,6 +278,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           <div className="hidden md:block">
             <LiveAlertsBanner />
           </div>
+          
+          {/* Super Admin Company Selector */}
+          <SuperAdminCompanySelector />
           
           <div className="flex-1" />
           
