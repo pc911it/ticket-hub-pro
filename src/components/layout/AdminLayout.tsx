@@ -1,8 +1,9 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeAlerts } from '@/hooks/useRealtimeAlerts';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
+import { useSupportTicketNotifications } from '@/hooks/useSupportTicketNotifications';
 import { LiveAlertsBanner } from '@/components/LiveAlertsBanner';
 import { GlobalProjectChat } from '@/components/GlobalProjectChat';
 import { NotificationToggle, NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
@@ -43,7 +44,14 @@ interface AdminLayoutProps {
   children: ReactNode;
 }
 
-const navigation = [
+interface NavItem {
+  name: string;
+  href: string;
+  icon: any;
+  badge?: number;
+}
+
+const baseNavigation: NavItem[] = [
   { name: 'Dispatcher', href: '/admin', icon: Radio },
   { name: 'New Call', href: '/admin/new-call', icon: Plus },
   { name: 'Notifications', href: '/admin/notifications', icon: Bell },
@@ -64,11 +72,11 @@ const navigation = [
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
-const staffNavigation = [
+const staffNavigation: NavItem[] = [
   { name: 'Employee Portal', href: '/employee', icon: Briefcase },
 ];
 
-const superAdminNavigation = [
+const baseSuperAdminNavigation: NavItem[] = [
   { name: 'Platform Overview', href: '/admin/super-dashboard', icon: LayoutDashboard },
   { name: 'Company Approvals', href: '/admin/company-approvals', icon: CheckSquare },
   { name: 'Support Tickets', href: '/admin/support-tickets', icon: HeadphonesIcon },
@@ -84,13 +92,64 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   // Enable real-time alerts
   useRealtimeAlerts();
   
+  // Support ticket notifications
+  const { unreadCount: supportUnreadCount, clearUnreadCount } = useSupportTicketNotifications();
+  
   // Session timeout warning
   const { SessionTimeoutDialog } = useSessionTimeout();
+
+  // Clear unread count when visiting support pages
+  useEffect(() => {
+    if (location.pathname === '/admin/support' || location.pathname === '/admin/support-tickets') {
+      clearUnreadCount();
+    }
+  }, [location.pathname, clearUnreadCount]);
+
+  // Build navigation with badges
+  const navigation: NavItem[] = baseNavigation.map(item => {
+    if (item.href === '/admin/support' && supportUnreadCount > 0 && !isSuperAdmin) {
+      return { ...item, badge: supportUnreadCount };
+    }
+    return item;
+  });
+
+  const superAdminNavigation: NavItem[] = baseSuperAdminNavigation.map(item => {
+    if (item.href === '/admin/support-tickets' && supportUnreadCount > 0 && isSuperAdmin) {
+      return { ...item, badge: supportUnreadCount };
+    }
+    return item;
+  });
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/');
   };
+
+  const renderNavItem = (item: NavItem, isActive: boolean) => (
+    <Link
+      key={item.name}
+      to={item.href}
+      onClick={() => setSidebarOpen(false)}
+      className={cn(
+        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+        isActive 
+          ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md" 
+          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+      )}
+    >
+      <item.icon className="h-5 w-5" />
+      <span className="flex-1">{item.name}</span>
+      {item.badge && item.badge > 0 && (
+        <Badge 
+          variant="destructive" 
+          className="h-5 min-w-5 px-1.5 text-xs font-bold animate-pulse"
+        >
+          {item.badge > 99 ? '99+' : item.badge}
+        </Badge>
+      )}
+      {isActive && !item.badge && <ChevronRight className="ml-auto h-4 w-4" />}
+    </Link>
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -137,23 +196,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                 </div>
                 {superAdminNavigation.map((item) => {
                   const isActive = location.pathname === item.href;
-                  return (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      onClick={() => setSidebarOpen(false)}
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                        isActive 
-                          ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md" 
-                          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                      )}
-                    >
-                      <item.icon className="h-5 w-5" />
-                      {item.name}
-                      {isActive && <ChevronRight className="ml-auto h-4 w-4" />}
-                    </Link>
-                  );
+                  return renderNavItem(item, isActive);
                 })}
                 <div className="my-3 border-t border-sidebar-border" />
               </>
@@ -167,23 +210,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                 </div>
                 {staffNavigation.map((item) => {
                   const isActive = location.pathname === item.href;
-                  return (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      onClick={() => setSidebarOpen(false)}
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                        isActive 
-                          ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md" 
-                          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                      )}
-                    >
-                      <item.icon className="h-5 w-5" />
-                      {item.name}
-                      {isActive && <ChevronRight className="ml-auto h-4 w-4" />}
-                    </Link>
-                  );
+                  return renderNavItem(item, isActive);
                 })}
                 <div className="my-3 border-t border-sidebar-border" />
               </>
@@ -192,23 +219,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             {/* Regular Navigation */}
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                    isActive 
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md" 
-                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                  )}
-                >
-                  <item.icon className="h-5 w-5" />
-                  {item.name}
-                  {isActive && <ChevronRight className="ml-auto h-4 w-4" />}
-                </Link>
-              );
+              return renderNavItem(item, isActive);
             })}
           </nav>
 
