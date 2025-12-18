@@ -1,7 +1,5 @@
-import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import AdminLayout from '@/components/layout/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -120,8 +118,7 @@ const SuperAdminBillingPage = () => {
   };
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Platform Billing Overview</h1>
           <p className="text-muted-foreground">Monitor revenue, subscriptions, and payment status across all companies</p>
@@ -482,8 +479,7 @@ const SuperAdminBillingPage = () => {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
-    </AdminLayout>
+    </div>
   );
 };
 
