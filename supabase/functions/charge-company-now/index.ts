@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        idempotency_key: `manual-${companyId}-${Date.now()}`,
+        idempotency_key: `m-${companyId.slice(0, 8)}-${Date.now()}`,
         source_id: company.square_card_id,
         amount_money: {
           amount: planPrice,
