@@ -42,7 +42,9 @@ const BillingSettingsPage = () => {
   const [showUpdateCard, setShowUpdateCard] = useState(false);
   const [showChangePlan, setShowChangePlan] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showPayNowDialog, setShowPayNowDialog] = useState(false);
   const [isUpdatingCard, setIsUpdatingCard] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // Fetch company data
   const { data: company, isLoading: companyLoading } = useQuery({
@@ -190,6 +192,42 @@ const BillingSettingsPage = () => {
       });
     },
   });
+
+  // Pay now handler
+  const handlePayNow = async () => {
+    if (!company) return;
+    
+    setIsProcessingPayment(true);
+    
+    try {
+      const response = await supabase.functions.invoke('charge-company-now', {
+        body: {
+          companyId: company.id,
+        },
+      });
+
+      if (response.error || !response.data.success) {
+        throw new Error(response.data?.error || 'Payment failed');
+      }
+
+      toast({
+        title: 'Payment successful!',
+        description: `Charged $${(response.data.amount / 100).toFixed(2)} to card ending in ${response.data.last4}`,
+      });
+
+      setShowPayNowDialog(false);
+      queryClient.invalidateQueries({ queryKey: ['billing-company'] });
+      queryClient.invalidateQueries({ queryKey: ['billing-history'] });
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Payment failed',
+        description: err.message || 'Could not process payment.',
+      });
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -422,6 +460,63 @@ const BillingSettingsPage = () => {
                 />
               </DialogContent>
             </Dialog>
+
+            {/* Pay Now Button */}
+            {hasPaymentMethod && (
+              <Dialog open={showPayNowDialog} onOpenChange={setShowPayNowDialog}>
+                <DialogTrigger asChild>
+                  <Button variant="default" className="w-full">
+                    <DollarSign className="mr-2 h-4 w-4" />
+                    Pay Now (${currentPlan.monthlyPrice})
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Confirm Payment</DialogTitle>
+                    <DialogDescription>
+                      You're about to charge ${currentPlan.monthlyPrice} to your card on file for the {currentPlan.name} plan.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="bg-muted p-4 rounded-lg space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Plan</span>
+                        <span className="font-medium">{currentPlan.name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Amount</span>
+                        <span className="font-medium">${currentPlan.monthlyPrice}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Billing Period</span>
+                        <span className="font-medium">1 Month</span>
+                      </div>
+                    </div>
+                  </div>
+                  <DialogFooter className="gap-2 sm:gap-0">
+                    <Button variant="outline" onClick={() => setShowPayNowDialog(false)}>
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={handlePayNow}
+                      disabled={isProcessingPayment}
+                    >
+                      {isProcessingPayment ? (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="mr-2 h-4 w-4" />
+                          Pay ${currentPlan.monthlyPrice}
+                        </>
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
 
             {company.trial_ends_at && (
               <div className="text-sm text-muted-foreground">
