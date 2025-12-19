@@ -66,6 +66,10 @@ const ProjectsPage = () => {
     start_date: '',
     end_date: '',
     address: '',
+    apartment: '',
+    city: '',
+    state: '',
+    zip_code: '',
     budget: '',
     notes: '',
   });
@@ -132,6 +136,10 @@ const ProjectsPage = () => {
       start_date: '',
       end_date: '',
       address: '',
+      apartment: '',
+      city: '',
+      state: '',
+      zip_code: '',
       budget: '',
       notes: '',
     });
@@ -141,6 +149,8 @@ const ProjectsPage = () => {
   const handleOpenDialog = (project?: Project) => {
     if (project) {
       setEditingProject(project);
+      // Parse address components from stored address if available
+      const addressParts = project.address?.split('|') || [];
       setFormData({
         name: project.name,
         description: project.description || '',
@@ -148,7 +158,11 @@ const ProjectsPage = () => {
         status: project.status,
         start_date: project.start_date || '',
         end_date: project.end_date || '',
-        address: project.address || '',
+        address: addressParts[0] || '',
+        apartment: addressParts[1] || '',
+        city: addressParts[2] || '',
+        state: addressParts[3] || '',
+        zip_code: addressParts[4] || '',
         budget: project.budget?.toString() || '',
         notes: project.notes || '',
       });
@@ -161,6 +175,15 @@ const ProjectsPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Combine address fields with pipe separator for storage
+    const fullAddress = [
+      formData.address,
+      formData.apartment,
+      formData.city,
+      formData.state,
+      formData.zip_code,
+    ].join('|');
+
     const payload = {
       name: formData.name,
       description: formData.description || null,
@@ -168,7 +191,7 @@ const ProjectsPage = () => {
       status: formData.status,
       start_date: formData.start_date || null,
       end_date: formData.end_date || null,
-      address: formData.address || null,
+      address: fullAddress || null,
       budget: formData.budget ? parseFloat(formData.budget) : null,
       notes: formData.notes || null,
       created_by: user?.id,
@@ -391,8 +414,48 @@ const ProjectsPage = () => {
                   id="address"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="123 Main St, City, State"
+                  placeholder="123 Main St"
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="apartment">Apartment #</Label>
+                  <Input
+                    id="apartment"
+                    value={formData.apartment}
+                    onChange={(e) => setFormData({ ...formData, apartment: e.target.value })}
+                    placeholder="Apt 4B"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="city">City</Label>
+                  <Input
+                    id="city"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    placeholder="New York"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="state">State</Label>
+                  <Input
+                    id="state"
+                    value={formData.state}
+                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                    placeholder="NY"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="zip_code">Zip Code</Label>
+                  <Input
+                    id="zip_code"
+                    value={formData.zip_code}
+                    onChange={(e) => setFormData({ ...formData, zip_code: e.target.value })}
+                    placeholder="10001"
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
