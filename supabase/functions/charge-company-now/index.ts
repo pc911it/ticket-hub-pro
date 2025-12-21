@@ -25,6 +25,9 @@ Deno.serve(async (req) => {
     const accessToken = Deno.env.get('SQUARE_ACCESS_TOKEN');
     const locationId = Deno.env.get('SQUARE_LOCATION_ID');
     
+    console.log('Square config - Location ID:', locationId);
+    console.log('Square config - Access Token exists:', !!accessToken);
+    
     if (!accessToken || !locationId) {
       console.error('Missing Square configuration');
       return new Response(
