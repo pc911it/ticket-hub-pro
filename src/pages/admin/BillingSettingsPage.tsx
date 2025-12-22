@@ -45,6 +45,8 @@ const BillingSettingsPage = () => {
   const [showPayNowDialog, setShowPayNowDialog] = useState(false);
   const [isUpdatingCard, setIsUpdatingCard] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isProcessingPayPal, setIsProcessingPayPal] = useState(false);
+  const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
 
   // Fetch company data
   const { data: company, isLoading: companyLoading } = useQuery({
@@ -193,7 +195,7 @@ const BillingSettingsPage = () => {
     },
   });
 
-  // Pay now handler
+  // Pay now handler (Square)
   const handlePayNow = async () => {
     if (!company) return;
     
@@ -227,6 +229,83 @@ const BillingSettingsPage = () => {
     } finally {
       setIsProcessingPayment(false);
     }
+  };
+
+  // PayPal payment handler
+  const handlePayPal = async () => {
+    if (!company) return;
+    
+    setIsProcessingPayPal(true);
+    
+    try {
+      const response = await supabase.functions.invoke('paypal-create-order', {
+        body: {
+          companyId: company.id,
+        },
+      });
+
+      if (response.error || !response.data.orderId) {
+        throw new Error(response.data?.error || 'Failed to create PayPal order');
+      }
+
+      setPaypalOrderId(response.data.orderId);
+      
+      // Open PayPal in new window
+      if (response.data.approvalUrl) {
+        window.open(response.data.approvalUrl, '_blank', 'width=500,height=600');
+        
+        toast({
+          title: 'PayPal Opened',
+          description: 'Complete your payment in the PayPal window, then click "Confirm Payment" below.',
+        });
+      }
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'PayPal Error',
+        description: err.message || 'Could not start PayPal checkout.',
+      });
+      setIsProcessingPayPal(false);
+    }
+  };
+
+  // Capture PayPal payment
+  const handleCapturePayPal = async () => {
+    if (!company || !paypalOrderId) return;
+    
+    try {
+      const response = await supabase.functions.invoke('paypal-capture-order', {
+        body: {
+          orderId: paypalOrderId,
+          companyId: company.id,
+        },
+      });
+
+      if (response.error || !response.data.success) {
+        throw new Error(response.data?.error || 'Failed to capture PayPal payment');
+      }
+
+      toast({
+        title: 'PayPal Payment Successful!',
+        description: `Charged $${(response.data.amount / 100).toFixed(2)} via PayPal`,
+      });
+
+      setPaypalOrderId(null);
+      setIsProcessingPayPal(false);
+      queryClient.invalidateQueries({ queryKey: ['billing-company'] });
+      queryClient.invalidateQueries({ queryKey: ['billing-history'] });
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'PayPal Capture Failed',
+        description: err.message || 'Could not complete PayPal payment.',
+      });
+    }
+  };
+
+  const cancelPayPal = () => {
+    setPaypalOrderId(null);
+    setIsProcessingPayPal(false);
   };
 
   const getStatusBadge = (status: string) => {
@@ -527,6 +606,57 @@ const BillingSettingsPage = () => {
                 )}
               </div>
             )}
+
+            {/* PayPal Payment Option */}
+            <Separator className="my-4" />
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-muted-foreground">Or pay with PayPal</p>
+              {!paypalOrderId ? (
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={handlePayPal}
+                  disabled={isProcessingPayPal}
+                >
+                  {isProcessingPayPal ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      Opening PayPal...
+                    </>
+                  ) : (
+                    <>
+                      <DollarSign className="mr-2 h-4 w-4" />
+                      Pay ${currentPlan.monthlyPrice} with PayPal
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <div className="space-y-2">
+                  <Alert className="border-blue-500/30 bg-blue-500/10">
+                    <AlertCircle className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-600">
+                      Complete payment in PayPal window, then click confirm below.
+                    </AlertDescription>
+                  </Alert>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="default" 
+                      className="flex-1"
+                      onClick={handleCapturePayPal}
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Confirm Payment
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={cancelPayPal}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
