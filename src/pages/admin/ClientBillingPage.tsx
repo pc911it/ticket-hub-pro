@@ -47,16 +47,24 @@ import {
   RefreshCw,
   Trash2,
   Edit,
-  Zap
+  Zap,
+  Eye,
+  ClipboardList
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { SquareCardForm } from '@/components/SquareCardForm';
+import { CreateInvoiceDialog } from '@/components/billing/CreateInvoiceDialog';
+import { CreateEstimateDialog } from '@/components/billing/CreateEstimateDialog';
+import { InvoiceDetailSheet } from '@/components/billing/InvoiceDetailSheet';
+import { EstimateDetailSheet } from '@/components/billing/EstimateDetailSheet';
+import { LineItem } from '@/components/billing/InvoiceLineItems';
 
 const ClientBillingPage = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [showAddPlan, setShowAddPlan] = useState(false);
   const [showCreateInvoice, setShowCreateInvoice] = useState(false);
+  const [showCreateEstimate, setShowCreateEstimate] = useState(false);
   const [showCreateSubscription, setShowCreateSubscription] = useState(false);
   const [showAddCard, setShowAddCard] = useState(false);
   const [selectedSubscriptionForCard, setSelectedSubscriptionForCard] = useState<any>(null);
@@ -64,6 +72,8 @@ const ClientBillingPage = () => {
   const [showAddClientCard, setShowAddClientCard] = useState(false);
   const [selectedClientForCard, setSelectedClientForCard] = useState<any>(null);
   const [isSavingClientCard, setIsSavingClientCard] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [selectedEstimate, setSelectedEstimate] = useState<any>(null);
   
   // Form states
   const [planForm, setPlanForm] = useState({
@@ -71,15 +81,6 @@ const ClientBillingPage = () => {
     description: '',
     amount: '',
     billing_interval: 'monthly',
-  });
-  
-  const [invoiceForm, setInvoiceForm] = useState({
-    client_id: '',
-    amount: '',
-    description: '',
-    due_date: '',
-    notes: '',
-    payment_method: 'invoice',
   });
 
   const [subscriptionForm, setSubscriptionForm] = useState({
@@ -125,11 +126,42 @@ const ClientBillingPage = () => {
       if (!company) return [];
       const { data } = await supabase
         .from('clients')
-        .select('id, full_name, email, square_customer_id, square_card_id')
+        .select('id, full_name, email, address, phone, square_customer_id, square_card_id')
         .eq('company_id', company)
         .is('deleted_at', null)
         .order('full_name');
       return data || [];
+    },
+    enabled: !!company,
+  });
+
+  // Fetch projects
+  const { data: projects } = useQuery({
+    queryKey: ['projects-for-billing', company],
+    queryFn: async () => {
+      if (!company) return [];
+      const { data } = await supabase
+        .from('projects')
+        .select('id, name')
+        .eq('company_id', company)
+        .is('deleted_at', null)
+        .order('name');
+      return data || [];
+    },
+    enabled: !!company,
+  });
+
+  // Fetch company details for PDF
+  const { data: companyDetails } = useQuery({
+    queryKey: ['company-details', company],
+    queryFn: async () => {
+      if (!company) return null;
+      const { data } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('id', company)
+        .single();
+      return data;
     },
     enabled: !!company,
   });
@@ -141,7 +173,22 @@ const ClientBillingPage = () => {
       if (!company) return [];
       const { data } = await supabase
         .from('client_invoices')
-        .select('*, clients(full_name, email)')
+        .select('*, clients(full_name, email, address, phone, square_card_id)')
+        .eq('company_id', company)
+        .order('created_at', { ascending: false });
+      return data || [];
+    },
+    enabled: !!company,
+  });
+
+  // Fetch estimates
+  const { data: estimates, isLoading: estimatesLoading } = useQuery({
+    queryKey: ['client-estimates', company],
+    queryFn: async () => {
+      if (!company) return [];
+      const { data } = await supabase
+        .from('estimates')
+        .select('*, clients(full_name, email, address, phone)')
         .eq('company_id', company)
         .order('created_at', { ascending: false });
       return data || [];
@@ -188,30 +235,60 @@ const ClientBillingPage = () => {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  // Create invoice
+  // Create invoice with line items
   const createInvoiceMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (data: { client_id: string; project_id?: string; description: string; notes: string; due_date: string; line_items: LineItem[]; amount: number }) => {
       if (!company) throw new Error('No company found');
       const invoiceNumber = `INV-${Date.now().toString(36).toUpperCase()}`;
       const { error } = await supabase
         .from('client_invoices')
-        .insert({
+        .insert([{
           company_id: company,
-          client_id: invoiceForm.client_id,
+          client_id: data.client_id,
+          project_id: data.project_id,
           invoice_number: invoiceNumber,
-          amount: Math.round(parseFloat(invoiceForm.amount) * 100),
-          description: invoiceForm.description,
-          due_date: invoiceForm.due_date,
-          notes: invoiceForm.notes,
+          amount: data.amount,
+          description: data.description,
+          due_date: data.due_date,
+          notes: data.notes,
+          line_items: data.line_items as any,
           status: 'draft',
-        });
+        }]);
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success('Invoice created');
       setShowCreateInvoice(false);
-      setInvoiceForm({ client_id: '', amount: '', description: '', due_date: '', notes: '', payment_method: 'invoice' });
       queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  // Create estimate
+  const createEstimateMutation = useMutation({
+    mutationFn: async (data: { client_id: string; project_id?: string; description: string; notes: string; valid_until: string; line_items: LineItem[]; amount: number }) => {
+      if (!company) throw new Error('No company found');
+      const estimateNumber = `EST-${Date.now().toString(36).toUpperCase()}`;
+      const { error } = await supabase
+        .from('estimates')
+        .insert([{
+          company_id: company,
+          client_id: data.client_id,
+          project_id: data.project_id,
+          estimate_number: estimateNumber,
+          amount: data.amount,
+          description: data.description,
+          valid_until: data.valid_until,
+          notes: data.notes,
+          line_items: data.line_items as any,
+          status: 'draft',
+        }]);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Estimate created');
+      setShowCreateEstimate(false);
+      queryClient.invalidateQueries({ queryKey: ['client-estimates'] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -249,7 +326,117 @@ const ClientBillingPage = () => {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  // Create subscription
+  // Send estimate via email
+  const sendEstimateMutation = useMutation({
+    mutationFn: async (estimateId: string) => {
+      const { data, error } = await supabase.functions.invoke('send-estimate', {
+        body: { estimateId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('Estimate sent to client');
+      queryClient.invalidateQueries({ queryKey: ['client-estimates'] });
+      setSelectedEstimate(null);
+    },
+    onError: (error: Error) => toast.error(`Failed to send estimate: ${error.message}`),
+  });
+
+  // Accept estimate
+  const acceptEstimateMutation = useMutation({
+    mutationFn: async (estimateId: string) => {
+      const { error } = await supabase
+        .from('estimates')
+        .update({ status: 'accepted', accepted_at: new Date().toISOString() })
+        .eq('id', estimateId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Estimate marked as accepted');
+      queryClient.invalidateQueries({ queryKey: ['client-estimates'] });
+      setSelectedEstimate(null);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  // Decline estimate
+  const declineEstimateMutation = useMutation({
+    mutationFn: async (estimateId: string) => {
+      const { error } = await supabase
+        .from('estimates')
+        .update({ status: 'declined', declined_at: new Date().toISOString() })
+        .eq('id', estimateId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Estimate marked as declined');
+      queryClient.invalidateQueries({ queryKey: ['client-estimates'] });
+      setSelectedEstimate(null);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  // Convert estimate to invoice
+  const convertEstimateMutation = useMutation({
+    mutationFn: async (estimateId: string) => {
+      if (!company) throw new Error('No company found');
+      
+      // Get the estimate
+      const { data: estimate, error: fetchError } = await supabase
+        .from('estimates')
+        .select('*')
+        .eq('id', estimateId)
+        .single();
+      
+      if (fetchError || !estimate) throw new Error('Estimate not found');
+      
+      const invoiceNumber = `INV-${Date.now().toString(36).toUpperCase()}`;
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 30);
+      
+      // Create invoice from estimate
+      const { data: newInvoice, error: invoiceError } = await supabase
+        .from('client_invoices')
+        .insert([{
+          company_id: company,
+          client_id: estimate.client_id,
+          project_id: estimate.project_id,
+          invoice_number: invoiceNumber,
+          amount: estimate.amount,
+          description: estimate.description,
+          due_date: dueDate.toISOString().split('T')[0],
+          notes: estimate.notes,
+          line_items: estimate.line_items,
+          status: 'draft',
+        }])
+        .select()
+        .single();
+      
+      if (invoiceError || !newInvoice) throw new Error('Failed to create invoice');
+      
+      // Update estimate with converted invoice reference
+      const { error: updateError } = await supabase
+        .from('estimates')
+        .update({ 
+          status: 'converted', 
+          converted_to_invoice_id: newInvoice.id 
+        })
+        .eq('id', estimateId);
+      
+      if (updateError) throw updateError;
+      
+      return newInvoice;
+    },
+    onSuccess: () => {
+      toast.success('Estimate converted to invoice');
+      queryClient.invalidateQueries({ queryKey: ['client-estimates'] });
+      queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
+      setSelectedEstimate(null);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
   const createSubscriptionMutation = useMutation({
     mutationFn: async () => {
       if (!company) throw new Error('No company found');
@@ -378,6 +565,23 @@ const ClientBillingPage = () => {
     }
   };
 
+  const getEstimateStatusBadge = (status: string) => {
+    switch (status) {
+      case 'accepted':
+        return <Badge className="bg-green-500/20 text-green-700 border-green-500/30"><CheckCircle className="h-3 w-3 mr-1" />Accepted</Badge>;
+      case 'declined':
+        return <Badge className="bg-red-500/20 text-red-700 border-red-500/30"><XCircle className="h-3 w-3 mr-1" />Declined</Badge>;
+      case 'sent':
+        return <Badge className="bg-blue-500/20 text-blue-700 border-blue-500/30"><Send className="h-3 w-3 mr-1" />Sent</Badge>;
+      case 'draft':
+        return <Badge className="bg-gray-500/20 text-gray-700 border-gray-500/30"><Clock className="h-3 w-3 mr-1" />Draft</Badge>;
+      case 'converted':
+        return <Badge className="bg-purple-500/20 text-purple-700 border-purple-500/30"><FileText className="h-3 w-3 mr-1" />Converted</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
   const formatCurrency = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
   return (
@@ -440,6 +644,7 @@ const ClientBillingPage = () => {
       <Tabs defaultValue="invoices" className="space-y-4">
         <TabsList>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
+          <TabsTrigger value="estimates">Estimates</TabsTrigger>
           <TabsTrigger value="plans">Payment Plans</TabsTrigger>
           <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
           <TabsTrigger value="client-cards">Client Cards</TabsTrigger>
@@ -448,106 +653,9 @@ const ClientBillingPage = () => {
         {/* Invoices Tab */}
         <TabsContent value="invoices" className="space-y-4">
           <div className="flex justify-end">
-            <Dialog open={showCreateInvoice} onOpenChange={setShowCreateInvoice}>
-              <DialogTrigger asChild>
-                <Button><Plus className="h-4 w-4 mr-2" />Create Invoice</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create Invoice</DialogTitle>
-                  <DialogDescription>Create a new invoice for a client</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label>Client</Label>
-                    <Select value={invoiceForm.client_id} onValueChange={(v) => setInvoiceForm({ ...invoiceForm, client_id: v })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select client" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {clients?.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>{client.full_name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Amount ($)</Label>
-                    <Input 
-                      type="number" 
-                      step="0.01"
-                      value={invoiceForm.amount}
-                      onChange={(e) => setInvoiceForm({ ...invoiceForm, amount: e.target.value })}
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <div>
-                    <Label>Due Date</Label>
-                    <Input 
-                      type="date"
-                      value={invoiceForm.due_date}
-                      onChange={(e) => setInvoiceForm({ ...invoiceForm, due_date: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>Description</Label>
-                    <Textarea 
-                      value={invoiceForm.description}
-                      onChange={(e) => setInvoiceForm({ ...invoiceForm, description: e.target.value })}
-                      placeholder="Services rendered..."
-                    />
-                  </div>
-                  <div>
-                    <Label>Notes (Optional)</Label>
-                    <Textarea 
-                      value={invoiceForm.notes}
-                      onChange={(e) => setInvoiceForm({ ...invoiceForm, notes: e.target.value })}
-                      placeholder="Additional notes..."
-                    />
-                  </div>
-                  <div>
-                    <Label>Payment Type</Label>
-                    <Select 
-                      value={invoiceForm.payment_method} 
-                      onValueChange={(v) => setInvoiceForm({ ...invoiceForm, payment_method: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="invoice">
-                          <div className="flex flex-col items-start">
-                            <span className="font-medium">One-time Invoice</span>
-                            <span className="text-xs text-muted-foreground">Send invoice via email for manual payment</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="card_on_file">
-                          <div className="flex flex-col items-start">
-                            <span className="font-medium">Charge Card on File</span>
-                            <span className="text-xs text-muted-foreground">Charge client's saved card immediately</span>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {invoiceForm.payment_method === 'card_on_file' 
-                        ? 'Client must have an active subscription with a saved card'
-                        : 'Invoice will be emailed to client when you click Send'
-                      }
-                    </p>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowCreateInvoice(false)}>Cancel</Button>
-                  <Button 
-                    onClick={() => createInvoiceMutation.mutate()}
-                    disabled={createInvoiceMutation.isPending || !invoiceForm.client_id || !invoiceForm.amount || !invoiceForm.due_date}
-                  >
-                    {createInvoiceMutation.isPending ? 'Creating...' : 'Create Invoice'}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <Button onClick={() => setShowCreateInvoice(true)}>
+              <Plus className="h-4 w-4 mr-2" />Create Invoice
+            </Button>
           </div>
 
           <Card>
@@ -570,18 +678,25 @@ const ClientBillingPage = () => {
                   </TableHeader>
                   <TableBody>
                     {invoices.map((invoice: any) => (
-                      <TableRow key={invoice.id}>
+                      <TableRow key={invoice.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedInvoice(invoice)}>
                         <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
                         <TableCell>{invoice.clients?.full_name || 'Unknown'}</TableCell>
                         <TableCell>{formatCurrency(invoice.amount)}</TableCell>
                         <TableCell>{format(new Date(invoice.due_date), 'MMM d, yyyy')}</TableCell>
                         <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                         <TableCell className="text-right space-x-2">
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            onClick={(e) => { e.stopPropagation(); setSelectedInvoice(invoice); }}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                           {invoice.status === 'draft' && (
                             <Button 
                               size="sm" 
                               variant="outline"
-                              onClick={() => sendInvoiceMutation.mutate(invoice.id)}
+                              onClick={(e) => { e.stopPropagation(); sendInvoiceMutation.mutate(invoice.id); }}
                               disabled={sendInvoiceMutation.isPending}
                             >
                               <Send className="h-4 w-4 mr-1" />Send
@@ -591,7 +706,7 @@ const ClientBillingPage = () => {
                             <Button 
                               size="sm" 
                               variant="outline"
-                              onClick={() => markPaidMutation.mutate(invoice.id)}
+                              onClick={(e) => { e.stopPropagation(); markPaidMutation.mutate(invoice.id); }}
                               disabled={markPaidMutation.isPending}
                             >
                               <CheckCircle className="h-4 w-4 mr-1" />Mark Paid
@@ -607,6 +722,64 @@ const ClientBillingPage = () => {
                   <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p>No invoices yet</p>
                   <p className="text-sm">Create your first invoice to get started</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Estimates Tab */}
+        <TabsContent value="estimates" className="space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={() => setShowCreateEstimate(true)}>
+              <Plus className="h-4 w-4 mr-2" />Create Estimate
+            </Button>
+          </div>
+
+          <Card>
+            <CardContent className="p-0">
+              {estimatesLoading ? (
+                <div className="flex justify-center py-8">
+                  <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : estimates && estimates.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Estimate #</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Valid Until</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {estimates.map((estimate: any) => (
+                      <TableRow key={estimate.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedEstimate(estimate)}>
+                        <TableCell className="font-medium">{estimate.estimate_number}</TableCell>
+                        <TableCell>{estimate.clients?.full_name || 'Unknown'}</TableCell>
+                        <TableCell>{formatCurrency(estimate.amount)}</TableCell>
+                        <TableCell>{estimate.valid_until ? format(new Date(estimate.valid_until), 'MMM d, yyyy') : '-'}</TableCell>
+                        <TableCell>{getEstimateStatusBadge(estimate.status)}</TableCell>
+                        <TableCell className="text-right space-x-2">
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            onClick={(e) => { e.stopPropagation(); setSelectedEstimate(estimate); }}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <ClipboardList className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>No estimates yet</p>
+                  <p className="text-sm">Create your first estimate to get started</p>
                 </div>
               )}
             </CardContent>
@@ -1006,6 +1179,68 @@ const ClientBillingPage = () => {
           </Dialog>
         </TabsContent>
       </Tabs>
+
+      {/* Create Invoice Dialog */}
+      <CreateInvoiceDialog
+        open={showCreateInvoice}
+        onOpenChange={setShowCreateInvoice}
+        clients={clients || []}
+        projects={projects || []}
+        onSubmit={async (data) => {
+          await createInvoiceMutation.mutateAsync(data);
+        }}
+        isLoading={createInvoiceMutation.isPending}
+      />
+
+      {/* Create Estimate Dialog */}
+      <CreateEstimateDialog
+        open={showCreateEstimate}
+        onOpenChange={setShowCreateEstimate}
+        clients={clients || []}
+        projects={projects || []}
+        onSubmit={async (data) => {
+          await createEstimateMutation.mutateAsync(data);
+        }}
+        isLoading={createEstimateMutation.isPending}
+      />
+
+      {/* Invoice Detail Sheet */}
+      <InvoiceDetailSheet
+        open={!!selectedInvoice}
+        onOpenChange={(open) => !open && setSelectedInvoice(null)}
+        invoice={selectedInvoice}
+        company={companyDetails}
+        onSend={() => {
+          sendInvoiceMutation.mutate(selectedInvoice.id);
+        }}
+        onMarkPaid={() => {
+          markPaidMutation.mutate(selectedInvoice.id);
+          setSelectedInvoice(null);
+        }}
+        isSending={sendInvoiceMutation.isPending}
+      />
+
+      {/* Estimate Detail Sheet */}
+      <EstimateDetailSheet
+        open={!!selectedEstimate}
+        onOpenChange={(open) => !open && setSelectedEstimate(null)}
+        estimate={selectedEstimate}
+        company={companyDetails}
+        onSend={() => {
+          sendEstimateMutation.mutate(selectedEstimate.id);
+        }}
+        onAccept={() => {
+          acceptEstimateMutation.mutate(selectedEstimate.id);
+        }}
+        onDecline={() => {
+          declineEstimateMutation.mutate(selectedEstimate.id);
+        }}
+        onConvertToInvoice={() => {
+          convertEstimateMutation.mutate(selectedEstimate.id);
+        }}
+        isSending={sendEstimateMutation.isPending}
+        isConverting={convertEstimateMutation.isPending}
+      />
     </div>
   );
 };
