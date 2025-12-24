@@ -109,8 +109,8 @@ export const CreateInvoiceDialog = ({
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No project</SelectItem>
-                  {projects.map((project) => (
+                  <SelectItem value="none">No project</SelectItem>
+                  {projects.filter(p => p.id).map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                       {project.name}
                     </SelectItem>
