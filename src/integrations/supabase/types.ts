@@ -611,6 +611,98 @@ export type Database = {
           },
         ]
       }
+      estimates: {
+        Row: {
+          accepted_at: string | null
+          amount: number
+          client_id: string
+          company_id: string
+          converted_to_invoice_id: string | null
+          created_at: string
+          currency: string
+          declined_at: string | null
+          description: string | null
+          estimate_number: string
+          id: string
+          line_items: Json | null
+          notes: string | null
+          project_id: string | null
+          sent_at: string | null
+          status: string
+          updated_at: string
+          valid_until: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          amount: number
+          client_id: string
+          company_id: string
+          converted_to_invoice_id?: string | null
+          created_at?: string
+          currency?: string
+          declined_at?: string | null
+          description?: string | null
+          estimate_number: string
+          id?: string
+          line_items?: Json | null
+          notes?: string | null
+          project_id?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          amount?: number
+          client_id?: string
+          company_id?: string
+          converted_to_invoice_id?: string | null
+          created_at?: string
+          currency?: string
+          declined_at?: string | null
+          description?: string | null
+          estimate_number?: string
+          id?: string
+          line_items?: Json | null
+          notes?: string | null
+          project_id?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estimates_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimates_converted_to_invoice_id_fkey"
+            columns: ["converted_to_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "client_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_items: {
         Row: {
           barcode: string | null
