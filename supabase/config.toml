@@ -56,3 +56,15 @@ verify_jwt = false
 
 [functions.send-time-report-notification]
 verify_jwt = false
+
+[functions.send-estimate]
+verify_jwt = false
+
+[functions.paypal-create-order]
+verify_jwt = false
+
+[functions.paypal-capture-order]
+verify_jwt = false
+
+[functions.charge-company-now]
+verify_jwt = false
