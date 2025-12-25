@@ -9,6 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Ticket, ArrowLeft, Mail, Lock, User, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { validatePassword } from '@/lib/passwordValidation';
+import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -66,6 +68,20 @@ const Auth = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate password strength for sign up
+    if (isSignUp && isFirstUser) {
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.isValid) {
+        toast({
+          variant: 'destructive',
+          title: 'Weak password',
+          description: passwordValidation.errors[0],
+        });
+        return;
+      }
+    }
+    
     setIsLoading(true);
 
     try {
@@ -200,9 +216,12 @@ const Auth = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10"
                     required
-                    minLength={6}
+                    minLength={8}
                   />
                 </div>
+                {isSignUp && isFirstUser && (
+                  <PasswordStrengthIndicator password={password} />
+                )}
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">

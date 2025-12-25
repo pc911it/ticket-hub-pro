@@ -14,6 +14,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import type { Database } from "@/integrations/supabase/types";
+import { validatePassword } from "@/lib/passwordValidation";
+import { PasswordStrengthIndicator } from "@/components/PasswordStrengthIndicator";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
@@ -153,9 +155,10 @@ export default function UsersPage() {
         throw new Error("Please enter a valid email address");
       }
 
-      // Validate password length
-      if (userData.password.length < 6) {
-        throw new Error("Password must be at least 6 characters");
+      // Validate password strength
+      const passwordValidation = validatePassword(userData.password);
+      if (!passwordValidation.isValid) {
+        throw new Error(passwordValidation.errors[0]);
       }
 
       // Validate name
@@ -227,6 +230,12 @@ export default function UsersPage() {
 
   const resetPasswordMutation = useMutation({
     mutationFn: async ({ userId, newPassword, companyId }: { userId: string; newPassword: string; companyId?: string }) => {
+      // Validate password strength
+      const passwordValidation = validatePassword(newPassword);
+      if (!passwordValidation.isValid) {
+        throw new Error(passwordValidation.errors[0]);
+      }
+      
       const response = await supabase.functions.invoke("reset-user-password", {
         body: { userId, newPassword, companyId },
       });
@@ -374,9 +383,10 @@ export default function UsersPage() {
                   value={newUser.password}
                   onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                   placeholder="••••••••"
-                  minLength={6}
+                  minLength={8}
                   required
                 />
+                <PasswordStrengthIndicator password={newUser.password} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="role">Role</Label>
@@ -601,8 +611,9 @@ export default function UsersPage() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Enter new password"
-                minLength={6}
+                minLength={8}
               />
+              <PasswordStrengthIndicator password={newPassword} />
             </div>
             <Button
               onClick={() => {
@@ -614,7 +625,7 @@ export default function UsersPage() {
                   });
                 }
               }}
-              disabled={!newPassword || newPassword.length < 6 || resetPasswordMutation.isPending}
+              disabled={!newPassword || !validatePassword(newPassword).isValid || resetPasswordMutation.isPending}
               className="w-full"
             >
               {resetPasswordMutation.isPending ? "Resetting..." : "Reset Password"}
