@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -109,7 +109,7 @@ export default function CompanySettingsPage() {
   });
 
   // Update form when company data loads
-  useState(() => {
+  useEffect(() => {
     if (company) {
       setFormData({
         name: company.name || "",
@@ -121,7 +121,7 @@ export default function CompanySettingsPage() {
         type: company.type || "alarm_company",
       });
     }
-  });
+  }, [company]);
 
   const updateCompanyMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
