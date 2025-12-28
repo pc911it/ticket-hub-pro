@@ -52,6 +52,9 @@ interface NavItem {
   badge?: number;
 }
 
+// Pages restricted to admins only
+const restrictedPages = ['/admin/client-billing', '/admin/billing', '/admin/settings', '/admin/users'];
+
 const baseNavigation: NavItem[] = [
   { name: 'Dispatcher', href: '/admin', icon: Radio },
   { name: 'New Call', href: '/admin/new-call', icon: Plus },
@@ -106,13 +109,18 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     }
   }, [location.pathname, clearUnreadCount]);
 
-  // Build navigation with badges
-  const navigation: NavItem[] = baseNavigation.map(item => {
-    if (item.href === '/admin/support' && supportUnreadCount > 0 && !isSuperAdmin) {
-      return { ...item, badge: supportUnreadCount };
-    }
-    return item;
-  });
+  // Determine if user is admin-level (can see all pages)
+  const isAdminLevel = isSuperAdmin || isCompanyOwner || userRole === 'admin';
+
+  // Build navigation with badges and filter based on role
+  const navigation: NavItem[] = baseNavigation
+    .filter(item => isAdminLevel || !restrictedPages.includes(item.href))
+    .map(item => {
+      if (item.href === '/admin/support' && supportUnreadCount > 0 && !isSuperAdmin) {
+        return { ...item, badge: supportUnreadCount };
+      }
+      return item;
+    });
 
   const superAdminNavigation: NavItem[] = baseSuperAdminNavigation.map(item => {
     if (item.href === '/admin/support-tickets' && supportUnreadCount > 0 && isSuperAdmin) {
