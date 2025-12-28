@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffectiveCompanyId } from "@/hooks/useEffectiveCompanyId";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,19 +10,38 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { PricingPlans, defaultPlans } from "@/components/PricingPlans";
-import { CreditCard, Calendar, Users, AlertTriangle, Clock } from "lucide-react";
+import { CreditCard, Calendar, Users, AlertTriangle, Clock, Building2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function BillingPage() {
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
+  const { effectiveCompanyId, isViewingAsCompany, viewingCompanyName, isPlatformView } = useEffectiveCompanyId();
   const queryClient = useQueryClient();
   const [changePlanDialog, setChangePlanDialog] = useState<{ planId: string; isYearly: boolean } | null>(null);
   const [cancelDialog, setCancelDialog] = useState(false);
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
 
   const { data: company, isLoading } = useQuery({
-    queryKey: ["user-company", user?.id],
+    queryKey: ["billing-company", effectiveCompanyId, user?.id],
     queryFn: async () => {
+      // Super admin viewing a specific company
+      if (isSuperAdmin && effectiveCompanyId) {
+        const { data: companyData, error: companyError } = await supabase
+          .from("companies")
+          .select("*")
+          .eq("id", effectiveCompanyId)
+          .single();
+
+        if (companyError) return null;
+        return { ...companyData, userRole: 'admin' as const };
+      }
+
+      // Super admin without company selected
+      if (isSuperAdmin && !effectiveCompanyId) {
+        return null;
+      }
+
+      // Regular user - find their company membership
       if (!user?.id) return null;
 
       const { data: membership, error: membershipError } = await supabase
@@ -123,7 +143,7 @@ export default function BillingPage() {
   });
 
   const currentPlan = defaultPlans.find(p => p.id === company?.subscription_plan) || defaultPlans[0];
-  const isOwnerOrAdmin = company?.owner_id === user?.id || company?.userRole === 'admin';
+  // Note: isOwnerOrAdmin check moved after company null check below
 
   if (isLoading) {
     return (
@@ -134,12 +154,27 @@ export default function BillingPage() {
   }
 
   if (!company) {
+    if (isSuperAdmin && isPlatformView) {
+      return (
+        <div className="flex flex-col items-center justify-center h-64 gap-4">
+          <Building2 className="h-12 w-12 text-muted-foreground" />
+          <div className="text-center">
+            <h3 className="text-lg font-semibold">No company selected</h3>
+            <p className="text-muted-foreground">
+              Select a company from the dropdown above to manage their billing settings.
+            </p>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-muted-foreground">No company found. Please register a company first.</p>
       </div>
     );
   }
+
+  const isOwnerOrAdmin = isSuperAdmin || company?.owner_id === user?.id || company?.userRole === 'admin';
 
   if (!isOwnerOrAdmin) {
     return (
