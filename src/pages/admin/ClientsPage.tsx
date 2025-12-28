@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Mail, Phone, MapPin, Edit2, Trash2, KeyRound, UserPlus } from 'lucide-react';
+import { Plus, Search, Mail, Phone, MapPin, Edit2, Trash2, KeyRound, UserPlus, CheckCircle } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
@@ -23,6 +24,9 @@ interface Client {
   notes: string | null;
   company_id: string | null;
   created_at: string;
+  portal_user_id: string | null;
+  temp_password_created_at: string | null;
+  must_change_password: boolean | null;
 }
 
 const ClientsPage = () => {
@@ -42,6 +46,9 @@ const ClientsPage = () => {
   const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set());
   const [createWithPortalAccess, setCreateWithPortalAccess] = useState(false);
   const [newClientPassword, setNewClientPassword] = useState('');
+  const [generatedTempPassword, setGeneratedTempPassword] = useState<string | null>(null);
+  const [showTempPasswordDialog, setShowTempPasswordDialog] = useState(false);
+  const [generatingPassword, setGeneratingPassword] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -93,7 +100,7 @@ const ClientsPage = () => {
   const fetchClients = async () => {
     const { data, error } = await supabase
       .from('clients')
-      .select('*')
+      .select('id, full_name, email, phone, address, notes, company_id, created_at, portal_user_id, temp_password_created_at, must_change_password')
       .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
@@ -134,7 +141,50 @@ const ClientsPage = () => {
   const handleOpenLoginDialog = (client: Client) => {
     setSelectedClientForLogin(client);
     setLoginPassword('');
+    setGeneratedTempPassword(null);
     setIsLoginDialogOpen(true);
+  };
+
+  const handleGenerateTempPassword = async () => {
+    if (!selectedClientForLogin) return;
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(selectedClientForLogin.email)) {
+      toast({ variant: 'destructive', title: 'Invalid Email', description: 'Client has an invalid email address.' });
+      return;
+    }
+
+    setGeneratingPassword(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-client-portal', {
+        body: {
+          clientId: selectedClientForLogin.id,
+          sendEmail: true,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setGeneratedTempPassword(data.tempPassword);
+      setShowTempPasswordDialog(true);
+      setIsLoginDialogOpen(false);
+      
+      const message = data.existingUser 
+        ? 'Password has been reset. Email sent to client.'
+        : 'Portal account created. Email sent to client.';
+      toast({ title: 'Success', description: message });
+      fetchClients();
+    } catch (error: any) {
+      toast({ 
+        variant: 'destructive', 
+        title: 'Error', 
+        description: error.message || 'Failed to generate password.' 
+      });
+    } finally {
+      setGeneratingPassword(false);
+    }
   };
 
   const handleCreateLogin = async (e: React.FormEvent) => {
@@ -179,6 +229,7 @@ const ClientsPage = () => {
       setIsLoginDialogOpen(false);
       setLoginPassword('');
       setSelectedClientForLogin(null);
+      fetchClients();
     } catch (error: any) {
       toast({ 
         variant: 'destructive', 
@@ -486,33 +537,114 @@ const ClientsPage = () => {
       <Dialog open={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-display">Create Client Portal Login</DialogTitle>
+            <DialogTitle className="font-display">Client Portal Access</DialogTitle>
             <DialogDescription>
-              Create login credentials for {selectedClientForLogin?.full_name} ({selectedClientForLogin?.email})
+              {selectedClientForLogin?.portal_user_id 
+                ? `Reset portal access for ${selectedClientForLogin?.full_name}` 
+                : `Create portal login for ${selectedClientForLogin?.full_name}`}
+              <br />
+              <span className="text-xs">({selectedClientForLogin?.email})</span>
             </DialogDescription>
           </DialogHeader>
+          
+          {/* Option 1: Generate Temp Password (Recommended) */}
+          <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <KeyRound className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium text-sm">Generate Temporary Password</p>
+                <p className="text-xs text-muted-foreground">Recommended - Client must change on first login</p>
+              </div>
+            </div>
+            <Button 
+              onClick={handleGenerateTempPassword}
+              disabled={generatingPassword}
+              className="w-full"
+            >
+              {generatingPassword ? 'Generating...' : selectedClientForLogin?.portal_user_id ? 'Reset & Email New Password' : 'Create & Email Password'}
+            </Button>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">Or set manually</span>
+            </div>
+          </div>
+
+          {/* Option 2: Manual Password */}
           <form onSubmit={handleCreateLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="login_password">Password *</Label>
+              <Label htmlFor="login_password">Manual Password</Label>
               <Input
                 id="login_password"
                 type="password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
                 placeholder="Enter password (min 6 characters)"
-                required
                 minLength={6}
               />
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2 sm:gap-0">
               <Button type="button" variant="outline" onClick={() => setIsLoginDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={creatingLogin}>
-                {creatingLogin ? 'Creating...' : 'Create Login'}
+              <Button type="submit" variant="secondary" disabled={creatingLogin || loginPassword.length < 6}>
+                {creatingLogin ? 'Setting...' : 'Set Manual Password'}
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Temporary Password Display Dialog */}
+      <Dialog open={showTempPasswordDialog} onOpenChange={setShowTempPasswordDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display text-success">Password Generated</DialogTitle>
+            <DialogDescription>
+              Save this password - it will only be shown once!
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 bg-muted rounded-lg text-center">
+              <p className="text-xs text-muted-foreground mb-2">Temporary Password</p>
+              <code className="text-lg font-mono font-bold tracking-wider select-all">
+                {generatedTempPassword}
+              </code>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  if (generatedTempPassword) {
+                    navigator.clipboard.writeText(generatedTempPassword);
+                    toast({ title: 'Copied', description: 'Password copied to clipboard' });
+                  }
+                }}
+              >
+                Copy Password
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={() => {
+                  setShowTempPasswordDialog(false);
+                  setGeneratedTempPassword(null);
+                  setSelectedClientForLogin(null);
+                }}
+              >
+                Done
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground text-center">
+              An email with this password has been sent to the client.
+            </p>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -579,7 +711,15 @@ const ClientsPage = () => {
                       />
                     )}
                     <div>
-                      <h3 className="font-semibold text-lg">{client.full_name}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-lg">{client.full_name}</h3>
+                        {client.portal_user_id && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-success/10 text-success border-success/30">
+                            <CheckCircle className="h-2.5 w-2.5 mr-0.5" />
+                            Portal
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground">
                         Client since {format(new Date(client.created_at), 'MMM yyyy')}
                       </p>

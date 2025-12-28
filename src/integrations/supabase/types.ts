@@ -445,11 +445,14 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          must_change_password: boolean | null
           notes: string | null
           notification_preferences: Json | null
           phone: string | null
+          portal_user_id: string | null
           square_card_id: string | null
           square_customer_id: string | null
+          temp_password_created_at: string | null
           updated_at: string
         }
         Insert: {
@@ -460,11 +463,14 @@ export type Database = {
           email: string
           full_name: string
           id?: string
+          must_change_password?: boolean | null
           notes?: string | null
           notification_preferences?: Json | null
           phone?: string | null
+          portal_user_id?: string | null
           square_card_id?: string | null
           square_customer_id?: string | null
+          temp_password_created_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -475,11 +481,14 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          must_change_password?: boolean | null
           notes?: string | null
           notification_preferences?: Json | null
           phone?: string | null
+          portal_user_id?: string | null
           square_card_id?: string | null
           square_customer_id?: string | null
+          temp_password_created_at?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1879,6 +1888,7 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      is_employee_role: { Args: { _user_id: string }; Returns: boolean }
       is_project_partner: {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
