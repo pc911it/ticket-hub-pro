@@ -140,13 +140,25 @@ serve(async (req: Request): Promise<Response> => {
       .single();
     const companyName = company?.name || "Company";
 
-    // Check if client already has a portal account
-    if (client.portal_user_id) {
+    // Check if client already has a portal account OR if email exists in auth.users
+    let existingUserId = client.portal_user_id;
+    
+    // If no portal_user_id, check if email exists in auth.users
+    if (!existingUserId) {
+      const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+      const existingUser = existingUsers?.users?.find(u => u.email?.toLowerCase() === client.email.toLowerCase());
+      if (existingUser) {
+        existingUserId = existingUser.id;
+        console.log("Found existing auth user with email:", client.email);
+      }
+    }
+
+    if (existingUserId) {
       // Reset their password instead
       const tempPassword = generateTempPassword();
       
       const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(
-        client.portal_user_id,
+        existingUserId,
         { password: tempPassword }
       );
 
@@ -158,10 +170,28 @@ serve(async (req: Request): Promise<Response> => {
         });
       }
 
+      // Ensure client role exists
+      const { data: existingRole } = await supabaseAdmin
+        .from("user_roles")
+        .select("id")
+        .eq("user_id", existingUserId)
+        .eq("role", "client")
+        .maybeSingle();
+
+      if (!existingRole) {
+        await supabaseAdmin
+          .from("user_roles")
+          .insert({
+            user_id: existingUserId,
+            role: "client",
+          });
+      }
+
       // Update client record
       await supabaseAdmin
         .from("clients")
         .update({
+          portal_user_id: existingUserId,
           temp_password_created_at: new Date().toISOString(),
           must_change_password: true,
         })
@@ -182,7 +212,7 @@ serve(async (req: Request): Promise<Response> => {
         );
       }
 
-      console.log("Password reset for existing client portal user");
+      console.log("Password reset for existing user");
       return new Response(JSON.stringify({ 
         success: true, 
         tempPassword,
