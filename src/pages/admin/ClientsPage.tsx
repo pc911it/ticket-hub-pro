@@ -45,10 +45,12 @@ const ClientsPage = () => {
   const [deleting, setDeleting] = useState(false);
   const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set());
   const [createWithPortalAccess, setCreateWithPortalAccess] = useState(false);
+  const [portalPasswordType, setPortalPasswordType] = useState<'generate' | 'manual'>('generate');
   const [newClientPassword, setNewClientPassword] = useState('');
   const [generatedTempPassword, setGeneratedTempPassword] = useState<string | null>(null);
   const [showTempPasswordDialog, setShowTempPasswordDialog] = useState(false);
   const [generatingPassword, setGeneratingPassword] = useState(false);
+  const [creatingWithPortal, setCreatingWithPortal] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -119,6 +121,7 @@ const ClientsPage = () => {
     setFormData({ full_name: '', email: '', phone: '', address: '', notes: '' });
     setEditingClient(null);
     setCreateWithPortalAccess(false);
+    setPortalPasswordType('generate');
     setNewClientPassword('');
   };
 
@@ -307,6 +310,8 @@ const ClientsPage = () => {
         resetForm();
       }
     } else {
+      setCreatingWithPortal(createWithPortalAccess);
+      
       const { data: newClient, error } = await supabase.from('clients').insert({
         ...formData,
         email: formData.email.trim().toLowerCase(),
@@ -317,28 +322,47 @@ const ClientsPage = () => {
         console.error('Insert error:', error);
         const errorMsg = error.code === '23505' ? 'A client with this email already exists.' : 'Failed to create client.';
         toast({ variant: 'destructive', title: 'Error', description: errorMsg });
+        setCreatingWithPortal(false);
         return;
       }
 
-      // If portal access requested, create login
-      if (createWithPortalAccess && newClientPassword.length >= 6 && newClient) {
+      // If portal access requested
+      if (createWithPortalAccess && newClient) {
         try {
-          const { data, error: loginError } = await supabase.functions.invoke('create-user', {
-            body: {
-              email: formData.email.trim().toLowerCase(),
-              password: newClientPassword,
-              fullName: formData.full_name.trim(),
-              role: 'client',
-              companyId: userCompanyId,
-            },
-          });
+          if (portalPasswordType === 'generate') {
+            // Generate temporary password
+            const { data, error: portalError } = await supabase.functions.invoke('create-client-portal', {
+              body: {
+                clientId: newClient.id,
+                sendEmail: true,
+              },
+            });
 
-          if (loginError) throw loginError;
-          if (data?.error && !data.error.includes('already') && !data.error.includes('Password updated')) {
-            throw new Error(data.error);
+            if (portalError) throw portalError;
+            if (data?.error) throw new Error(data.error);
+
+            setGeneratedTempPassword(data.tempPassword);
+            setShowTempPasswordDialog(true);
+            toast({ title: 'Success', description: 'Client created with portal access. Temporary password generated.' });
+          } else if (newClientPassword.length >= 6) {
+            // Manual password
+            const { data, error: loginError } = await supabase.functions.invoke('create-user', {
+              body: {
+                email: formData.email.trim().toLowerCase(),
+                password: newClientPassword,
+                fullName: formData.full_name.trim(),
+                role: 'client',
+                companyId: userCompanyId,
+              },
+            });
+
+            if (loginError) throw loginError;
+            if (data?.error && !data.error.includes('already') && !data.error.includes('Password updated')) {
+              throw new Error(data.error);
+            }
+
+            toast({ title: 'Success', description: 'Client created with portal access.' });
           }
-
-          toast({ title: 'Success', description: 'Client created with portal access.' });
         } catch (loginErr: any) {
           toast({ 
             title: 'Partial Success', 
@@ -352,6 +376,7 @@ const ClientsPage = () => {
       fetchClients();
       setIsDialogOpen(false);
       resetForm();
+      setCreatingWithPortal(false);
     }
   };
 
@@ -504,17 +529,76 @@ const ClientsPage = () => {
                     />
                   </div>
                   {createWithPortalAccess && (
-                    <div className="space-y-2 animate-fade-in">
-                      <Label htmlFor="new_client_password">Portal Password *</Label>
-                      <Input
-                        id="new_client_password"
-                        type="password"
-                        value={newClientPassword}
-                        onChange={(e) => setNewClientPassword(e.target.value)}
-                        placeholder="Min 6 characters"
-                        minLength={6}
-                        required={createWithPortalAccess}
-                      />
+                    <div className="space-y-4 animate-fade-in">
+                      {/* Password Type Selection */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium">Password Option</Label>
+                        
+                        <div 
+                          className={`border rounded-lg p-3 cursor-pointer transition-colors ${
+                            portalPasswordType === 'generate' ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
+                          }`}
+                          onClick={() => setPortalPasswordType('generate')}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${
+                              portalPasswordType === 'generate' ? 'border-primary' : 'border-muted-foreground'
+                            }`}>
+                              {portalPasswordType === 'generate' && (
+                                <div className="h-2 w-2 rounded-full bg-primary" />
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm flex items-center gap-2">
+                                <KeyRound className="h-3.5 w-3.5" />
+                                Generate Temporary Password
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Auto-generated password, client must change on first login
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div 
+                          className={`border rounded-lg p-3 cursor-pointer transition-colors ${
+                            portalPasswordType === 'manual' ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
+                          }`}
+                          onClick={() => setPortalPasswordType('manual')}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${
+                              portalPasswordType === 'manual' ? 'border-primary' : 'border-muted-foreground'
+                            }`}>
+                              {portalPasswordType === 'manual' && (
+                                <div className="h-2 w-2 rounded-full bg-primary" />
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm">Set Manual Password</p>
+                              <p className="text-xs text-muted-foreground">
+                                You specify the password for the client
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Manual Password Input */}
+                      {portalPasswordType === 'manual' && (
+                        <div className="space-y-2 animate-fade-in">
+                          <Label htmlFor="new_client_password">Portal Password *</Label>
+                          <Input
+                            id="new_client_password"
+                            type="password"
+                            value={newClientPassword}
+                            onChange={(e) => setNewClientPassword(e.target.value)}
+                            placeholder="Min 6 characters"
+                            minLength={6}
+                            required={portalPasswordType === 'manual'}
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -524,8 +608,14 @@ const ClientsPage = () => {
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createWithPortalAccess && newClientPassword.length < 6}>
-                  {editingClient ? 'Update' : createWithPortalAccess ? 'Create with Portal' : 'Create'}
+                <Button 
+                  type="submit" 
+                  disabled={
+                    creatingWithPortal || 
+                    (createWithPortalAccess && portalPasswordType === 'manual' && newClientPassword.length < 6)
+                  }
+                >
+                  {creatingWithPortal ? 'Creating...' : editingClient ? 'Update' : createWithPortalAccess ? 'Create with Portal' : 'Create'}
                 </Button>
               </DialogFooter>
             </form>
