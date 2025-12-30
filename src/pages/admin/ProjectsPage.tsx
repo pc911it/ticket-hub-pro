@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,6 +47,7 @@ interface Project {
 
 const ProjectsPage = () => {
   const { user, isCompanyOwner, isSuperAdmin, isCompanyAdmin } = useAuth();
+  const { effectiveCompanyId } = useEffectiveCompanyId();
   const canDelete = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -77,20 +79,15 @@ const ProjectsPage = () => {
 
   useEffect(() => {
     if (user) {
-      if (isSuperAdmin) {
-        // Super admin can see all projects
-        fetchData();
-      } else {
-        fetchUserCompany();
-      }
+      fetchUserCompany();
     }
-  }, [user, isSuperAdmin]);
+  }, [user]);
 
   useEffect(() => {
-    if (userCompanyId) {
+    if (userCompanyId || isSuperAdmin) {
       fetchData();
     }
-  }, [userCompanyId]);
+  }, [userCompanyId, isSuperAdmin]);
 
   const fetchUserCompany = async () => {
     if (!user) return;
@@ -184,6 +181,14 @@ const ProjectsPage = () => {
       formData.zip_code,
     ].join('|');
 
+    // Use effectiveCompanyId for super admins, otherwise userCompanyId
+    const companyIdToUse = effectiveCompanyId || userCompanyId;
+    
+    if (!companyIdToUse) {
+      toast({ variant: 'destructive', title: 'Error', description: 'No company selected. Please select a company first.' });
+      return;
+    }
+
     const payload = {
       name: formData.name,
       description: formData.description || null,
@@ -195,7 +200,7 @@ const ProjectsPage = () => {
       budget: formData.budget ? parseFloat(formData.budget) : null,
       notes: formData.notes || null,
       created_by: user?.id,
-      company_id: userCompanyId,
+      company_id: companyIdToUse,
     };
 
     if (editingProject) {
