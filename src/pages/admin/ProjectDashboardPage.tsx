@@ -382,7 +382,10 @@ const ProjectDashboardPage = () => {
           scheduled_date: t.scheduled_date,
           scheduled_time: t.scheduled_time,
           duration_minutes: t.duration_minutes,
+          assigned_agent_id: t.agents ? (t as any).assigned_agent_id : null,
+          agent_name: t.agents?.full_name || null,
         }))}
+        onTicketReschedule={() => fetchProjectData()}
       />
 
       {/* Tabbed Content Section */}
