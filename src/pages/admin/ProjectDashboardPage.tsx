@@ -11,6 +11,7 @@ import { ProjectAttachments } from '@/components/ProjectAttachments';
 import { ProjectMilestones } from '@/components/ProjectMilestones';
 import { ProjectActivityTimeline } from '@/components/ProjectActivityTimeline';
 import { CompanyPartnerships } from '@/components/CompanyPartnerships';
+import { ProjectGanttChart } from '@/components/ProjectGanttChart';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -24,7 +25,8 @@ import {
   User,
   MessageCircle,
   Users,
-  FileText
+  FileText,
+  GanttChart
 } from 'lucide-react';
 import { format, differenceInDays, isAfter, isBefore } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -50,14 +52,24 @@ interface ProjectTicket {
   priority: string | null;
   scheduled_date: string;
   scheduled_time: string;
+  duration_minutes: number | null;
   clients: { full_name: string } | null;
   agents: { full_name: string } | null;
+}
+
+interface Milestone {
+  id: string;
+  name: string;
+  due_date: string;
+  status: string;
+  completed_at: string | null;
 }
 
 const ProjectDashboardPage = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const [project, setProject] = useState<Project | null>(null);
   const [tickets, setTickets] = useState<ProjectTicket[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -67,7 +79,7 @@ const ProjectDashboardPage = () => {
   }, [projectId]);
 
   const fetchProjectData = async () => {
-    const [{ data: projectData }, { data: ticketsData }] = await Promise.all([
+    const [{ data: projectData }, { data: ticketsData }, { data: milestonesData }] = await Promise.all([
       supabase
         .from('projects')
         .select('*, clients(full_name)')
@@ -75,13 +87,19 @@ const ProjectDashboardPage = () => {
         .single(),
       supabase
         .from('tickets')
-        .select('id, title, status, priority, scheduled_date, scheduled_time, clients(full_name), agents:assigned_agent_id(full_name)')
+        .select('id, title, status, priority, scheduled_date, scheduled_time, duration_minutes, clients(full_name), agents:assigned_agent_id(full_name)')
         .eq('project_id', projectId)
         .order('scheduled_date', { ascending: true }),
+      supabase
+        .from('project_milestones')
+        .select('id, name, due_date, status, completed_at')
+        .eq('project_id', projectId)
+        .order('due_date', { ascending: true }),
     ]);
 
     if (projectData) setProject(projectData);
     if (ticketsData) setTickets(ticketsData as ProjectTicket[]);
+    if (milestonesData) setMilestones(milestonesData);
     setLoading(false);
   };
 
@@ -350,6 +368,23 @@ const ProjectDashboardPage = () => {
         </Card>
       </div>
 
+      {/* Gantt Chart - Always visible */}
+      <ProjectGanttChart
+        projectId={project.id}
+        projectName={project.name}
+        projectStartDate={project.start_date}
+        projectEndDate={project.end_date}
+        milestones={milestones}
+        tickets={tickets.map(t => ({
+          id: t.id,
+          title: t.title,
+          status: t.status,
+          scheduled_date: t.scheduled_date,
+          scheduled_time: t.scheduled_time,
+          duration_minutes: t.duration_minutes,
+        }))}
+      />
+
       {/* Tabbed Content Section */}
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
@@ -443,11 +478,11 @@ const ProjectDashboardPage = () => {
           </Card>
         </TabsContent>
 
-
         {/* Partners Tab */}
         <TabsContent value="partners">
           <CompanyPartnerships projectId={project.id} projectName={project.name} />
         </TabsContent>
+
 
         {/* Tickets Tab */}
         <TabsContent value="tickets">
