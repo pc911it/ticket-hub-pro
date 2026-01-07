@@ -42,7 +42,7 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-console.log("App starting...");
+console.log("App starting - build refreshed");
 
 createRoot(document.getElementById("root")!).render(
   <ErrorBoundary>
