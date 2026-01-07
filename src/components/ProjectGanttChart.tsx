@@ -12,7 +12,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import jsPDF from 'jspdf';
 
 interface Milestone {
   id: string;
@@ -224,7 +223,11 @@ export const ProjectGanttChart = ({
     if (!chartRef.current) return;
     
     try {
-      const { default: html2canvas } = await import('html2canvas');
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
+      
       const canvas = await html2canvas(chartRef.current, {
         backgroundColor: '#ffffff',
         scale: 2,
