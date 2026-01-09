@@ -8,12 +8,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Mail, Phone, MapPin, Edit2, Trash2, KeyRound, UserPlus, CheckCircle } from 'lucide-react';
+import { Plus, Search, Mail, Phone, MapPin, Edit2, Trash2, KeyRound, UserPlus, CheckCircle, Ship, ChevronDown, ChevronUp } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { DeleteConfirmationDialog } from '@/components/DeleteConfirmationDialog';
+import { VesselManagement } from '@/components/VesselManagement';
 
 interface Client {
   id: string;
@@ -61,6 +63,8 @@ const ClientsPage = () => {
   const { toast } = useToast();
 
   const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
+  const [companyType, setCompanyType] = useState<string>('other');
+  const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
   
   // Company admins, owners, and super admins can delete
   const canDelete = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
@@ -94,6 +98,16 @@ const ClientsPage = () => {
     if (data) {
       setUserCompanyId(data.company_id);
       setIsCompanyAdmin(data.role === 'admin');
+      
+      // Fetch company type
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('type')
+        .eq('id', data.company_id)
+        .single();
+      if (companyData?.type) {
+        setCompanyType(companyData.type);
+      }
     } else {
       setLoading(false);
     }
@@ -865,6 +879,32 @@ const ClientsPage = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Vessel Management - Only for boat_services companies */}
+                {companyType === 'boat_services' && userCompanyId && (
+                  <Collapsible
+                    open={expandedClientId === client.id}
+                    onOpenChange={(open) => setExpandedClientId(open ? client.id : null)}
+                    className="mt-4 pt-4 border-t"
+                  >
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="w-full justify-between">
+                        <span className="flex items-center gap-2">
+                          <Ship className="h-4 w-4" />
+                          Manage Vessels
+                        </span>
+                        {expandedClientId === client.id ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pt-4">
+                      <VesselManagement clientId={client.id} companyId={userCompanyId} />
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
               </CardContent>
             </Card>
           ))}
