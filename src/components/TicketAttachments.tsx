@@ -4,8 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, FileText, Image, Trash2, Eye, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Upload, Image, Trash2, Eye } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -123,7 +122,6 @@ export const TicketAttachments = ({ ticketId, readOnly = false }: TicketAttachme
     setPreviewType(attachment.file_type);
   };
 
-  const blueprints = attachments.filter(a => a.category === 'blueprint');
   const images = attachments.filter(a => a.category === 'image');
 
   const formatFileSize = (bytes: number | null) => {
@@ -135,71 +133,12 @@ export const TicketAttachments = ({ ticketId, readOnly = false }: TicketAttachme
 
   return (
     <div className="space-y-6">
-      {/* Blueprints / PDF Plans Section */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Blueprints & PDF Plans
-          </Label>
-          {!readOnly && (
-            <div className="relative">
-              <Input
-                type="file"
-                accept=".pdf,.dwg,.dxf"
-                multiple
-                onChange={(e) => handleFileUpload(e, 'blueprint')}
-                className="absolute inset-0 opacity-0 cursor-pointer"
-                disabled={uploading}
-              />
-              <Button variant="outline" size="sm" disabled={uploading}>
-                <Upload className="h-4 w-4 mr-2" />
-                Upload PDF
-              </Button>
-            </div>
-          )}
-        </div>
-        
-        {blueprints.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No blueprints uploaded yet.</p>
-        ) : (
-          <div className="grid gap-2">
-            {blueprints.map((attachment) => (
-              <div
-                key={attachment.id}
-                className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <FileText className="h-8 w-8 text-destructive shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{attachment.file_name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatFileSize(attachment.file_size)}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => openPreview(attachment)}>
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  {!readOnly && (
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(attachment)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Project Images Section */}
+      {/* Ticket Images Section */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <Label className="text-sm font-medium flex items-center gap-2">
             <Image className="h-4 w-4" />
-            Project Images
+            Ticket Images
           </Label>
           {!readOnly && (
             <div className="relative">
@@ -220,7 +159,7 @@ export const TicketAttachments = ({ ticketId, readOnly = false }: TicketAttachme
         </div>
 
         {images.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No project images uploaded yet.</p>
+          <p className="text-sm text-muted-foreground">No images uploaded yet.</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {images.map((attachment) => (
