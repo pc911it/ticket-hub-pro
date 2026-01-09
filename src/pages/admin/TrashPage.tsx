@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, RotateCcw, AlertTriangle, Building2, Ticket, Users, Clock } from 'lucide-react';
+import { Trash2, RotateCcw, AlertTriangle, Building2, Ticket, Users, Clock, Package, Store } from 'lucide-react';
 import { format, formatDistanceToNow, addDays } from 'date-fns';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +31,20 @@ interface DeletedClient {
   deleted_at: string;
 }
 
+interface DeletedInventoryItem {
+  id: string;
+  name: string;
+  sku: string | null;
+  deleted_at: string;
+}
+
+interface DeletedSupplier {
+  id: string;
+  name: string;
+  email: string | null;
+  deleted_at: string;
+}
+
 const TrashPage = () => {
   const { isCompanyOwner, isSuperAdmin, isCompanyAdmin } = useAuth();
   const canPermanentlyDelete = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
@@ -38,12 +52,16 @@ const TrashPage = () => {
   const [deletedProjects, setDeletedProjects] = useState<DeletedProject[]>([]);
   const [deletedTickets, setDeletedTickets] = useState<DeletedTicket[]>([]);
   const [deletedClients, setDeletedClients] = useState<DeletedClient[]>([]);
+  const [deletedInventory, setDeletedInventory] = useState<DeletedInventoryItem[]>([]);
+  const [deletedSuppliers, setDeletedSuppliers] = useState<DeletedSupplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
   const [selectedTickets, setSelectedTickets] = useState<Set<string>>(new Set());
   const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set());
+  const [selectedInventory, setSelectedInventory] = useState<Set<string>>(new Set());
+  const [selectedSuppliers, setSelectedSuppliers] = useState<Set<string>>(new Set());
   const [restoring, setRestoring] = useState(false);
-  const [permanentDeleteItem, setPermanentDeleteItem] = useState<{ type: 'project' | 'ticket' | 'client'; id: string; name: string } | null>(null);
+  const [permanentDeleteItem, setPermanentDeleteItem] = useState<{ type: 'project' | 'ticket' | 'client' | 'inventory' | 'supplier'; id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
 
@@ -52,24 +70,35 @@ const TrashPage = () => {
   }, []);
 
   const fetchDeletedItems = async () => {
-    const [{ data: projects }, { data: tickets }, { data: clients }] = await Promise.all([
+    const [{ data: projects }, { data: tickets }, { data: clients }, { data: inventory }, { data: suppliers }] = await Promise.all([
       supabase.from('projects').select('id, name, deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
       supabase.from('tickets').select('id, title, deleted_at, clients(full_name)').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
       supabase.from('clients').select('id, full_name, email, deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
+      supabase.from('inventory_items').select('id, name, sku, deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
+      supabase.from('suppliers').select('id, name, email, deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
     ]);
 
     if (projects) setDeletedProjects(projects);
     if (tickets) setDeletedTickets(tickets);
     if (clients) setDeletedClients(clients);
+    if (inventory) setDeletedInventory(inventory);
+    if (suppliers) setDeletedSuppliers(suppliers);
     setLoading(false);
   };
 
-  const handleRestore = async (type: 'project' | 'ticket' | 'client', ids: string[]) => {
+  const handleRestore = async (type: 'project' | 'ticket' | 'client' | 'inventory' | 'supplier', ids: string[]) => {
     setRestoring(true);
-    const table = type === 'project' ? 'projects' : type === 'ticket' ? 'tickets' : 'clients';
+    const tableMap: Record<typeof type, string> = {
+      project: 'projects',
+      ticket: 'tickets', 
+      client: 'clients',
+      inventory: 'inventory_items',
+      supplier: 'suppliers'
+    };
+    const table = tableMap[type];
     
     const { error } = await supabase
-      .from(table)
+      .from(table as any)
       .update({ deleted_at: null })
       .in('id', ids);
 
@@ -81,6 +110,8 @@ const TrashPage = () => {
       if (type === 'project') setSelectedProjects(new Set());
       if (type === 'ticket') setSelectedTickets(new Set());
       if (type === 'client') setSelectedClients(new Set());
+      if (type === 'inventory') setSelectedInventory(new Set());
+      if (type === 'supplier') setSelectedSuppliers(new Set());
     }
     setRestoring(false);
   };
@@ -89,9 +120,16 @@ const TrashPage = () => {
     if (!permanentDeleteItem) return;
     setDeleting(true);
     
-    const table = permanentDeleteItem.type === 'project' ? 'projects' : permanentDeleteItem.type === 'ticket' ? 'tickets' : 'clients';
+    const tableMap: Record<typeof permanentDeleteItem.type, string> = {
+      project: 'projects',
+      ticket: 'tickets', 
+      client: 'clients',
+      inventory: 'inventory_items',
+      supplier: 'suppliers'
+    };
+    const table = tableMap[permanentDeleteItem.type];
     
-    const { error } = await supabase.from(table).delete().eq('id', permanentDeleteItem.id);
+    const { error } = await supabase.from(table as any).delete().eq('id', permanentDeleteItem.id);
 
     if (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to permanently delete item.' });
@@ -103,11 +141,18 @@ const TrashPage = () => {
     setPermanentDeleteItem(null);
   };
 
-  const handleBulkPermanentDelete = async (type: 'project' | 'ticket' | 'client', ids: string[]) => {
+  const handleBulkPermanentDelete = async (type: 'project' | 'ticket' | 'client' | 'inventory' | 'supplier', ids: string[]) => {
     setDeleting(true);
-    const table = type === 'project' ? 'projects' : type === 'ticket' ? 'tickets' : 'clients';
+    const tableMap: Record<typeof type, string> = {
+      project: 'projects',
+      ticket: 'tickets', 
+      client: 'clients',
+      inventory: 'inventory_items',
+      supplier: 'suppliers'
+    };
+    const table = tableMap[type];
     
-    const { error } = await supabase.from(table).delete().in('id', ids);
+    const { error } = await supabase.from(table as any).delete().in('id', ids);
 
     if (error) {
       toast({ variant: 'destructive', title: 'Error', description: `Failed to permanently delete ${type}(s).` });
@@ -117,12 +162,21 @@ const TrashPage = () => {
       if (type === 'project') setSelectedProjects(new Set());
       if (type === 'ticket') setSelectedTickets(new Set());
       if (type === 'client') setSelectedClients(new Set());
+      if (type === 'inventory') setSelectedInventory(new Set());
+      if (type === 'supplier') setSelectedSuppliers(new Set());
     }
     setDeleting(false);
   };
 
-  const toggleSelection = (type: 'project' | 'ticket' | 'client', id: string) => {
-    const setter = type === 'project' ? setSelectedProjects : type === 'ticket' ? setSelectedTickets : setSelectedClients;
+  const toggleSelection = (type: 'project' | 'ticket' | 'client' | 'inventory' | 'supplier', id: string) => {
+    const setterMap: Record<typeof type, React.Dispatch<React.SetStateAction<Set<string>>>> = {
+      project: setSelectedProjects,
+      ticket: setSelectedTickets,
+      client: setSelectedClients,
+      inventory: setSelectedInventory,
+      supplier: setSelectedSuppliers
+    };
+    const setter = setterMap[type];
     setter(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -131,7 +185,7 @@ const TrashPage = () => {
     });
   };
 
-  const selectAll = (type: 'project' | 'ticket' | 'client') => {
+  const selectAll = (type: 'project' | 'ticket' | 'client' | 'inventory' | 'supplier') => {
     if (type === 'project') {
       if (selectedProjects.size === deletedProjects.length) {
         setSelectedProjects(new Set());
@@ -144,11 +198,23 @@ const TrashPage = () => {
       } else {
         setSelectedTickets(new Set(deletedTickets.map(t => t.id)));
       }
-    } else {
+    } else if (type === 'client') {
       if (selectedClients.size === deletedClients.length) {
         setSelectedClients(new Set());
       } else {
         setSelectedClients(new Set(deletedClients.map(c => c.id)));
+      }
+    } else if (type === 'inventory') {
+      if (selectedInventory.size === deletedInventory.length) {
+        setSelectedInventory(new Set());
+      } else {
+        setSelectedInventory(new Set(deletedInventory.map(i => i.id)));
+      }
+    } else if (type === 'supplier') {
+      if (selectedSuppliers.size === deletedSuppliers.length) {
+        setSelectedSuppliers(new Set());
+      } else {
+        setSelectedSuppliers(new Set(deletedSuppliers.map(s => s.id)));
       }
     }
   };
@@ -161,7 +227,7 @@ const TrashPage = () => {
     return Math.max(0, diffDays);
   };
 
-  const totalDeletedItems = deletedProjects.length + deletedTickets.length + deletedClients.length;
+  const totalDeletedItems = deletedProjects.length + deletedTickets.length + deletedClients.length + deletedInventory.length + deletedSuppliers.length;
 
   if (loading) {
     return (
@@ -212,6 +278,20 @@ const TrashPage = () => {
               Clients
               {deletedClients.length > 0 && (
                 <Badge variant="secondary" className="ml-1">{deletedClients.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="inventory" className="gap-2">
+              <Package className="h-4 w-4" />
+              Inventory
+              {deletedInventory.length > 0 && (
+                <Badge variant="secondary" className="ml-1">{deletedInventory.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="suppliers" className="gap-2">
+              <Store className="h-4 w-4" />
+              Suppliers
+              {deletedSuppliers.length > 0 && (
+                <Badge variant="secondary" className="ml-1">{deletedSuppliers.length}</Badge>
               )}
             </TabsTrigger>
           </TabsList>
@@ -457,6 +537,78 @@ const TrashPage = () => {
                             className="text-destructive hover:text-destructive"
                             onClick={() => setPermanentDeleteItem({ type: 'client', id: client.id, name: client.full_name })}
                           >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="inventory" className="space-y-4">
+            {deletedInventory.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">No deleted inventory items.</p>
+            ) : (
+              <div className="space-y-2">
+                {deletedInventory.map(item => (
+                  <Card key={item.id} className="border shadow-sm">
+                    <CardContent className="p-4 flex items-center gap-4">
+                      <Package className="h-5 w-5 text-muted-foreground" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{item.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {item.sku && `SKU: ${item.sku} • `}Deleted {formatDistanceToNow(new Date(item.deleted_at), { addSuffix: true })}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="gap-1">
+                        <Clock className="h-3 w-3" />
+                        {getDaysRemaining(item.deleted_at)} days left
+                      </Badge>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleRestore('inventory', [item.id])} disabled={restoring}>
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                        {canPermanentlyDelete && (
+                          <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setPermanentDeleteItem({ type: 'inventory', id: item.id, name: item.name })}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="suppliers" className="space-y-4">
+            {deletedSuppliers.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">No deleted suppliers.</p>
+            ) : (
+              <div className="space-y-2">
+                {deletedSuppliers.map(supplier => (
+                  <Card key={supplier.id} className="border shadow-sm">
+                    <CardContent className="p-4 flex items-center gap-4">
+                      <Store className="h-5 w-5 text-muted-foreground" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{supplier.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {supplier.email && `${supplier.email} • `}Deleted {formatDistanceToNow(new Date(supplier.deleted_at), { addSuffix: true })}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="gap-1">
+                        <Clock className="h-3 w-3" />
+                        {getDaysRemaining(supplier.deleted_at)} days left
+                      </Badge>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleRestore('supplier', [supplier.id])} disabled={restoring}>
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                        {canPermanentlyDelete && (
+                          <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setPermanentDeleteItem({ type: 'supplier', id: supplier.id, name: supplier.name })}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         )}

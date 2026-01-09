@@ -86,6 +86,7 @@ const companyTypes: { value: CompanyType; label: string }[] = [
   { value: 'hvac', label: 'HVAC' },
   { value: 'security', label: 'Security' },
   { value: 'locksmith', label: 'Locksmith' },
+  { value: 'boat_services', label: 'Boat Services & Marine' },
   { value: 'other', label: 'Other' },
 ];
 

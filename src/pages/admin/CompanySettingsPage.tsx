@@ -29,7 +29,13 @@ const companyTypes: { value: CompanyType; label: string }[] = [
   { value: 'hvac', label: 'HVAC' },
   { value: 'security', label: 'Security' },
   { value: 'locksmith', label: 'Locksmith' },
+  { value: 'boat_services', label: 'Boat Services & Marine' },
   { value: 'other', label: 'Other' },
+];
+
+const paymentProviders = [
+  { value: 'square', label: 'Square' },
+  { value: 'stripe', label: 'Stripe' },
 ];
 
 export default function CompanySettingsPage() {
@@ -106,6 +112,7 @@ export default function CompanySettingsPage() {
     city: "",
     state: "",
     type: "alarm_company" as CompanyType,
+    payment_provider: "square",
   });
 
   // Update form when company data loads
@@ -119,6 +126,7 @@ export default function CompanySettingsPage() {
         city: company.city || "",
         state: company.state || "",
         type: company.type || "alarm_company",
+        payment_provider: (company as any).payment_provider || "square",
       });
     }
   }, [company]);
@@ -137,7 +145,8 @@ export default function CompanySettingsPage() {
           city: data.city,
           state: data.state,
           type: data.type,
-        })
+          payment_provider: data.payment_provider,
+        } as any)
         .eq("id", company.id);
 
       if (error) throw error;
@@ -414,6 +423,27 @@ export default function CompanySettingsPage() {
                   placeholder="Full address"
                   rows={2}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="payment_provider">Payment Provider (for charging clients)</Label>
+                <Select
+                  value={formData.payment_provider}
+                  onValueChange={(value) => setFormData({ ...formData, payment_provider: value })}
+                >
+                  <SelectTrigger className="bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border shadow-lg z-50">
+                    {paymentProviders.map((provider) => (
+                      <SelectItem key={provider.value} value={provider.value}>
+                        {provider.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Select the payment provider you'll use to charge clients. You'll need to configure API keys in Billing Settings.
+                </p>
               </div>
             </CardContent>
             <CardFooter>
