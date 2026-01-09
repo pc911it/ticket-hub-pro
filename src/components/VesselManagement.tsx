@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,7 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Ship, Plus, Pencil, Trash2, Anchor, Loader2 } from 'lucide-react';
+import { Ship, Plus, Pencil, Trash2, Anchor, Loader2, ExternalLink } from 'lucide-react';
 import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
 
 interface Vessel {
@@ -242,10 +243,14 @@ export const VesselManagement = ({ clientId, companyId, readOnly = false }: Vess
               {vessels.map((vessel) => (
                 <TableRow key={vessel.id}>
                   <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
+                    <Link 
+                      to={`/admin/vessels/${vessel.id}`}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
                       <Anchor className="h-4 w-4 text-primary" />
                       {vessel.boat_name}
-                    </div>
+                      <ExternalLink className="h-3 w-3 opacity-50" />
+                    </Link>
                   </TableCell>
                   <TableCell>
                     {vessel.make || vessel.model 
@@ -262,6 +267,15 @@ export const VesselManagement = ({ clientId, companyId, readOnly = false }: Vess
                   {!readOnly && (
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          asChild
+                        >
+                          <Link to={`/admin/vessels/${vessel.id}`}>
+                            <ExternalLink className="h-4 w-4" />
+                          </Link>
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
