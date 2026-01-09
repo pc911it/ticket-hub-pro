@@ -5,8 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { InvoiceLineItems, LineItem } from './InvoiceLineItems';
-import { Loader2 } from 'lucide-react';
+import { InvoiceLineItemsWithInventory, LineItem } from './InvoiceLineItemsWithInventory';
+import { VesselSelector } from '@/components/VesselSelector';
+import { Loader2, Ship } from 'lucide-react';
 
 interface Client {
   id: string;
@@ -24,6 +25,8 @@ interface CreateInvoiceDialogProps {
   onOpenChange: (open: boolean) => void;
   clients: Client[];
   projects?: Project[];
+  companyId: string | null;
+  companyType?: string;
   onSubmit: (data: {
     client_id: string;
     project_id?: string;
@@ -32,6 +35,7 @@ interface CreateInvoiceDialogProps {
     due_date: string;
     line_items: LineItem[];
     amount: number;
+    vessel_id?: string;
   }) => Promise<void>;
   isLoading?: boolean;
 }
@@ -41,11 +45,14 @@ export const CreateInvoiceDialog = ({
   onOpenChange,
   clients,
   projects = [],
+  companyId,
+  companyType,
   onSubmit,
   isLoading,
 }: CreateInvoiceDialogProps) => {
   const [clientId, setClientId] = useState('');
   const [projectId, setProjectId] = useState('');
+  const [vesselId, setVesselId] = useState('');
   const [description, setDescription] = useState('');
   const [notes, setNotes] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -54,23 +61,26 @@ export const CreateInvoiceDialog = ({
   ]);
 
   const total = lineItems.reduce((sum, item) => sum + item.amount, 0);
+  const isBoatServices = companyType === 'boat_services';
 
   const handleSubmit = async () => {
     if (!clientId || !dueDate || total === 0) return;
     
     await onSubmit({
       client_id: clientId,
-      project_id: projectId || undefined,
+      project_id: projectId && projectId !== 'none' ? projectId : undefined,
       description,
       notes,
       due_date: dueDate,
       line_items: lineItems.filter(item => item.description && item.amount > 0),
       amount: Math.round(total * 100),
+      vessel_id: vesselId && vesselId !== 'none' ? vesselId : undefined,
     });
 
     // Reset form
     setClientId('');
     setProjectId('');
+    setVesselId('');
     setDescription('');
     setNotes('');
     setDueDate('');
@@ -88,7 +98,10 @@ export const CreateInvoiceDialog = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Client *</Label>
-              <Select value={clientId} onValueChange={setClientId}>
+              <Select value={clientId} onValueChange={(value) => {
+                setClientId(value);
+                setVesselId(''); // Reset vessel when client changes
+              }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select client" />
                 </SelectTrigger>
@@ -120,6 +133,22 @@ export const CreateInvoiceDialog = ({
             </div>
           </div>
 
+          {/* Vessel selector for boat services */}
+          {isBoatServices && clientId && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Ship className="h-4 w-4" />
+                Vessel (Optional)
+              </Label>
+              <VesselSelector
+                clientId={clientId}
+                value={vesselId}
+                onValueChange={(id) => setVesselId(id)}
+                placeholder="Select vessel for this invoice"
+              />
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>Due Date *</Label>
             <Input
@@ -141,7 +170,11 @@ export const CreateInvoiceDialog = ({
 
           <div className="space-y-2">
             <Label>Line Items</Label>
-            <InvoiceLineItems items={lineItems} onChange={setLineItems} />
+            <InvoiceLineItemsWithInventory 
+              items={lineItems} 
+              onChange={setLineItems} 
+              companyId={companyId}
+            />
           </div>
 
           <div className="space-y-2">
