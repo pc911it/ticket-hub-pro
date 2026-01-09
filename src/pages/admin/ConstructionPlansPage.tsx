@@ -66,9 +66,10 @@ const PLAN_CATEGORIES = [
 ];
 
 const ConstructionPlansPage = () => {
-  const { user, isSuperAdmin, isCompanyOwner } = useAuth();
+  const { user, isSuperAdmin, isCompanyOwner, isCompanyAdmin } = useAuth();
   const { effectiveCompanyId } = useEffectiveCompanyId();
-  const canManage = isSuperAdmin || isCompanyOwner;
+  // Allow super admins, company owners, and company admins to manage plans
+  const canManage = isSuperAdmin || isCompanyOwner || isCompanyAdmin;
   const [projects, setProjects] = useState<Project[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(true);
