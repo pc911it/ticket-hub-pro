@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DocumentViewer } from '@/components/DocumentViewer';
 import { DeleteConfirmationDialog } from '@/components/DeleteConfirmationDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { 
   Search, 
@@ -22,7 +26,10 @@ import {
   Grid,
   List,
   Eye,
-  Trash2
+  Trash2,
+  Plus,
+  Upload,
+  Edit2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -60,7 +67,8 @@ const PLAN_CATEGORIES = [
 
 const ConstructionPlansPage = () => {
   const { user, isSuperAdmin, isCompanyOwner } = useAuth();
-  const canDelete = isSuperAdmin || isCompanyOwner;
+  const { effectiveCompanyId } = useEffectiveCompanyId();
+  const canManage = isSuperAdmin || isCompanyOwner;
   const [projects, setProjects] = useState<Project[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,6 +80,14 @@ const ConstructionPlansPage = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingAttachment, setDeletingAttachment] = useState<Attachment | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Create/Edit dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingAttachment, setEditingAttachment] = useState<Attachment | null>(null);
+  const [dialogProjectId, setDialogProjectId] = useState('');
+  const [dialogCategory, setDialogCategory] = useState('blueprint');
+  const [dialogFile, setDialogFile] = useState<File | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -132,6 +148,99 @@ const ConstructionPlansPage = () => {
     e.stopPropagation();
     setDeletingAttachment(attachment);
     setDeleteDialogOpen(true);
+  };
+
+  const openCreateDialog = () => {
+    setEditingAttachment(null);
+    setDialogProjectId(selectedProject?.id || '');
+    setDialogCategory('blueprint');
+    setDialogFile(null);
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (attachment: Attachment, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingAttachment(attachment);
+    setDialogProjectId(attachment.project_id);
+    setDialogCategory(attachment.category);
+    setDialogFile(null);
+    setDialogOpen(true);
+  };
+
+  const handleSavePlan = async () => {
+    if (!dialogProjectId) {
+      toast.error('Please select a project');
+      return;
+    }
+    if (!editingAttachment && !dialogFile) {
+      toast.error('Please select a file to upload');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      if (editingAttachment) {
+        // Update existing attachment
+        const { error } = await supabase
+          .from('project_attachments')
+          .update({
+            project_id: dialogProjectId,
+            category: dialogCategory,
+          })
+          .eq('id', editingAttachment.id);
+
+        if (error) throw error;
+
+        // Update local state
+        setAttachments(prev => prev.map(a => 
+          a.id === editingAttachment.id 
+            ? { ...a, project_id: dialogProjectId, category: dialogCategory }
+            : a
+        ));
+        toast.success('Plan updated successfully');
+      } else if (dialogFile) {
+        // Upload new file
+        const fileExt = dialogFile.name.split('.').pop();
+        const fileName = `${Date.now()}.${fileExt}`;
+        const filePath = `project-attachments/${dialogProjectId}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('project-files')
+          .upload(filePath, dialogFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('project-files')
+          .getPublicUrl(filePath);
+
+        // Create attachment record
+        const { data, error } = await supabase
+          .from('project_attachments')
+          .insert({
+            project_id: dialogProjectId,
+            file_name: dialogFile.name,
+            file_url: publicUrl,
+            file_type: dialogFile.type,
+            file_size: dialogFile.size,
+            category: dialogCategory,
+            uploaded_by: user?.id,
+          })
+          .select('*, projects(name, status)')
+          .single();
+
+        if (error) throw error;
+
+        setAttachments(prev => [data as Attachment, ...prev]);
+        toast.success('Plan uploaded successfully');
+      }
+
+      setDialogOpen(false);
+    } catch (error: any) {
+      toast.error('Failed to save plan', { description: error.message });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const filteredAttachments = attachments.filter(attachment => {
@@ -203,6 +312,12 @@ const ConstructionPlansPage = () => {
           <p className="text-muted-foreground mt-1">Browse and manage all construction plans and blueprints.</p>
         </div>
         <div className="flex items-center gap-2">
+          {canManage && (
+            <Button onClick={openCreateDialog} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Upload Plan
+            </Button>
+          )}
           <Button
             variant={viewMode === 'grid' ? 'default' : 'outline'}
             size="icon"
@@ -367,15 +482,25 @@ const ConstructionPlansPage = () => {
                   className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer group relative"
                   onClick={() => setViewingDocument(attachment)}
                 >
-                  {canDelete && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute top-2 right-2 z-10 h-8 w-8 bg-background/80 hover:bg-destructive hover:text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => openDeleteDialog(attachment, e)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  {canManage && (
+                    <div className="absolute top-2 right-2 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 bg-background/80 hover:bg-muted"
+                        onClick={(e) => openEditDialog(attachment, e)}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 bg-background/80 hover:bg-destructive hover:text-destructive-foreground"
+                        onClick={(e) => openDeleteDialog(attachment, e)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   )}
                   <CardContent className="p-4">
                     {/* Preview */}
@@ -455,15 +580,25 @@ const ConstructionPlansPage = () => {
                         {attachment.category.replace('_', ' ')}
                       </Badge>
                       <Eye className="h-4 w-4 text-muted-foreground" />
-                      {canDelete && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 hover:bg-destructive hover:text-destructive-foreground"
-                          onClick={(e) => openDeleteDialog(attachment, e)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      {canManage && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-muted"
+                            onClick={(e) => openEditDialog(attachment, e)}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-destructive hover:text-destructive-foreground"
+                            onClick={(e) => openDeleteDialog(attachment, e)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
                       )}
                     </div>
                   ))}
@@ -499,6 +634,98 @@ const ConstructionPlansPage = () => {
         description="This will permanently delete this construction plan. This action cannot be undone."
         loading={isDeleting}
       />
+
+      {/* Create/Edit Plan Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingAttachment ? 'Edit Plan' : 'Upload New Plan'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="project">Project *</Label>
+              <Select value={dialogProjectId} onValueChange={setDialogProjectId}>
+                <SelectTrigger id="project">
+                  <SelectValue placeholder="Select a project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="category">Category</Label>
+              <Select value={dialogCategory} onValueChange={setDialogCategory}>
+                <SelectTrigger id="category">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PLAN_CATEGORIES.filter(c => c.value !== 'all').map((cat) => (
+                    <SelectItem key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {!editingAttachment && (
+              <div className="space-y-2">
+                <Label htmlFor="file">File *</Label>
+                <div className="border-2 border-dashed rounded-lg p-4 text-center">
+                  <input
+                    id="file"
+                    type="file"
+                    accept="image/*,.pdf,.dwg,.dxf"
+                    className="hidden"
+                    onChange={(e) => setDialogFile(e.target.files?.[0] || null)}
+                  />
+                  <label htmlFor="file" className="cursor-pointer">
+                    {dialogFile ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <FileText className="h-5 w-5 text-primary" />
+                        <span className="text-sm font-medium">{dialogFile.name}</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">
+                          Click to select a file
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Supports images, PDFs, DWG, DXF
+                        </p>
+                      </div>
+                    )}
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {editingAttachment && (
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-sm font-medium">{editingAttachment.file_name}</p>
+                <p className="text-xs text-muted-foreground">
+                  Uploaded {format(new Date(editingAttachment.created_at), 'MMM d, yyyy')}
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSavePlan} disabled={isSaving}>
+              {isSaving ? 'Saving...' : editingAttachment ? 'Save Changes' : 'Upload'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
