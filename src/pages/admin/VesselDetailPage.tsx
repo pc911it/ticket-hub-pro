@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,6 +33,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
+import { VesselPhotoUpload } from '@/components/VesselPhotoUpload';
 
 interface Vessel {
   id: string;
@@ -119,14 +119,14 @@ const VesselDetailPage = () => {
     enabled: !!vessel?.client_id,
   });
 
-  // Fetch service history (tickets that mention this vessel in description)
+  // Fetch service history (tickets directly linked to this vessel)
   const { data: serviceHistory, isLoading: loadingHistory } = useQuery({
-    queryKey: ['vessel-service-history', vesselId, vessel?.boat_name, vessel?.hull_id],
+    queryKey: ['vessel-service-history', vesselId],
     queryFn: async () => {
-      if (!vessel) return [];
+      if (!vesselId) return [];
       
-      // Search for tickets that reference this vessel by name or hull ID
-      let query = supabase
+      // First get tickets directly linked to this vessel
+      const { data: directTickets } = await supabase
         .from('tickets')
         .select(`
           id, title, description, status, priority, call_type, 
@@ -134,25 +134,49 @@ const VesselDetailPage = () => {
           project:projects(name),
           assigned_agent:agents(full_name)
         `)
-        .eq('client_id', vessel.client_id)
+        .eq('vessel_id', vesselId)
+        .is('deleted_at', null)
         .order('scheduled_date', { ascending: false });
 
-      const { data } = await query;
-      
-      // Filter tickets that mention this vessel
-      const filtered = (data || []).filter(ticket => {
-        const desc = ticket.description?.toLowerCase() || '';
-        const boatName = vessel.boat_name?.toLowerCase() || '';
-        const hullId = vessel.hull_id?.toLowerCase() || '';
+      // Also get legacy tickets that mention this vessel in description (for backwards compatibility)
+      if (vessel) {
+        const { data: legacyData } = await supabase
+          .from('tickets')
+          .select(`
+            id, title, description, status, priority, call_type, 
+            scheduled_date, created_at, total_time_minutes,
+            project:projects(name),
+            assigned_agent:agents(full_name)
+          `)
+          .eq('client_id', vessel.client_id)
+          .is('vessel_id', null)
+          .is('deleted_at', null)
+          .order('scheduled_date', { ascending: false });
         
-        return desc.includes(boatName) || 
-               (hullId && desc.includes(hullId)) ||
-               desc.includes('vessel information');
-      });
+        // Filter legacy tickets that mention this vessel
+        const legacyFiltered = (legacyData || []).filter(ticket => {
+          const desc = ticket.description?.toLowerCase() || '';
+          const boatName = vessel.boat_name?.toLowerCase() || '';
+          const hullId = vessel.hull_id?.toLowerCase() || '';
+          
+          return desc.includes(boatName) || 
+                 (hullId && desc.includes(hullId)) ||
+                 desc.includes('vessel information');
+        });
+        
+        // Combine and deduplicate
+        const directIds = new Set((directTickets || []).map(t => t.id));
+        const combined = [
+          ...(directTickets || []),
+          ...legacyFiltered.filter(t => !directIds.has(t.id))
+        ];
+        
+        return combined as Ticket[];
+      }
 
-      return filtered as Ticket[];
+      return (directTickets || []) as Ticket[];
     },
-    enabled: !!vessel,
+    enabled: !!vesselId,
   });
 
   // Fetch invoices for this vessel
@@ -579,22 +603,17 @@ const VesselDetailPage = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Image className="h-5 w-5" />
-                Vessel Photos
+                Vessel Images
               </CardTitle>
               <CardDescription>
                 Photos and documentation for this vessel
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12 text-muted-foreground">
-                <Image className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No photos uploaded yet.</p>
-                <p className="text-sm">Photos will appear here when uploaded from service calls.</p>
-                <Button variant="outline" className="mt-4" disabled>
-                  <Image className="h-4 w-4 mr-2" />
-                  Upload Photo (Coming Soon)
-                </Button>
-              </div>
+              <VesselPhotoUpload 
+                vesselId={vessel.id} 
+                companyId={vessel.company_id} 
+              />
             </CardContent>
           </Card>
         </TabsContent>

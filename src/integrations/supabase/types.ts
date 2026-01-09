@@ -1708,6 +1708,7 @@ export type Database = {
           title: string
           total_time_minutes: number | null
           updated_at: string
+          vessel_id: string | null
         }
         Insert: {
           admin_approval_status?: string | null
@@ -1737,6 +1738,7 @@ export type Database = {
           title: string
           total_time_minutes?: number | null
           updated_at?: string
+          vessel_id?: string | null
         }
         Update: {
           admin_approval_status?: string | null
@@ -1766,6 +1768,7 @@ export type Database = {
           title?: string
           total_time_minutes?: number | null
           updated_at?: string
+          vessel_id?: string | null
         }
         Relationships: [
           {
@@ -1794,6 +1797,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_vessel_id_fkey"
+            columns: ["vessel_id"]
+            isOneToOne: false
+            referencedRelation: "vessels"
             referencedColumns: ["id"]
           },
         ]
@@ -1926,6 +1936,73 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      vessel_photos: {
+        Row: {
+          category: string
+          company_id: string
+          created_at: string
+          description: string | null
+          file_name: string
+          file_size: number | null
+          file_type: string
+          file_url: string
+          id: string
+          ticket_id: string | null
+          uploaded_by: string | null
+          vessel_id: string
+        }
+        Insert: {
+          category?: string
+          company_id: string
+          created_at?: string
+          description?: string | null
+          file_name: string
+          file_size?: number | null
+          file_type: string
+          file_url: string
+          id?: string
+          ticket_id?: string | null
+          uploaded_by?: string | null
+          vessel_id: string
+        }
+        Update: {
+          category?: string
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          file_name?: string
+          file_size?: number | null
+          file_type?: string
+          file_url?: string
+          id?: string
+          ticket_id?: string | null
+          uploaded_by?: string | null
+          vessel_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vessel_photos_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vessel_photos_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vessel_photos_vessel_id_fkey"
+            columns: ["vessel_id"]
+            isOneToOne: false
+            referencedRelation: "vessels"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vessels: {
         Row: {
