@@ -45,6 +45,7 @@ import TrashPage from "./pages/admin/TrashPage";
 import ConstructionPlansPage from "./pages/admin/ConstructionPlansPage";
 import EmployeeTimeReportsPage from "./pages/admin/EmployeeTimeReportsPage";
 import ServiceTypesPage from "./pages/admin/ServiceTypesPage";
+import VesselDetailPage from "./pages/admin/VesselDetailPage";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -349,6 +350,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AdminLayout>
                     <ServiceTypesPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/vessels/:vesselId"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <VesselDetailPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }
