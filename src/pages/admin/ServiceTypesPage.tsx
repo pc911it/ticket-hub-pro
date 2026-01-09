@@ -73,6 +73,7 @@ export default function ServiceTypesPage() {
         .from('company_service_types')
         .select('*')
         .eq('company_id', effectiveCompanyId)
+        .is('deleted_at', null)
         .order('name');
       return (data || []) as ServiceType[];
     },
@@ -163,17 +164,17 @@ export default function ServiceTypesPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  // Delete mutation
+  // Delete mutation (soft delete)
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from('company_service_types')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success('Service type deleted');
+      toast.success('Service type moved to trash');
       setDeleteType(null);
       queryClient.invalidateQueries({ queryKey: ['service-types'] });
     },

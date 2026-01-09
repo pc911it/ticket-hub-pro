@@ -17,7 +17,7 @@ interface DeleteConfirmationDialogProps {
   onConfirm: () => void;
   title: string;
   itemName: string;
-  itemType: 'project' | 'ticket' | 'client' | 'item' | 'inventory' | 'supplier';
+  itemType: 'project' | 'ticket' | 'client' | 'item' | 'inventory' | 'supplier' | 'vessel' | 'servicetype';
   description?: string;
   loading?: boolean;
 }
@@ -39,6 +39,8 @@ export function DeleteConfirmationDialog({
     item: 'This action cannot be undone.',
     inventory: 'This will permanently delete the inventory item and all associated usage records.',
     supplier: 'This will permanently delete the supplier record. Inventory items linked to this supplier may be affected.',
+    vessel: 'This will permanently delete the vessel record and all associated service history.',
+    servicetype: 'This will permanently delete the service type. Tickets using this service type may be affected.',
   };
 
   return (

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, RotateCcw, AlertTriangle, Building2, Ticket, Users, Clock, Package, Store } from 'lucide-react';
+import { Trash2, RotateCcw, AlertTriangle, Building2, Ticket, Users, Clock, Package, Store, Ship, Settings2 } from 'lucide-react';
 import { format, formatDistanceToNow, addDays } from 'date-fns';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -45,6 +45,19 @@ interface DeletedSupplier {
   deleted_at: string;
 }
 
+interface DeletedVessel {
+  id: string;
+  boat_name: string;
+  hull_id: string | null;
+  deleted_at: string;
+}
+
+interface DeletedServiceType {
+  id: string;
+  name: string;
+  deleted_at: string;
+}
+
 const TrashPage = () => {
   const { isCompanyOwner, isSuperAdmin, isCompanyAdmin } = useAuth();
   const canPermanentlyDelete = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
@@ -54,14 +67,18 @@ const TrashPage = () => {
   const [deletedClients, setDeletedClients] = useState<DeletedClient[]>([]);
   const [deletedInventory, setDeletedInventory] = useState<DeletedInventoryItem[]>([]);
   const [deletedSuppliers, setDeletedSuppliers] = useState<DeletedSupplier[]>([]);
+  const [deletedVessels, setDeletedVessels] = useState<DeletedVessel[]>([]);
+  const [deletedServiceTypes, setDeletedServiceTypes] = useState<DeletedServiceType[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
   const [selectedTickets, setSelectedTickets] = useState<Set<string>>(new Set());
   const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set());
   const [selectedInventory, setSelectedInventory] = useState<Set<string>>(new Set());
   const [selectedSuppliers, setSelectedSuppliers] = useState<Set<string>>(new Set());
+  const [selectedVessels, setSelectedVessels] = useState<Set<string>>(new Set());
+  const [selectedServiceTypes, setSelectedServiceTypes] = useState<Set<string>>(new Set());
   const [restoring, setRestoring] = useState(false);
-  const [permanentDeleteItem, setPermanentDeleteItem] = useState<{ type: 'project' | 'ticket' | 'client' | 'inventory' | 'supplier'; id: string; name: string } | null>(null);
+  const [permanentDeleteItem, setPermanentDeleteItem] = useState<{ type: 'project' | 'ticket' | 'client' | 'inventory' | 'supplier' | 'vessel' | 'servicetype'; id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
 
@@ -70,12 +87,14 @@ const TrashPage = () => {
   }, []);
 
   const fetchDeletedItems = async () => {
-    const [{ data: projects }, { data: tickets }, { data: clients }, { data: inventory }, { data: suppliers }] = await Promise.all([
+    const [{ data: projects }, { data: tickets }, { data: clients }, { data: inventory }, { data: suppliers }, { data: vessels }, { data: serviceTypes }] = await Promise.all([
       supabase.from('projects').select('id, name, deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
       supabase.from('tickets').select('id, title, deleted_at, clients(full_name)').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
       supabase.from('clients').select('id, full_name, email, deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
       supabase.from('inventory_items').select('id, name, sku, deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
       supabase.from('suppliers').select('id, name, email, deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
+      supabase.from('vessels').select('id, boat_name, hull_id, deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
+      supabase.from('company_service_types').select('id, name, deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
     ]);
 
     if (projects) setDeletedProjects(projects);
@@ -83,17 +102,21 @@ const TrashPage = () => {
     if (clients) setDeletedClients(clients);
     if (inventory) setDeletedInventory(inventory);
     if (suppliers) setDeletedSuppliers(suppliers);
+    if (vessels) setDeletedVessels(vessels);
+    if (serviceTypes) setDeletedServiceTypes(serviceTypes);
     setLoading(false);
   };
 
-  const handleRestore = async (type: 'project' | 'ticket' | 'client' | 'inventory' | 'supplier', ids: string[]) => {
+  const handleRestore = async (type: 'project' | 'ticket' | 'client' | 'inventory' | 'supplier' | 'vessel' | 'servicetype', ids: string[]) => {
     setRestoring(true);
     const tableMap: Record<typeof type, string> = {
       project: 'projects',
       ticket: 'tickets', 
       client: 'clients',
       inventory: 'inventory_items',
-      supplier: 'suppliers'
+      supplier: 'suppliers',
+      vessel: 'vessels',
+      servicetype: 'company_service_types'
     };
     const table = tableMap[type];
     
@@ -112,6 +135,8 @@ const TrashPage = () => {
       if (type === 'client') setSelectedClients(new Set());
       if (type === 'inventory') setSelectedInventory(new Set());
       if (type === 'supplier') setSelectedSuppliers(new Set());
+      if (type === 'vessel') setSelectedVessels(new Set());
+      if (type === 'servicetype') setSelectedServiceTypes(new Set());
     }
     setRestoring(false);
   };
@@ -125,7 +150,9 @@ const TrashPage = () => {
       ticket: 'tickets', 
       client: 'clients',
       inventory: 'inventory_items',
-      supplier: 'suppliers'
+      supplier: 'suppliers',
+      vessel: 'vessels',
+      servicetype: 'company_service_types'
     };
     const table = tableMap[permanentDeleteItem.type];
     
@@ -141,14 +168,16 @@ const TrashPage = () => {
     setPermanentDeleteItem(null);
   };
 
-  const handleBulkPermanentDelete = async (type: 'project' | 'ticket' | 'client' | 'inventory' | 'supplier', ids: string[]) => {
+  const handleBulkPermanentDelete = async (type: 'project' | 'ticket' | 'client' | 'inventory' | 'supplier' | 'vessel' | 'servicetype', ids: string[]) => {
     setDeleting(true);
     const tableMap: Record<typeof type, string> = {
       project: 'projects',
       ticket: 'tickets', 
       client: 'clients',
       inventory: 'inventory_items',
-      supplier: 'suppliers'
+      supplier: 'suppliers',
+      vessel: 'vessels',
+      servicetype: 'company_service_types'
     };
     const table = tableMap[type];
     
@@ -164,17 +193,21 @@ const TrashPage = () => {
       if (type === 'client') setSelectedClients(new Set());
       if (type === 'inventory') setSelectedInventory(new Set());
       if (type === 'supplier') setSelectedSuppliers(new Set());
+      if (type === 'vessel') setSelectedVessels(new Set());
+      if (type === 'servicetype') setSelectedServiceTypes(new Set());
     }
     setDeleting(false);
   };
 
-  const toggleSelection = (type: 'project' | 'ticket' | 'client' | 'inventory' | 'supplier', id: string) => {
+  const toggleSelection = (type: 'project' | 'ticket' | 'client' | 'inventory' | 'supplier' | 'vessel' | 'servicetype', id: string) => {
     const setterMap: Record<typeof type, React.Dispatch<React.SetStateAction<Set<string>>>> = {
       project: setSelectedProjects,
       ticket: setSelectedTickets,
       client: setSelectedClients,
       inventory: setSelectedInventory,
-      supplier: setSelectedSuppliers
+      supplier: setSelectedSuppliers,
+      vessel: setSelectedVessels,
+      servicetype: setSelectedServiceTypes
     };
     const setter = setterMap[type];
     setter(prev => {
@@ -185,7 +218,7 @@ const TrashPage = () => {
     });
   };
 
-  const selectAll = (type: 'project' | 'ticket' | 'client' | 'inventory' | 'supplier') => {
+  const selectAll = (type: 'project' | 'ticket' | 'client' | 'inventory' | 'supplier' | 'vessel' | 'servicetype') => {
     if (type === 'project') {
       if (selectedProjects.size === deletedProjects.length) {
         setSelectedProjects(new Set());
@@ -216,6 +249,18 @@ const TrashPage = () => {
       } else {
         setSelectedSuppliers(new Set(deletedSuppliers.map(s => s.id)));
       }
+    } else if (type === 'vessel') {
+      if (selectedVessels.size === deletedVessels.length) {
+        setSelectedVessels(new Set());
+      } else {
+        setSelectedVessels(new Set(deletedVessels.map(v => v.id)));
+      }
+    } else if (type === 'servicetype') {
+      if (selectedServiceTypes.size === deletedServiceTypes.length) {
+        setSelectedServiceTypes(new Set());
+      } else {
+        setSelectedServiceTypes(new Set(deletedServiceTypes.map(s => s.id)));
+      }
     }
   };
 
@@ -227,7 +272,7 @@ const TrashPage = () => {
     return Math.max(0, diffDays);
   };
 
-  const totalDeletedItems = deletedProjects.length + deletedTickets.length + deletedClients.length + deletedInventory.length + deletedSuppliers.length;
+  const totalDeletedItems = deletedProjects.length + deletedTickets.length + deletedClients.length + deletedInventory.length + deletedSuppliers.length + deletedVessels.length + deletedServiceTypes.length;
 
   if (loading) {
     return (
@@ -292,6 +337,20 @@ const TrashPage = () => {
               Suppliers
               {deletedSuppliers.length > 0 && (
                 <Badge variant="secondary" className="ml-1">{deletedSuppliers.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="vessels" className="gap-2">
+              <Ship className="h-4 w-4" />
+              Vessels
+              {deletedVessels.length > 0 && (
+                <Badge variant="secondary" className="ml-1">{deletedVessels.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="servicetypes" className="gap-2">
+              <Settings2 className="h-4 w-4" />
+              Service Types
+              {deletedServiceTypes.length > 0 && (
+                <Badge variant="secondary" className="ml-1">{deletedServiceTypes.length}</Badge>
               )}
             </TabsTrigger>
           </TabsList>
@@ -609,6 +668,125 @@ const TrashPage = () => {
                         </Button>
                         {canPermanentlyDelete && (
                           <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setPermanentDeleteItem({ type: 'supplier', id: supplier.id, name: supplier.name })}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Vessels Tab */}
+          <TabsContent value="vessels" className="space-y-4">
+            {deletedVessels.length > 0 && (
+              <div className="flex items-center gap-4">
+                <Button variant="outline" size="sm" onClick={() => selectAll('vessel')}>
+                  {selectedVessels.size === deletedVessels.length ? 'Deselect All' : 'Select All'}
+                </Button>
+                {selectedVessels.size > 0 && (
+                  <>
+                    <Button size="sm" onClick={() => handleRestore('vessel', Array.from(selectedVessels))} disabled={restoring}>
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Restore ({selectedVessels.size})
+                    </Button>
+                    {canPermanentlyDelete && (
+                      <Button variant="destructive" size="sm" onClick={() => handleBulkPermanentDelete('vessel', Array.from(selectedVessels))} disabled={deleting}>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Forever ({selectedVessels.size})
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+            {deletedVessels.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">No deleted vessels.</p>
+            ) : (
+              <div className="space-y-2">
+                {deletedVessels.map(vessel => (
+                  <Card key={vessel.id} className="border shadow-sm">
+                    <CardContent className="p-4 flex items-center gap-4">
+                      <Checkbox checked={selectedVessels.has(vessel.id)} onCheckedChange={() => toggleSelection('vessel', vessel.id)} />
+                      <Ship className="h-5 w-5 text-muted-foreground" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{vessel.boat_name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {vessel.hull_id ? `Hull: ${vessel.hull_id} • ` : ''}
+                          Deleted {formatDistanceToNow(new Date(vessel.deleted_at), { addSuffix: true })}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="gap-1">
+                        <Clock className="h-3 w-3" />
+                        {getDaysRemaining(vessel.deleted_at)} days left
+                      </Badge>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleRestore('vessel', [vessel.id])} disabled={restoring}>
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                        {canPermanentlyDelete && (
+                          <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setPermanentDeleteItem({ type: 'vessel', id: vessel.id, name: vessel.boat_name })}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Service Types Tab */}
+          <TabsContent value="servicetypes" className="space-y-4">
+            {deletedServiceTypes.length > 0 && (
+              <div className="flex items-center gap-4">
+                <Button variant="outline" size="sm" onClick={() => selectAll('servicetype')}>
+                  {selectedServiceTypes.size === deletedServiceTypes.length ? 'Deselect All' : 'Select All'}
+                </Button>
+                {selectedServiceTypes.size > 0 && (
+                  <>
+                    <Button size="sm" onClick={() => handleRestore('servicetype', Array.from(selectedServiceTypes))} disabled={restoring}>
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Restore ({selectedServiceTypes.size})
+                    </Button>
+                    {canPermanentlyDelete && (
+                      <Button variant="destructive" size="sm" onClick={() => handleBulkPermanentDelete('servicetype', Array.from(selectedServiceTypes))} disabled={deleting}>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Forever ({selectedServiceTypes.size})
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+            {deletedServiceTypes.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">No deleted service types.</p>
+            ) : (
+              <div className="space-y-2">
+                {deletedServiceTypes.map(serviceType => (
+                  <Card key={serviceType.id} className="border shadow-sm">
+                    <CardContent className="p-4 flex items-center gap-4">
+                      <Checkbox checked={selectedServiceTypes.has(serviceType.id)} onCheckedChange={() => toggleSelection('servicetype', serviceType.id)} />
+                      <Settings2 className="h-5 w-5 text-muted-foreground" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{serviceType.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Deleted {formatDistanceToNow(new Date(serviceType.deleted_at), { addSuffix: true })}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="gap-1">
+                        <Clock className="h-3 w-3" />
+                        {getDaysRemaining(serviceType.deleted_at)} days left
+                      </Badge>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleRestore('servicetype', [serviceType.id])} disabled={restoring}>
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                        {canPermanentlyDelete && (
+                          <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setPermanentDeleteItem({ type: 'servicetype', id: serviceType.id, name: serviceType.name })}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         )}
