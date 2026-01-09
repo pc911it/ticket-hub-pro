@@ -16,6 +16,7 @@ import { Package, Plus, AlertTriangle, TrendingDown, TrendingUp, Wrench, Search,
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 
 const categories = [
   "Electrical",
@@ -50,8 +51,9 @@ interface Supplier {
 }
 
 export default function InventoryPage() {
-  const { user, isCompanyOwner, isSuperAdmin } = useAuth();
-  const canDelete = isCompanyOwner || isSuperAdmin;
+  const { user, isCompanyOwner, isSuperAdmin, isCompanyAdmin } = useAuth();
+  const canDelete = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
+  const [deleteItem, setDeleteItem] = useState<InventoryItem | null>(null);
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -632,7 +634,7 @@ const deleteItemMutation = useMutation({
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => deleteItemMutation.mutate(item.id)}
+                                  onClick={() => setDeleteItem(item)}
                                 >
                                   <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>
@@ -864,6 +866,22 @@ const deleteItemMutation = useMutation({
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
         onScan={handleBarcodeScan}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={!!deleteItem}
+        onOpenChange={(open) => !open && setDeleteItem(null)}
+        onConfirm={() => {
+          if (deleteItem) {
+            deleteItemMutation.mutate(deleteItem.id);
+            setDeleteItem(null);
+          }
+        }}
+        title="Inventory Item"
+        itemName={deleteItem?.name || ""}
+        itemType="inventory"
+        loading={deleteItemMutation.isPending}
       />
     </div>
   );
