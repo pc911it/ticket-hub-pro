@@ -74,6 +74,7 @@ const ClientBillingPage = () => {
   const [isSavingClientCard, setIsSavingClientCard] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [selectedEstimate, setSelectedEstimate] = useState<any>(null);
+  const [isChargingInvoice, setIsChargingInvoice] = useState(false);
   
   // Form states
   const [planForm, setPlanForm] = useState({
@@ -545,6 +546,24 @@ const ClientBillingPage = () => {
         toast.error(data.results?.[0]?.error || 'Payment failed');
       }
       queryClient.invalidateQueries({ queryKey: ['client-subscriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  // Charge invoice directly (if client has card on file)
+  const chargeInvoiceMutation = useMutation({
+    mutationFn: async (invoiceId: string) => {
+      const { data, error } = await supabase.functions.invoke('charge-client-invoice', {
+        body: { invoiceId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(`Payment successful: ${formatCurrency(data.amount)}`);
+      setSelectedInvoice(null);
       queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -1217,7 +1236,11 @@ const ClientBillingPage = () => {
           markPaidMutation.mutate(selectedInvoice.id);
           setSelectedInvoice(null);
         }}
+        onCharge={() => {
+          chargeInvoiceMutation.mutate(selectedInvoice.id);
+        }}
         isSending={sendInvoiceMutation.isPending}
+        isCharging={chargeInvoiceMutation.isPending}
       />
 
       {/* Estimate Detail Sheet */}
