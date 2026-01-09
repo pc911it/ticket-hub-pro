@@ -518,6 +518,7 @@ export type Database = {
           logo_url: string | null
           name: string
           owner_id: string | null
+          payment_provider: string | null
           phone: string | null
           square_card_id: string | null
           square_customer_id: string | null
@@ -544,6 +545,7 @@ export type Database = {
           logo_url?: string | null
           name: string
           owner_id?: string | null
+          payment_provider?: string | null
           phone?: string | null
           square_card_id?: string | null
           square_customer_id?: string | null
@@ -570,6 +572,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           owner_id?: string | null
+          payment_provider?: string | null
           phone?: string | null
           square_card_id?: string | null
           square_customer_id?: string | null
@@ -719,6 +722,7 @@ export type Database = {
           company_id: string | null
           cost_per_unit: number | null
           created_at: string
+          deleted_at: string | null
           description: string | null
           id: string
           minimum_stock: number | null
@@ -736,6 +740,7 @@ export type Database = {
           company_id?: string | null
           cost_per_unit?: number | null
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           id?: string
           minimum_stock?: number | null
@@ -753,6 +758,7 @@ export type Database = {
           company_id?: string | null
           cost_per_unit?: number | null
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           id?: string
           minimum_stock?: number | null
@@ -1453,6 +1459,7 @@ export type Database = {
           company_id: string | null
           contact_name: string | null
           created_at: string
+          deleted_at: string | null
           email: string | null
           id: string
           name: string
@@ -1465,6 +1472,7 @@ export type Database = {
           company_id?: string | null
           contact_name?: string | null
           created_at?: string
+          deleted_at?: string | null
           email?: string | null
           id?: string
           name: string
@@ -1477,6 +1485,7 @@ export type Database = {
           company_id?: string | null
           contact_name?: string | null
           created_at?: string
+          deleted_at?: string | null
           email?: string | null
           id?: string
           name?: string
@@ -1935,6 +1944,7 @@ export type Database = {
         | "hvac"
         | "security"
         | "locksmith"
+        | "boat_services"
       job_status:
         | "assigned"
         | "en_route"
@@ -2079,6 +2089,7 @@ export const Constants = {
         "hvac",
         "security",
         "locksmith",
+        "boat_services",
       ],
       job_status: [
         "assigned",

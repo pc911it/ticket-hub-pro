@@ -17,7 +17,7 @@ interface DeleteConfirmationDialogProps {
   onConfirm: () => void;
   title: string;
   itemName: string;
-  itemType: 'project' | 'ticket' | 'client' | 'item';
+  itemType: 'project' | 'ticket' | 'client' | 'item' | 'inventory' | 'supplier';
   description?: string;
   loading?: boolean;
 }
@@ -37,6 +37,8 @@ export function DeleteConfirmationDialog({
     ticket: 'This will permanently delete the ticket and all associated materials and attachments.',
     client: 'This will permanently delete the client record. Any tickets associated with this client may be affected.',
     item: 'This action cannot be undone.',
+    inventory: 'This will permanently delete the inventory item and all associated usage records.',
+    supplier: 'This will permanently delete the supplier record. Inventory items linked to this supplier may be affected.',
   };
 
   return (

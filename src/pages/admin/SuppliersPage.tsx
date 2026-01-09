@@ -63,6 +63,7 @@ export default function SuppliersPage() {
         .from("suppliers")
         .select("*")
         .eq("company_id", userCompany.company_id)
+        .is("deleted_at", null) // Only show non-deleted suppliers
         .order("name");
       if (error) throw error;
       return data as Supplier[];
@@ -140,11 +141,15 @@ export default function SuppliersPage() {
 
   const deleteSupplierMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("suppliers").delete().eq("id", id);
+      // Soft delete - set deleted_at timestamp
+      const { error } = await supabase
+        .from("suppliers")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Supplier deleted");
+      toast.success("Supplier moved to trash");
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
     },
     onError: (error: Error) => {

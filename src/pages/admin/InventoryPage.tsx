@@ -96,6 +96,7 @@ export default function InventoryPage() {
         .from("inventory_items")
         .select("*, suppliers(id, name)")
         .eq("company_id", userCompany.company_id)
+        .is("deleted_at", null) // Only show non-deleted items
         .order("name");
       if (error) throw error;
       return data as (InventoryItem & { suppliers: Supplier | null })[];
@@ -226,13 +227,17 @@ export default function InventoryPage() {
     }
   };
 
-  const deleteItemMutation = useMutation({
+const deleteItemMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("inventory_items").delete().eq("id", id);
+      // Soft delete - set deleted_at timestamp
+      const { error } = await supabase
+        .from("inventory_items")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Item deleted");
+      toast.success("Item moved to trash");
       queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
     },
     onError: (error: Error) => {
