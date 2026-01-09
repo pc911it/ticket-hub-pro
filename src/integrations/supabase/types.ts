@@ -507,6 +507,7 @@ export type Database = {
           approval_status: string
           approved_at: string | null
           approved_by: string | null
+          business_config: Json | null
           cancellation_fee_charged: boolean | null
           cancellation_reason: string | null
           city: string | null
@@ -534,6 +535,7 @@ export type Database = {
           approval_status?: string
           approved_at?: string | null
           approved_by?: string | null
+          business_config?: Json | null
           cancellation_fee_charged?: boolean | null
           cancellation_reason?: string | null
           city?: string | null
@@ -561,6 +563,7 @@ export type Database = {
           approval_status?: string
           approved_at?: string | null
           approved_by?: string | null
+          business_config?: Json | null
           cancellation_fee_charged?: boolean | null
           cancellation_reason?: string | null
           city?: string | null
@@ -616,6 +619,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "company_members_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_service_types: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_service_types_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"

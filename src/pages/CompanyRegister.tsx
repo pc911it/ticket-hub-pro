@@ -78,17 +78,80 @@ const plans: PricingPlan[] = [
   },
 ];
 
-const companyTypes: { value: CompanyType; label: string }[] = [
-  { value: 'alarm_company', label: 'Fire Alarm' },
-  { value: 'tow_company', label: 'Tow Truck' },
-  { value: 'electrician', label: 'Electrician' },
-  { value: 'plumber', label: 'Plumber' },
-  { value: 'hvac', label: 'HVAC' },
-  { value: 'security', label: 'Security' },
-  { value: 'locksmith', label: 'Locksmith' },
-  { value: 'boat_services', label: 'Boat Services & Marine' },
-  { value: 'other', label: 'Other' },
+const companyTypes: { value: CompanyType; label: string; description: string; icon: string }[] = [
+  { value: 'alarm_company', label: 'Fire Alarm & Safety', description: 'Fire alarm installation, monitoring, and safety systems', icon: '🔥' },
+  { value: 'tow_company', label: 'Tow Truck Services', description: 'Vehicle towing, roadside assistance, and recovery', icon: '🚗' },
+  { value: 'electrician', label: 'Electrical Services', description: 'Electrical installations, repairs, and maintenance', icon: '⚡' },
+  { value: 'plumber', label: 'Plumbing Services', description: 'Plumbing installations, repairs, and maintenance', icon: '🔧' },
+  { value: 'hvac', label: 'HVAC Services', description: 'Heating, ventilation, and air conditioning', icon: '❄️' },
+  { value: 'security', label: 'Security Services', description: 'Security systems, monitoring, and guard services', icon: '🔒' },
+  { value: 'locksmith', label: 'Locksmith Services', description: 'Lock installation, repair, and emergency lockout', icon: '🔑' },
+  { value: 'boat_services', label: 'Boat & Marine Services', description: 'Boat repair, maintenance, and marine services', icon: '⛵' },
+  { value: 'other', label: 'General Contractor / Other', description: 'Construction, renovation, and general services', icon: '🏗️' },
 ];
+
+// Business-specific configurations
+const businessConfigs: Record<CompanyType, {
+  ticketLabel: string;
+  clientLabel: string;
+  exampleServices: string[];
+  inventoryCategories: string[];
+}> = {
+  alarm_company: {
+    ticketLabel: 'Service Call',
+    clientLabel: 'Customer',
+    exampleServices: ['Panel Installation', 'Sensor Replacement', 'System Monitoring', 'Annual Inspection'],
+    inventoryCategories: ['Smoke Detectors', 'CO Detectors', 'Control Panels', 'Sensors', 'Wiring'],
+  },
+  tow_company: {
+    ticketLabel: 'Tow Job',
+    clientLabel: 'Customer',
+    exampleServices: ['Local Tow', 'Long Distance', 'Roadside Assistance', 'Jump Start', 'Tire Change'],
+    inventoryCategories: ['Straps', 'Chains', 'Dollies', 'Tools', 'Safety Equipment'],
+  },
+  electrician: {
+    ticketLabel: 'Work Order',
+    clientLabel: 'Customer',
+    exampleServices: ['Panel Upgrade', 'Outlet Installation', 'Lighting', 'Wiring Repair', 'Inspection'],
+    inventoryCategories: ['Wire', 'Outlets', 'Switches', 'Breakers', 'Conduit', 'Lighting'],
+  },
+  plumber: {
+    ticketLabel: 'Service Call',
+    clientLabel: 'Customer',
+    exampleServices: ['Leak Repair', 'Drain Cleaning', 'Water Heater', 'Fixture Installation', 'Pipe Repair'],
+    inventoryCategories: ['Pipes', 'Fittings', 'Valves', 'Fixtures', 'Water Heaters', 'Tools'],
+  },
+  hvac: {
+    ticketLabel: 'Service Call',
+    clientLabel: 'Customer',
+    exampleServices: ['AC Repair', 'Furnace Service', 'Duct Cleaning', 'System Installation', 'Maintenance'],
+    inventoryCategories: ['Filters', 'Refrigerant', 'Thermostats', 'Motors', 'Compressors', 'Ductwork'],
+  },
+  security: {
+    ticketLabel: 'Service Call',
+    clientLabel: 'Customer',
+    exampleServices: ['Camera Installation', 'Alarm Setup', 'Access Control', 'System Upgrade', 'Monitoring'],
+    inventoryCategories: ['Cameras', 'DVRs', 'Keypads', 'Sensors', 'Cables', 'Locks'],
+  },
+  locksmith: {
+    ticketLabel: 'Service Call',
+    clientLabel: 'Customer',
+    exampleServices: ['Lockout Service', 'Lock Change', 'Key Duplication', 'Safe Opening', 'Rekey'],
+    inventoryCategories: ['Locks', 'Keys', 'Deadbolts', 'Smart Locks', 'Safes', 'Tools'],
+  },
+  boat_services: {
+    ticketLabel: 'Work Order',
+    clientLabel: 'Boat Owner',
+    exampleServices: ['Engine Repair', 'Hull Maintenance', 'Electrical Systems', 'Winterization', 'Detailing'],
+    inventoryCategories: ['Marine Parts', 'Fiberglass', 'Marine Paint', 'Engine Parts', 'Electronics', 'Safety Gear'],
+  },
+  other: {
+    ticketLabel: 'Work Order',
+    clientLabel: 'Client',
+    exampleServices: ['General Repair', 'Installation', 'Maintenance', 'Consultation', 'Inspection'],
+    inventoryCategories: ['General', 'Tools', 'Materials', 'Safety', 'Equipment'],
+  },
+};
 
 const usStates = [
   'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 
@@ -219,7 +282,10 @@ const CompanyRegister = () => {
       const trialEndsAt = new Date();
       trialEndsAt.setDate(trialEndsAt.getDate() + 14);
 
-      // Create the company
+      // Get business configuration for the selected company type
+      const config = businessConfigs[companyType];
+
+      // Create the company with business config
       const { data: company, error: companyError } = await supabase
         .from('companies')
         .insert({
@@ -233,11 +299,25 @@ const CompanyRegister = () => {
           subscription_plan: selectedPlan,
           subscription_status: 'trial',
           trial_ends_at: trialEndsAt.toISOString(),
-        })
+          business_config: {
+            ticketLabel: config.ticketLabel,
+            clientLabel: config.clientLabel,
+            inventoryCategories: config.inventoryCategories,
+          },
+        } as any)
         .select()
         .single();
 
       if (companyError) throw companyError;
+
+      // Seed initial service types for the company
+      const serviceTypesToInsert = config.exampleServices.map(name => ({
+        company_id: company.id,
+        name,
+        is_active: true,
+      }));
+
+      await supabase.from('company_service_types').insert(serviceTypesToInsert);
 
       // Add owner as admin member
       const { error: memberError } = await supabase
@@ -535,20 +615,49 @@ const CompanyRegister = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="companyType">Company Field *</Label>
-                  <Select value={companyType} onValueChange={(value: CompanyType) => setCompanyType(value)}>
-                    <SelectTrigger className="bg-background">
-                      <SelectValue placeholder="Select your field" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-background border shadow-lg z-50">
-                      {companyTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="companyType">What type of business are you? *</Label>
+                  <div className="grid grid-cols-1 gap-2 max-h-[240px] overflow-y-auto pr-2">
+                    {companyTypes.map((type) => (
+                      <div
+                        key={type.value}
+                        onClick={() => setCompanyType(type.value)}
+                        className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                          companyType === type.value
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{type.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium">{type.label}</p>
+                            <p className="text-xs text-muted-foreground truncate">{type.description}</p>
+                          </div>
+                          {companyType === type.value && (
+                            <Check className="h-5 w-5 text-primary" />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+
+                {/* Show business-specific preview */}
+                {companyType && (
+                  <div className="p-4 bg-muted/50 rounded-lg border space-y-3">
+                    <p className="text-sm font-medium">Your {businessConfigs[companyType].clientLabel}s will see:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {businessConfigs[companyType].exampleServices.map((service) => (
+                        <span key={service} className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
+                          {service}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Inventory categories: {businessConfigs[companyType].inventoryCategories.slice(0, 4).join(', ')}...
+                    </p>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="state">State *</Label>
