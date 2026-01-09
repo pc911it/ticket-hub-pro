@@ -318,7 +318,7 @@ const VesselDetailPage = () => {
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="history">Service History</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
-          <TabsTrigger value="photos">Photos</TabsTrigger>
+          <TabsTrigger value="photos">Vessel Images</TabsTrigger>
         </TabsList>
 
         {/* Details Tab */}
