@@ -13,6 +13,7 @@ import { Phone, MapPin, User, Clock, AlertTriangle, Flame, Shield, FolderOpen, D
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { MaterialAssignment, MaterialAssignmentItem, saveInventoryUsage } from '@/components/MaterialAssignment';
+import { VesselSelector } from '@/components/VesselSelector';
 
 interface Client {
   id: string;
@@ -163,7 +164,10 @@ const NewCallPage = () => {
   // Get call types based on company type
   const callTypes = callTypesByBusiness[companyType] || callTypesByBusiness.other;
 
-  // Boat-specific fields state
+  // Vessel selection for boat services
+  const [selectedVesselId, setSelectedVesselId] = useState<string | null>(null);
+
+  // Boat-specific fields state (for manual entry if no vessel selected)
   const [boatDetails, setBoatDetails] = useState({
     boat_name: '',
     boat_make: '',
@@ -497,7 +501,7 @@ const NewCallPage = () => {
           </CardContent>
         </Card>
 
-        {/* Boat Details - Only shown for boat_services companies */}
+        {/* Vessel Selection - Only shown for boat_services companies */}
         {companyType === 'boat_services' && (
           <Card className="border-0 shadow-md">
             <CardHeader>
@@ -505,84 +509,127 @@ const NewCallPage = () => {
                 <Ship className="h-5 w-5 text-info" />
                 Vessel Information
               </CardTitle>
-              <CardDescription>Enter the boat/vessel details for this service call.</CardDescription>
+              <CardDescription>Select a registered vessel or enter details manually.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="boat_name">Boat Name</Label>
-                  <Input
-                    id="boat_name"
-                    value={boatDetails.boat_name}
-                    onChange={(e) => setBoatDetails({ ...boatDetails, boat_name: e.target.value })}
-                    placeholder="e.g., Sea Breeze"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="hull_id">Hull ID (HIN)</Label>
-                  <Input
-                    id="hull_id"
-                    value={boatDetails.hull_id}
-                    onChange={(e) => setBoatDetails({ ...boatDetails, hull_id: e.target.value })}
-                    placeholder="e.g., ABC12345D678"
-                  />
-                </div>
-              </div>
+              {/* Vessel Selector - only show if client is selected */}
+              {formData.client_id && (
+                <VesselSelector
+                  clientId={formData.client_id}
+                  value={selectedVesselId || undefined}
+                  onValueChange={(vesselId) => {
+                    setSelectedVesselId(vesselId === 'none' ? null : vesselId);
+                    // Clear manual boat details when vessel is selected
+                    if (vesselId && vesselId !== 'none') {
+                      setBoatDetails({
+                        boat_name: '',
+                        boat_make: '',
+                        boat_model: '',
+                        boat_year: '',
+                        boat_length: '',
+                        hull_id: '',
+                        slip_location: '',
+                      });
+                    }
+                  }}
+                />
+              )}
 
-              <div className="grid sm:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="boat_make">Make</Label>
-                  <Input
-                    id="boat_make"
-                    value={boatDetails.boat_make}
-                    onChange={(e) => setBoatDetails({ ...boatDetails, boat_make: e.target.value })}
-                    placeholder="e.g., Boston Whaler"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="boat_model">Model</Label>
-                  <Input
-                    id="boat_model"
-                    value={boatDetails.boat_model}
-                    onChange={(e) => setBoatDetails({ ...boatDetails, boat_model: e.target.value })}
-                    placeholder="e.g., Outrage 280"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="boat_year">Year</Label>
-                  <Input
-                    id="boat_year"
-                    value={boatDetails.boat_year}
-                    onChange={(e) => setBoatDetails({ ...boatDetails, boat_year: e.target.value })}
-                    placeholder="e.g., 2022"
-                    type="number"
-                    min="1900"
-                    max="2030"
-                  />
-                </div>
-              </div>
+              {!formData.client_id && (
+                <p className="text-sm text-muted-foreground">Select a client first to choose from their registered vessels.</p>
+              )}
 
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="boat_length">Length (ft)</Label>
-                  <Input
-                    id="boat_length"
-                    value={boatDetails.boat_length}
-                    onChange={(e) => setBoatDetails({ ...boatDetails, boat_length: e.target.value })}
-                    placeholder="e.g., 28"
-                    type="number"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="slip_location">Slip/Dock Location</Label>
-                  <Input
-                    id="slip_location"
-                    value={boatDetails.slip_location}
-                    onChange={(e) => setBoatDetails({ ...boatDetails, slip_location: e.target.value })}
-                    placeholder="e.g., Marina Bay, Slip #42"
-                  />
-                </div>
-              </div>
+              {/* Manual entry - only show if no vessel selected */}
+              {!selectedVesselId && (
+                <>
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">
+                        Or enter manually
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="boat_name">Boat Name</Label>
+                      <Input
+                        id="boat_name"
+                        value={boatDetails.boat_name}
+                        onChange={(e) => setBoatDetails({ ...boatDetails, boat_name: e.target.value })}
+                        placeholder="e.g., Sea Breeze"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="hull_id">Hull ID (HIN)</Label>
+                      <Input
+                        id="hull_id"
+                        value={boatDetails.hull_id}
+                        onChange={(e) => setBoatDetails({ ...boatDetails, hull_id: e.target.value })}
+                        placeholder="e.g., ABC12345D678"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid sm:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="boat_make">Make</Label>
+                      <Input
+                        id="boat_make"
+                        value={boatDetails.boat_make}
+                        onChange={(e) => setBoatDetails({ ...boatDetails, boat_make: e.target.value })}
+                        placeholder="e.g., Boston Whaler"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="boat_model">Model</Label>
+                      <Input
+                        id="boat_model"
+                        value={boatDetails.boat_model}
+                        onChange={(e) => setBoatDetails({ ...boatDetails, boat_model: e.target.value })}
+                        placeholder="e.g., Outrage 280"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="boat_year">Year</Label>
+                      <Input
+                        id="boat_year"
+                        value={boatDetails.boat_year}
+                        onChange={(e) => setBoatDetails({ ...boatDetails, boat_year: e.target.value })}
+                        placeholder="e.g., 2022"
+                        type="number"
+                        min="1900"
+                        max="2030"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="boat_length">Length (ft)</Label>
+                      <Input
+                        id="boat_length"
+                        value={boatDetails.boat_length}
+                        onChange={(e) => setBoatDetails({ ...boatDetails, boat_length: e.target.value })}
+                        placeholder="e.g., 28"
+                        type="number"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="slip_location">Slip/Dock Location</Label>
+                      <Input
+                        id="slip_location"
+                        value={boatDetails.slip_location}
+                        onChange={(e) => setBoatDetails({ ...boatDetails, slip_location: e.target.value })}
+                        placeholder="e.g., Marina Bay, Slip #42"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         )}

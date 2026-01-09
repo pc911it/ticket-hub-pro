@@ -39,7 +39,8 @@ import {
   Briefcase,
   Clock,
   MessageSquare,
-  HeadphonesIcon
+  HeadphonesIcon,
+  Wrench
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -77,6 +78,7 @@ const baseNavigation: NavItem[] = [
   { name: 'Plans', href: '/admin/plans', icon: FileText },
   { name: 'Tickets', href: '/admin/tickets', icon: Ticket },
   { name: 'Inventory', href: '/admin/inventory', icon: Package, featureKey: 'inventory_management' },
+  { name: 'Service Types', href: '/admin/service-types', icon: Wrench },
   { name: 'Trash', href: '/admin/trash', icon: Trash2 },
   { name: 'Support', href: '/admin/support', icon: HeadphonesIcon },
   { name: 'Users', href: '/admin/users', icon: Shield },
