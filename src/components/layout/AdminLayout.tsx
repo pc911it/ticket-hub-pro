@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeAlerts } from '@/hooks/useRealtimeAlerts';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { useSupportTicketNotifications } from '@/hooks/useSupportTicketNotifications';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { LiveAlertsBanner } from '@/components/LiveAlertsBanner';
 import { GlobalProjectChat } from '@/components/GlobalProjectChat';
 import { NotificationToggle, NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
@@ -50,10 +51,17 @@ interface NavItem {
   href: string;
   icon: any;
   badge?: number;
+  featureKey?: string; // Optional feature key for gating
 }
 
-// Pages restricted to admins only
+// Pages restricted to admins only (owners, company admins)
 const restrictedPages = ['/admin/client-billing', '/admin/billing', '/admin/settings', '/admin/users'];
+
+// Feature-gated pages mapping
+const featureGatedPages: Record<string, string> = {
+  '/admin/inventory': 'inventory_management',
+  '/admin/projects': 'project_management',
+};
 
 const baseNavigation: NavItem[] = [
   { name: 'Dispatcher', href: '/admin', icon: Radio },
@@ -65,10 +73,10 @@ const baseNavigation: NavItem[] = [
   { name: 'Calendar', href: '/admin/calendar', icon: Calendar },
   { name: 'Clients', href: '/admin/clients', icon: Users },
   { name: 'Client Billing', href: '/admin/client-billing', icon: DollarSign },
-  { name: 'Projects', href: '/admin/projects', icon: Building2 },
+  { name: 'Projects', href: '/admin/projects', icon: Building2, featureKey: 'project_management' },
   { name: 'Plans', href: '/admin/plans', icon: FileText },
   { name: 'Tickets', href: '/admin/tickets', icon: Ticket },
-  { name: 'Inventory', href: '/admin/inventory', icon: Package },
+  { name: 'Inventory', href: '/admin/inventory', icon: Package, featureKey: 'inventory_management' },
   { name: 'Trash', href: '/admin/trash', icon: Trash2 },
   { name: 'Support', href: '/admin/support', icon: HeadphonesIcon },
   { name: 'Users', href: '/admin/users', icon: Shield },
@@ -91,7 +99,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut, user, isSuperAdmin, isCompanyOwner, userRole } = useAuth();
+  const { signOut, user, isSuperAdmin, isCompanyOwner, userRole, isCompanyAdmin } = useAuth();
+  const { hasFeature } = useFeatureAccess();
   
   // Enable real-time alerts
   useRealtimeAlerts();
@@ -109,12 +118,23 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     }
   }, [location.pathname, clearUnreadCount]);
 
-  // Determine if user is admin-level (can see all pages)
-  const isAdminLevel = isSuperAdmin || isCompanyOwner || userRole === 'admin';
+  // Determine if user is admin-level (can see billing/settings/users pages)
+  // Company owners and company admins (role=admin in company_members) should see these
+  const isAdminLevel = isSuperAdmin || isCompanyOwner || isCompanyAdmin || userRole === 'admin';
 
-  // Build navigation with badges and filter based on role
+  // Build navigation with badges and filter based on role and features
   const navigation: NavItem[] = baseNavigation
-    .filter(item => isAdminLevel || !restrictedPages.includes(item.href))
+    .filter(item => {
+      // Filter restricted pages for non-admin users
+      if (!isAdminLevel && restrictedPages.includes(item.href)) {
+        return false;
+      }
+      // Filter feature-gated pages based on plan
+      if (item.featureKey && !hasFeature(item.featureKey)) {
+        return false;
+      }
+      return true;
+    })
     .map(item => {
       if (item.href === '/admin/support' && supportUnreadCount > 0 && !isSuperAdmin) {
         return { ...item, badge: supportUnreadCount };

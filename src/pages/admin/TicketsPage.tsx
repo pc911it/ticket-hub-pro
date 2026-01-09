@@ -40,7 +40,7 @@ interface Project {
 
 interface Ticket {
   id: string;
-  client_id: string;
+  client_id: string | null; // Now optional
   project_id: string | null;
   assigned_agent_id: string | null;
   title: string;
@@ -238,7 +238,7 @@ const TicketsPage = () => {
     }
 
     const payload = {
-      client_id: formData.client_id,
+      client_id: formData.client_id || null, // Client is now optional
       project_id: formData.project_id || null,
       assigned_agent_id: formData.assigned_agent_id || null,
       title: formData.title,
@@ -568,16 +568,16 @@ const TicketsPage = () => {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label>Client *</Label>
+                <Label>Client (Optional)</Label>
                 <Select
                   value={formData.client_id}
-                  onValueChange={(value) => setFormData({ ...formData, client_id: value })}
-                  required
+                  onValueChange={(value) => setFormData({ ...formData, client_id: value === 'none' ? '' : value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a client" />
+                    <SelectValue placeholder="Select a client (optional)" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">No client assigned</SelectItem>
                     {clients.map((client) => (
                       <SelectItem key={client.id} value={client.id}>
                         {client.full_name}

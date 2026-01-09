@@ -941,6 +941,33 @@ export type Database = {
           },
         ]
       }
+      plan_features: {
+        Row: {
+          created_at: string
+          feature_key: string
+          id: string
+          is_enabled: boolean | null
+          limit_value: number | null
+          plan_id: string
+        }
+        Insert: {
+          created_at?: string
+          feature_key: string
+          id?: string
+          is_enabled?: boolean | null
+          limit_value?: number | null
+          plan_id: string
+        }
+        Update: {
+          created_at?: string
+          feature_key?: string
+          id?: string
+          is_enabled?: boolean | null
+          limit_value?: number | null
+          plan_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1614,7 +1641,7 @@ export type Database = {
           call_type: string | null
           client_approved_at: string | null
           client_approved_by: string | null
-          client_id: string
+          client_id: string | null
           client_signature_url: string | null
           company_id: string | null
           created_at: string
@@ -1643,7 +1670,7 @@ export type Database = {
           call_type?: string | null
           client_approved_at?: string | null
           client_approved_by?: string | null
-          client_id: string
+          client_id?: string | null
           client_signature_url?: string | null
           company_id?: string | null
           created_at?: string
@@ -1672,7 +1699,7 @@ export type Database = {
           call_type?: string | null
           client_approved_at?: string | null
           client_approved_by?: string | null
-          client_id?: string
+          client_id?: string | null
           client_signature_url?: string | null
           company_id?: string | null
           created_at?: string
