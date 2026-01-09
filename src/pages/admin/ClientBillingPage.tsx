@@ -1205,6 +1205,8 @@ const ClientBillingPage = () => {
         onOpenChange={setShowCreateInvoice}
         clients={clients || []}
         projects={projects || []}
+        companyId={company}
+        companyType={companyDetails?.type}
         onSubmit={async (data) => {
           await createInvoiceMutation.mutateAsync(data);
         }}

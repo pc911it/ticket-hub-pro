@@ -44,6 +44,7 @@ import EmployeePortal from "./pages/EmployeePortal";
 import TrashPage from "./pages/admin/TrashPage";
 import ConstructionPlansPage from "./pages/admin/ConstructionPlansPage";
 import EmployeeTimeReportsPage from "./pages/admin/EmployeeTimeReportsPage";
+import ServiceTypesPage from "./pages/admin/ServiceTypesPage";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -338,6 +339,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AdminLayout>
                     <EmployeeTimeReportsPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/service-types"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <ServiceTypesPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }

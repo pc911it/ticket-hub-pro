@@ -1924,6 +1924,75 @@ export type Database = {
         }
         Relationships: []
       }
+      vessels: {
+        Row: {
+          boat_name: string
+          client_id: string
+          company_id: string
+          created_at: string
+          engine_type: string | null
+          fuel_type: string | null
+          hull_id: string | null
+          id: string
+          length: string | null
+          make: string | null
+          model: string | null
+          notes: string | null
+          slip_location: string | null
+          updated_at: string
+          year: number | null
+        }
+        Insert: {
+          boat_name: string
+          client_id: string
+          company_id: string
+          created_at?: string
+          engine_type?: string | null
+          fuel_type?: string | null
+          hull_id?: string | null
+          id?: string
+          length?: string | null
+          make?: string | null
+          model?: string | null
+          notes?: string | null
+          slip_location?: string | null
+          updated_at?: string
+          year?: number | null
+        }
+        Update: {
+          boat_name?: string
+          client_id?: string
+          company_id?: string
+          created_at?: string
+          engine_type?: string | null
+          fuel_type?: string | null
+          hull_id?: string | null
+          id?: string
+          length?: string | null
+          make?: string | null
+          model?: string | null
+          notes?: string | null
+          slip_location?: string | null
+          updated_at?: string
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vessels_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vessels_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
