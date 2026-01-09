@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Edit, Trash2, Building2, Mail, Phone, MapPin, Package } from "lucide-react";
 import { toast } from "sonner";
+import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 
 interface Supplier {
   id: string;
@@ -25,12 +26,13 @@ interface Supplier {
 }
 
 export default function SuppliersPage() {
-  const { user, isCompanyOwner, isSuperAdmin } = useAuth();
-  const canDelete = isCompanyOwner || isSuperAdmin;
+  const { user, isCompanyOwner, isSuperAdmin, isCompanyAdmin } = useAuth();
+  const canDelete = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [deleteSupplier, setDeleteSupplier] = useState<Supplier | null>(null);
   const [newSupplier, setNewSupplier] = useState({
     name: "",
     contact_name: "",
@@ -395,11 +397,7 @@ export default function SuppliersPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => {
-                              if (confirm("Delete this supplier?")) {
-                                deleteSupplierMutation.mutate(supplier.id);
-                              }
-                            }}
+                            onClick={() => setDeleteSupplier(supplier)}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
@@ -502,6 +500,22 @@ export default function SuppliersPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={!!deleteSupplier}
+        onOpenChange={(open) => !open && setDeleteSupplier(null)}
+        onConfirm={() => {
+          if (deleteSupplier) {
+            deleteSupplierMutation.mutate(deleteSupplier.id);
+            setDeleteSupplier(null);
+          }
+        }}
+        title="Supplier"
+        itemName={deleteSupplier?.name || ""}
+        itemType="supplier"
+        loading={deleteSupplierMutation.isPending}
+      />
     </div>
   );
 }

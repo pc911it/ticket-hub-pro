@@ -630,6 +630,7 @@ export type Database = {
         Row: {
           company_id: string
           created_at: string
+          deleted_at: string | null
           description: string | null
           id: string
           is_active: boolean | null
@@ -638,6 +639,7 @@ export type Database = {
         Insert: {
           company_id: string
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
@@ -646,6 +648,7 @@ export type Database = {
         Update: {
           company_id?: string
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
@@ -1930,6 +1933,7 @@ export type Database = {
           client_id: string
           company_id: string
           created_at: string
+          deleted_at: string | null
           engine_type: string | null
           fuel_type: string | null
           hull_id: string | null
@@ -1947,6 +1951,7 @@ export type Database = {
           client_id: string
           company_id: string
           created_at?: string
+          deleted_at?: string | null
           engine_type?: string | null
           fuel_type?: string | null
           hull_id?: string | null
@@ -1964,6 +1969,7 @@ export type Database = {
           client_id?: string
           company_id?: string
           created_at?: string
+          deleted_at?: string | null
           engine_type?: string | null
           fuel_type?: string | null
           hull_id?: string | null

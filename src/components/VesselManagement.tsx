@@ -74,6 +74,7 @@ export const VesselManagement = ({ clientId, companyId, readOnly = false }: Vess
         .from('vessels')
         .select('*')
         .eq('client_id', clientId)
+        .is('deleted_at', null)
         .order('boat_name');
       return (data || []) as Vessel[];
     },
@@ -139,17 +140,17 @@ export const VesselManagement = ({ clientId, companyId, readOnly = false }: Vess
     onError: (error: Error) => toast.error(error.message),
   });
 
-  // Delete mutation
+  // Delete mutation (soft delete)
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from('vessels')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success('Vessel deleted');
+      toast.success('Vessel moved to trash');
       setDeleteVessel(null);
       queryClient.invalidateQueries({ queryKey: ['client-vessels'] });
     },
