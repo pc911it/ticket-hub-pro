@@ -370,14 +370,13 @@ const NewCallPage = () => {
           <CardContent className="space-y-4">
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Project *</Label>
+                <Label>Project</Label>
                 <Select
                   value={formData.project_id}
                   onValueChange={(value) => setFormData({ ...formData, project_id: value })}
-                  required
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select project" />
+                    <SelectValue placeholder="Select project (optional)" />
                   </SelectTrigger>
                   <SelectContent>
                     {projects.map((project) => (
@@ -393,14 +392,13 @@ const NewCallPage = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Client *</Label>
+                <Label>Client</Label>
                 <Select
                   value={formData.client_id}
                   onValueChange={handleClientChange}
-                  required
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select client" />
+                    <SelectValue placeholder="Select client (optional)" />
                   </SelectTrigger>
                   <SelectContent>
                     {clients.map((client) => (
