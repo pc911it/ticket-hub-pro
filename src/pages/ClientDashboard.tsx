@@ -16,12 +16,13 @@ import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { SignaturePad } from "@/components/SignaturePad";
 import { FileUploadPreview } from "@/components/FileUploadPreview";
 import { PasswordResetReminder } from "@/components/PasswordResetReminder";
 import { ClientProjectDetails } from "@/components/ClientProjectDetails";
-import { SquareCardForm } from "@/components/SquareCardForm";
+import { CompanySquareCardForm } from "@/components/CompanySquareCardForm";
 import { ClientTicketDetailDialog } from "@/components/ClientTicketDetailDialog";
 import { TicketProgressTracker } from "@/components/TicketProgressTracker";
 import { ClientNotificationPreferences } from "@/components/ClientNotificationPreferences";
@@ -72,6 +73,7 @@ export default function ClientDashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAddCardDialog, setShowAddCardDialog] = useState(false);
   const [isSavingCard, setIsSavingCard] = useState(false);
+  const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null);
   const [activeMainTab, setActiveMainTab] = useState("dashboard");
   const [selectedTicketForView, setSelectedTicketForView] = useState<any>(null);
   const [requestForm, setRequestForm] = useState({
@@ -502,6 +504,44 @@ export default function ClientDashboard() {
       toast({ variant: "destructive", title: "Error", description: err.message || "Failed to save card" });
     } finally {
       setIsSavingCard(false);
+    }
+  };
+
+  // Pay invoice using company's payment provider
+  const handlePayInvoice = async (invoice: any) => {
+    if (!clientRecord?.id || !clientRecord?.square_card_id) {
+      toast({ 
+        variant: "destructive", 
+        title: "No Payment Method", 
+        description: "Please add a payment card first before paying invoices." 
+      });
+      setShowAddCardDialog(true);
+      return;
+    }
+    
+    setPayingInvoiceId(invoice.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('charge-client-invoice-company', {
+        body: { invoiceId: invoice.id },
+      });
+      
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      toast({ 
+        title: "Payment Successful", 
+        description: `Invoice ${invoice.invoice_number} has been paid successfully.` 
+      });
+      queryClient.invalidateQueries({ queryKey: ["client-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["client-payments"] });
+    } catch (err: any) {
+      toast({ 
+        variant: "destructive", 
+        title: "Payment Failed", 
+        description: err.message || "Failed to process payment. Please try again." 
+      });
+    } finally {
+      setPayingInvoiceId(null);
     }
   };
 
@@ -1471,6 +1511,19 @@ export default function ClientDashboard() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
+                    {/* Alert for clients without a payment card */}
+                    {!clientRecord?.square_card_id && clientInvoices && clientInvoices.some((inv: any) => inv.status !== 'paid') && (
+                      <Alert className="mb-4">
+                        <CreditCard className="h-4 w-4" />
+                        <AlertDescription className="flex items-center justify-between">
+                          <span>Add a payment card to pay invoices online.</span>
+                          <Button variant="outline" size="sm" onClick={() => setShowAddCardDialog(true)}>
+                            Add Card
+                          </Button>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    
                     {invoicesLoading ? (
                       <div className="flex justify-center py-8">
                         <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -1483,6 +1536,7 @@ export default function ClientDashboard() {
                             <TableHead>Amount</TableHead>
                             <TableHead>Due Date</TableHead>
                             <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Action</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1502,6 +1556,22 @@ export default function ClientDashboard() {
                                   </Badge>
                                 ) : (
                                   <Badge variant="outline">{invoice.status}</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {invoice.status !== 'paid' && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handlePayInvoice(invoice)}
+                                    disabled={payingInvoiceId === invoice.id || !clientRecord?.square_card_id}
+                                  >
+                                    {payingInvoiceId === invoice.id ? (
+                                      <RefreshCw className="h-3 w-3 animate-spin mr-1" />
+                                    ) : (
+                                      <CreditCard className="h-3 w-3 mr-1" />
+                                    )}
+                                    Pay Now
+                                  </Button>
                                 )}
                               </TableCell>
                             </TableRow>
@@ -1579,15 +1649,18 @@ export default function ClientDashboard() {
               <DialogDescription>
                 {clientRecord?.square_card_id 
                   ? 'Replace your existing card with a new one'
-                  : 'Save a payment card for automatic billing'
+                  : 'Save a payment card to pay invoices online'
                 }
               </DialogDescription>
             </DialogHeader>
-            <SquareCardForm 
-              onCardNonce={handleSaveClientCard}
-              isLoading={isSavingCard}
-              buttonText={clientRecord?.square_card_id ? "Update Card" : "Save Card"}
-            />
+            {clientRecord?.company_id && (
+              <CompanySquareCardForm 
+                companyId={clientRecord.company_id}
+                onCardNonce={handleSaveClientCard}
+                isLoading={isSavingCard}
+                buttonText={clientRecord?.square_card_id ? "Update Card" : "Save Card"}
+              />
+            )}
           </DialogContent>
         </Dialog>
       </main>

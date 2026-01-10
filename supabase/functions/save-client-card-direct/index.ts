@@ -25,17 +25,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    const accessToken = Deno.env.get('SQUARE_ACCESS_TOKEN');
-    const locationId = Deno.env.get('SQUARE_LOCATION_ID');
-    
-    if (!accessToken || !locationId) {
-      console.error('Missing Square configuration');
-      return new Response(
-        JSON.stringify({ error: 'Square payment system not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -49,7 +38,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch client details
+    // Fetch client details including company_id
     const { data: client, error: clientError } = await supabase
       .from('clients')
       .select('id, full_name, email, company_id, square_customer_id')
@@ -64,9 +53,44 @@ Deno.serve(async (req) => {
       );
     }
 
-    const squareBaseUrl = accessToken.startsWith('sandbox-') 
-      ? 'https://connect.squareupsandbox.com/v2'
-      : 'https://connect.squareup.com/v2';
+    if (!client.company_id) {
+      return new Response(
+        JSON.stringify({ error: 'Client is not associated with a company' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get company's payment settings
+    const { data: paymentSettings, error: settingsError } = await supabase
+      .from('company_payment_settings')
+      .select('*')
+      .eq('company_id', client.company_id)
+      .eq('provider', 'square')
+      .eq('is_enabled', true)
+      .single();
+
+    if (settingsError || !paymentSettings) {
+      console.error('Company payment settings not found:', settingsError);
+      return new Response(
+        JSON.stringify({ error: 'Payment method not available. Please contact the company.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const accessToken = paymentSettings.square_access_token_encrypted;
+    const squareEnvironment = paymentSettings.square_environment || 'sandbox';
+
+    if (!accessToken) {
+      console.error('Square access token not configured for company');
+      return new Response(
+        JSON.stringify({ error: 'Payment system not fully configured. Please contact the company.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const squareBaseUrl = squareEnvironment === 'production'
+      ? 'https://connect.squareup.com/v2'
+      : 'https://connect.squareupsandbox.com/v2';
 
     let customerId = client.square_customer_id;
 
