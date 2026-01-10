@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, ArrowLeft, Mail, Lock, User, Phone, MapPin, ArrowRight, Check, Zap, Shield, Users, CreditCard } from 'lucide-react';
+import { Building2, ArrowLeft, Mail, Lock, User, Phone, MapPin, ArrowRight, Check, Zap, Shield, Users, CreditCard, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Database } from '@/integrations/supabase/types';
 import { SquareCardForm } from '@/components/SquareCardForm';
@@ -176,6 +176,10 @@ const CompanyRegister = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  
+  // Username validation
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
 
   // Company details
   const [companyName, setCompanyName] = useState('');
@@ -197,16 +201,87 @@ const CompanyRegister = () => {
     }
   }, [user, step]);
 
+  // Check username availability when it changes
+  useEffect(() => {
+    const checkUsername = async () => {
+      if (!username || username.length < 3) {
+        setUsernameError(username.length > 0 ? 'Username must be at least 3 characters' : null);
+        return;
+      }
+
+      setCheckingUsername(true);
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('username', username.toLowerCase())
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error checking username:', error);
+          setUsernameError(null);
+        } else if (data) {
+          setUsernameError('This username is already taken');
+        } else {
+          setUsernameError(null);
+        }
+      } catch (err) {
+        console.error('Error checking username:', err);
+        setUsernameError(null);
+      } finally {
+        setCheckingUsername(false);
+      }
+    };
+
+    const debounceTimer = setTimeout(checkUsername, 500);
+    return () => clearTimeout(debounceTimer);
+  }, [username]);
+
   const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!fullName.trim() || !username.trim()) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Please fill in all required fields.',
+      });
+      return;
+    }
+
+    if (usernameError) {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid username',
+        description: usernameError,
+      });
+      return;
+    }
+
+    if (username.length < 3) {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid username',
+        description: 'Username must be at least 3 characters.',
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      if (!fullName.trim() || !username.trim()) {
+      // Double-check username availability before creating account
+      const { data: existingUsername } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('username', username.toLowerCase())
+        .maybeSingle();
+
+      if (existingUsername) {
         toast({
           variant: 'destructive',
-          title: 'Error',
-          description: 'Please fill in all required fields.',
+          title: 'Username taken',
+          description: 'This username is already in use. Please choose another.',
         });
         setIsLoading(false);
         return;
@@ -225,7 +300,7 @@ const CompanyRegister = () => {
         if (currentUser) {
           await supabase
             .from('profiles')
-            .update({ username })
+            .update({ username: username.toLowerCase() })
             .eq('user_id', currentUser.id);
         }
         
@@ -495,10 +570,27 @@ const CompanyRegister = () => {
                         placeholder="johndoe"
                         value={username}
                         onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, ''))}
-                        className="pl-10"
+                        className={`pl-10 pr-10 ${usernameError ? 'border-destructive focus-visible:ring-destructive' : username.length >= 3 && !checkingUsername && !usernameError ? 'border-green-500 focus-visible:ring-green-500' : ''}`}
                         required
                       />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        {checkingUsername && (
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        )}
+                        {!checkingUsername && usernameError && (
+                          <AlertCircle className="h-4 w-4 text-destructive" />
+                        )}
+                        {!checkingUsername && !usernameError && username.length >= 3 && (
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        )}
+                      </div>
                     </div>
+                    {usernameError && (
+                      <p className="text-xs text-destructive">{usernameError}</p>
+                    )}
+                    {!usernameError && username.length >= 3 && !checkingUsername && (
+                      <p className="text-xs text-green-500">Username is available</p>
+                    )}
                   </div>
                 </div>
                 <div className="space-y-2">
