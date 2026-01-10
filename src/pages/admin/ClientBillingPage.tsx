@@ -322,6 +322,58 @@ const ClientBillingPage = () => {
     },
     onSuccess: () => {
       toast.success('Invoice marked as paid');
+      setSelectedInvoice(null);
+      queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  // Cancel invoice (for draft/sent invoices that need to be abandoned)
+  const cancelInvoiceMutation = useMutation({
+    mutationFn: async (invoiceId: string) => {
+      const { error } = await supabase
+        .from('client_invoices')
+        .update({ status: 'cancelled' })
+        .eq('id', invoiceId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Invoice cancelled');
+      setSelectedInvoice(null);
+      queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  // Void invoice (for paid invoices that need to be reversed)
+  const voidInvoiceMutation = useMutation({
+    mutationFn: async (invoiceId: string) => {
+      const { error } = await supabase
+        .from('client_invoices')
+        .update({ status: 'void' })
+        .eq('id', invoiceId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Invoice voided');
+      setSelectedInvoice(null);
+      queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  // Delete invoice (draft only)
+  const deleteInvoiceMutation = useMutation({
+    mutationFn: async (invoiceId: string) => {
+      const { error } = await supabase
+        .from('client_invoices')
+        .delete()
+        .eq('id', invoiceId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Invoice deleted');
+      setSelectedInvoice(null);
       queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -580,6 +632,10 @@ const ClientBillingPage = () => {
         return <Badge className="bg-red-500/20 text-red-700 border-red-500/30"><XCircle className="h-3 w-3 mr-1" />Overdue</Badge>;
       case 'draft':
         return <Badge className="bg-gray-500/20 text-gray-700 border-gray-500/30"><Clock className="h-3 w-3 mr-1" />Draft</Badge>;
+      case 'cancelled':
+        return <Badge className="bg-orange-500/20 text-orange-700 border-orange-500/30"><XCircle className="h-3 w-3 mr-1" />Cancelled</Badge>;
+      case 'void':
+        return <Badge className="bg-purple-500/20 text-purple-700 border-purple-500/30"><XCircle className="h-3 w-3 mr-1" />Void</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -1237,10 +1293,18 @@ const ClientBillingPage = () => {
         }}
         onMarkPaid={() => {
           markPaidMutation.mutate(selectedInvoice.id);
-          setSelectedInvoice(null);
         }}
         onCharge={() => {
           chargeInvoiceMutation.mutate(selectedInvoice.id);
+        }}
+        onCancel={() => {
+          cancelInvoiceMutation.mutate(selectedInvoice.id);
+        }}
+        onVoid={() => {
+          voidInvoiceMutation.mutate(selectedInvoice.id);
+        }}
+        onDelete={() => {
+          deleteInvoiceMutation.mutate(selectedInvoice.id);
         }}
         isSending={sendInvoiceMutation.isPending}
         isCharging={chargeInvoiceMutation.isPending}
