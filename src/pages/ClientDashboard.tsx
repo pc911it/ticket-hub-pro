@@ -27,6 +27,7 @@ import { ClientTicketDetailDialog } from "@/components/ClientTicketDetailDialog"
 import { TicketProgressTracker } from "@/components/TicketProgressTracker";
 import { ClientNotificationPreferences } from "@/components/ClientNotificationPreferences";
 import { WorkOrderPDF } from "@/components/WorkOrderPDF";
+import { ClientInvoiceDetailSheet } from "@/components/ClientInvoiceDetailSheet";
 import { 
   FolderOpen, 
   Ticket, 
@@ -76,6 +77,7 @@ export default function ClientDashboard() {
   const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null);
   const [activeMainTab, setActiveMainTab] = useState("dashboard");
   const [selectedTicketForView, setSelectedTicketForView] = useState<any>(null);
+  const [selectedInvoiceForView, setSelectedInvoiceForView] = useState<any>(null);
   const [requestForm, setRequestForm] = useState({
     title: '',
     description: '',
@@ -184,7 +186,24 @@ export default function ClientDashboard() {
     enabled: !!clientRecord?.id,
   });
 
-  // Fetch projects for this client with ticket counts for progress tracking
+  // Fetch company info for invoice display
+  const { data: clientCompany } = useQuery({
+    queryKey: ["client-company", clientRecord?.company_id],
+    queryFn: async () => {
+      if (!clientRecord?.company_id) return null;
+      
+      const { data, error } = await supabase
+        .from("companies")
+        .select("name, address, city, state, phone, email, logo_url")
+        .eq("id", clientRecord.company_id)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!clientRecord?.company_id,
+  });
+
   const { data: projects, isLoading: projectsLoading } = useQuery({
     queryKey: ["client-projects", clientRecord?.id],
     queryFn: async () => {
@@ -1559,20 +1578,30 @@ export default function ClientDashboard() {
                                 )}
                               </TableCell>
                               <TableCell className="text-right">
-                                {invoice.status !== 'paid' && (
+                                <div className="flex items-center justify-end gap-2">
                                   <Button
+                                    variant="ghost"
                                     size="sm"
-                                    onClick={() => handlePayInvoice(invoice)}
-                                    disabled={payingInvoiceId === invoice.id || !clientRecord?.square_card_id}
+                                    onClick={() => setSelectedInvoiceForView(invoice)}
                                   >
-                                    {payingInvoiceId === invoice.id ? (
-                                      <RefreshCw className="h-3 w-3 animate-spin mr-1" />
-                                    ) : (
-                                      <CreditCard className="h-3 w-3 mr-1" />
-                                    )}
-                                    Pay Now
+                                    <Eye className="h-3 w-3 mr-1" />
+                                    View
                                   </Button>
-                                )}
+                                  {invoice.status !== 'paid' && (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handlePayInvoice(invoice)}
+                                      disabled={payingInvoiceId === invoice.id || !clientRecord?.square_card_id}
+                                    >
+                                      {payingInvoiceId === invoice.id ? (
+                                        <RefreshCw className="h-3 w-3 animate-spin mr-1" />
+                                      ) : (
+                                        <CreditCard className="h-3 w-3 mr-1" />
+                                      )}
+                                      Pay Now
+                                    </Button>
+                                  )}
+                                </div>
                               </TableCell>
                             </TableRow>
                           ))}
@@ -1663,6 +1692,23 @@ export default function ClientDashboard() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Invoice Detail Sheet */}
+        <ClientInvoiceDetailSheet
+          open={!!selectedInvoiceForView}
+          onOpenChange={(open) => !open && setSelectedInvoiceForView(null)}
+          invoice={selectedInvoiceForView}
+          company={clientCompany || undefined}
+          client={clientRecord ? {
+            full_name: clientRecord.full_name,
+            email: clientRecord.email,
+            address: clientRecord.address || undefined,
+            phone: clientRecord.phone || undefined,
+          } : undefined}
+          onPayInvoice={handlePayInvoice}
+          isPaying={payingInvoiceId === selectedInvoiceForView?.id}
+          hasPaymentCard={!!clientRecord?.square_card_id}
+        />
       </main>
       
       {/* Session Timeout Warning */}
