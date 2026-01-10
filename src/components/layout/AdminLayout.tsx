@@ -56,7 +56,7 @@ interface NavItem {
 }
 
 // Pages restricted to admins only (owners, company admins)
-const restrictedPages = ['/admin/client-billing', '/admin/billing', '/admin/settings', '/admin/users'];
+const restrictedPages = ['/admin/client-billing', '/admin/billing', '/admin/settings', '/admin/users', '/admin/payment-settings'];
 
 // Feature-gated pages mapping
 const featureGatedPages: Record<string, string> = {
@@ -83,6 +83,7 @@ const baseNavigation: NavItem[] = [
   { name: 'Support', href: '/admin/support', icon: HeadphonesIcon },
   { name: 'Users', href: '/admin/users', icon: Shield },
   { name: 'Billing', href: '/admin/billing', icon: CreditCard },
+  { name: 'Payment Settings', href: '/admin/payment-settings', icon: DollarSign },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 

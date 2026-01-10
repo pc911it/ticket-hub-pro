@@ -503,21 +503,22 @@ const ClientBillingPage = () => {
 
   // Save card directly for client (not through subscription)
   const handleSaveClientCard = async (cardNonce: string) => {
-    if (!selectedClientForCard) return;
+    if (!selectedClientForCard || !company) return;
     
     setIsSavingClientCard(true);
     try {
-      const { data, error } = await supabase.functions.invoke('save-client-card-direct', {
+      const { data, error } = await supabase.functions.invoke('save-client-card-company', {
         body: {
           clientId: selectedClientForCard.id,
           cardNonce,
+          companyId: company,
         },
       });
       
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       
-      toast.success(`Card saved (${data.cardBrand || 'Card'} ****${data.cardLast4})`);
+      toast.success(`Card saved (****${data.cardLast4})`);
       setShowAddClientCard(false);
       setSelectedClientForCard(null);
       refetchClients();
@@ -551,10 +552,10 @@ const ClientBillingPage = () => {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  // Charge invoice directly (if client has card on file)
+  // Charge invoice directly (if client has card on file) - uses company credentials
   const chargeInvoiceMutation = useMutation({
     mutationFn: async (invoiceId: string) => {
-      const { data, error } = await supabase.functions.invoke('charge-client-invoice', {
+      const { data, error } = await supabase.functions.invoke('charge-client-invoice-company', {
         body: { invoiceId },
       });
       if (error) throw error;
@@ -562,7 +563,7 @@ const ClientBillingPage = () => {
       return data;
     },
     onSuccess: (data) => {
-      toast.success(`Payment successful: ${formatCurrency(data.amount)}`);
+      toast.success('Payment successful!');
       setSelectedInvoice(null);
       queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
     },

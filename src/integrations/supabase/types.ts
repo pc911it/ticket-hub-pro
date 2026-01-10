@@ -626,6 +626,62 @@ export type Database = {
           },
         ]
       }
+      company_payment_settings: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_enabled: boolean | null
+          provider: string
+          square_access_token_encrypted: string | null
+          square_application_id: string | null
+          square_environment: string | null
+          square_location_id: string | null
+          stripe_publishable_key: string | null
+          stripe_secret_key_encrypted: string | null
+          stripe_webhook_secret_encrypted: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean | null
+          provider: string
+          square_access_token_encrypted?: string | null
+          square_application_id?: string | null
+          square_environment?: string | null
+          square_location_id?: string | null
+          stripe_publishable_key?: string | null
+          stripe_secret_key_encrypted?: string | null
+          stripe_webhook_secret_encrypted?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean | null
+          provider?: string
+          square_access_token_encrypted?: string | null
+          square_application_id?: string | null
+          square_environment?: string | null
+          square_location_id?: string | null
+          stripe_publishable_key?: string | null
+          stripe_secret_key_encrypted?: string | null
+          stripe_webhook_secret_encrypted?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_payment_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_service_types: {
         Row: {
           company_id: string
