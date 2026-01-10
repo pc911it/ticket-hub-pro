@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSessionTimeout } from "@/hooks/useSessionTimeout";
+import { useClientRealtimeAlerts } from "@/hooks/useClientRealtimeAlerts";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -129,6 +130,25 @@ export default function ClientDashboard() {
       return data;
     },
     enabled: !!clientEmail,
+  });
+
+  // Setup real-time alerts for client
+  const handleInvalidateQueries = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["client-invoices"] });
+    queryClient.invalidateQueries({ queryKey: ["client-tickets"] });
+    queryClient.invalidateQueries({ queryKey: ["client-projects"] });
+    queryClient.invalidateQueries({ queryKey: ["client-job-updates"] });
+  }, [queryClient]);
+
+  useClientRealtimeAlerts({
+    clientId: clientRecord?.id || null,
+    onNewInvoice: handleInvalidateQueries,
+    onInvoiceUpdate: handleInvalidateQueries,
+    onNewEstimate: handleInvalidateQueries,
+    onEstimateUpdate: handleInvalidateQueries,
+    onTicketUpdate: handleInvalidateQueries,
+    onNewTicket: handleInvalidateQueries,
+    onJobUpdate: handleInvalidateQueries,
   });
 
   // Fetch client invoices
