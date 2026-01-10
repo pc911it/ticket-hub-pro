@@ -46,6 +46,7 @@ import ConstructionPlansPage from "./pages/admin/ConstructionPlansPage";
 import EmployeeTimeReportsPage from "./pages/admin/EmployeeTimeReportsPage";
 import ServiceTypesPage from "./pages/admin/ServiceTypesPage";
 import VesselDetailPage from "./pages/admin/VesselDetailPage";
+import PaymentSettingsPage from "./pages/admin/PaymentSettingsPage";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -222,6 +223,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AdminLayout>
                     <CompanySettingsPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/payment-settings"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <PaymentSettingsPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }
