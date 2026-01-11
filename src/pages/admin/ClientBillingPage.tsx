@@ -27,6 +27,16 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Table,
   TableBody,
   TableCell,
@@ -76,6 +86,7 @@ const ClientBillingPage = () => {
   const [selectedEstimate, setSelectedEstimate] = useState<any>(null);
   const [isChargingInvoice, setIsChargingInvoice] = useState(false);
   const [invoiceClientFilter, setInvoiceClientFilter] = useState<string>('all');
+  const [invoiceToDelete, setInvoiceToDelete] = useState<any>(null);
   
   // Form states
   const [planForm, setPlanForm] = useState({
@@ -813,7 +824,7 @@ const ClientBillingPage = () => {
                             <Button 
                               size="sm" 
                               variant="destructive"
-                              onClick={(e) => { e.stopPropagation(); deleteInvoiceMutation.mutate(invoice.id); }}
+                              onClick={(e) => { e.stopPropagation(); setInvoiceToDelete(invoice); }}
                               disabled={deleteInvoiceMutation.isPending}
                             >
                               <Trash2 className="h-4 w-4 mr-1" />Delete
@@ -1370,6 +1381,30 @@ const ClientBillingPage = () => {
         isSending={sendEstimateMutation.isPending}
         isConverting={convertEstimateMutation.isPending}
       />
+
+      {/* Delete Invoice Confirmation Dialog */}
+      <AlertDialog open={!!invoiceToDelete} onOpenChange={(open) => !open && setInvoiceToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Invoice?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete invoice {invoiceToDelete?.invoice_number}. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                deleteInvoiceMutation.mutate(invoiceToDelete.id);
+                setInvoiceToDelete(null);
+              }}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Delete Invoice
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
