@@ -809,6 +809,16 @@ const ClientBillingPage = () => {
                               <CheckCircle className="h-4 w-4 mr-1" />Mark Paid
                             </Button>
                           )}
+                          {(invoice.status === 'draft' || invoice.status === 'cancelled') && (
+                            <Button 
+                              size="sm" 
+                              variant="destructive"
+                              onClick={(e) => { e.stopPropagation(); deleteInvoiceMutation.mutate(invoice.id); }}
+                              disabled={deleteInvoiceMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" />Delete
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
