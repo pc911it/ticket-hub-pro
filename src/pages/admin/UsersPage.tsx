@@ -130,19 +130,17 @@ export default function UsersPage() {
         if (profilesError) throw profilesError;
 
         // Build users list from members, with profile info if available
-        // Only show clients and staff (employees) - not admin or basic users
-        const usersWithRoles: UserWithRole[] = members
-          .filter((member) => member.role === "client" || member.role === "staff")
-          .map((member) => {
-            const profile = profiles?.find((p) => p.user_id === member.user_id);
-            return {
-              id: profile?.id || member.user_id,
-              user_id: member.user_id,
-              full_name: profile?.full_name || null,
-              email: profile?.email || null,
-              role: member.role || "user",
-            };
-          });
+        // Show all company users - admins can manage all roles
+        const usersWithRoles: UserWithRole[] = members.map((member) => {
+          const profile = profiles?.find((p) => p.user_id === member.user_id);
+          return {
+            id: profile?.id || member.user_id,
+            user_id: member.user_id,
+            full_name: profile?.full_name || null,
+            email: profile?.email || null,
+            role: member.role || "user",
+          };
+        });
 
         return usersWithRoles;
       }
