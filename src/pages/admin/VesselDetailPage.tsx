@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -88,6 +89,37 @@ const VesselDetailPage = () => {
   const { vesselId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  // Fetch user's company type to ensure this page is only for boat_services companies
+  const { data: companyType, isLoading: loadingCompanyType } = useQuery({
+    queryKey: ['user-company-type-vessel', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data: membership } = await supabase
+        .from('company_members')
+        .select('company_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (!membership?.company_id) return null;
+      
+      const { data: company } = await supabase
+        .from('companies')
+        .select('type')
+        .eq('id', membership.company_id)
+        .single();
+      
+      return company?.type || null;
+    },
+    enabled: !!user,
+  });
+
+  // Redirect non-boat companies away from this page
+  useEffect(() => {
+    if (!loadingCompanyType && companyType && companyType !== 'boat_services') {
+      navigate('/admin/clients', { replace: true });
+    }
+  }, [companyType, loadingCompanyType, navigate]);
 
   // Fetch vessel details
   const { data: vessel, isLoading: loadingVessel } = useQuery({
@@ -227,12 +259,17 @@ const VesselDetailPage = () => {
     }
   };
 
-  if (loadingVessel) {
+  if (loadingVessel || loadingCompanyType) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
+  }
+
+  // If not a boat_services company, don't render (redirect will happen via useEffect)
+  if (companyType && companyType !== 'boat_services') {
+    return null;
   }
 
   if (!vessel) {
