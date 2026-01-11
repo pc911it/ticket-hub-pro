@@ -75,6 +75,7 @@ const ClientBillingPage = () => {
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [selectedEstimate, setSelectedEstimate] = useState<any>(null);
   const [isChargingInvoice, setIsChargingInvoice] = useState(false);
+  const [invoiceClientFilter, setInvoiceClientFilter] = useState<string>('all');
   
   // Form states
   const [planForm, setPlanForm] = useState({
@@ -362,7 +363,7 @@ const ClientBillingPage = () => {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  // Delete invoice (draft only)
+  // Delete invoice (draft or cancelled)
   const deleteInvoiceMutation = useMutation({
     mutationFn: async (invoiceId: string) => {
       const { error } = await supabase
@@ -728,7 +729,21 @@ const ClientBillingPage = () => {
 
         {/* Invoices Tab */}
         <TabsContent value="invoices" className="space-y-4">
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm font-medium whitespace-nowrap">Filter by Client:</Label>
+              <Select value={invoiceClientFilter} onValueChange={setInvoiceClientFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="All Clients" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Clients</SelectItem>
+                  {clients?.map((client: any) => (
+                    <SelectItem key={client.id} value={client.id}>{client.full_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Button onClick={() => setShowCreateInvoice(true)}>
               <Plus className="h-4 w-4 mr-2" />Create Invoice
             </Button>
@@ -741,6 +756,12 @@ const ClientBillingPage = () => {
                   <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
               ) : invoices && invoices.length > 0 ? (
+                (() => {
+                  const filteredInvoices = invoiceClientFilter === 'all' 
+                    ? invoices 
+                    : invoices.filter((inv: any) => inv.client_id === invoiceClientFilter);
+                  
+                  return filteredInvoices.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -753,7 +774,7 @@ const ClientBillingPage = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {invoices.map((invoice: any) => (
+                    {filteredInvoices.map((invoice: any) => (
                       <TableRow key={invoice.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedInvoice(invoice)}>
                         <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
                         <TableCell>{invoice.clients?.full_name || 'Unknown'}</TableCell>
@@ -793,6 +814,14 @@ const ClientBillingPage = () => {
                     ))}
                   </TableBody>
                 </Table>
+                  ) : (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>No invoices found for this client</p>
+                      <p className="text-sm">Try selecting a different client or create a new invoice</p>
+                    </div>
+                  );
+                })()
               ) : (
                 <div className="text-center py-12 text-muted-foreground">
                   <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />

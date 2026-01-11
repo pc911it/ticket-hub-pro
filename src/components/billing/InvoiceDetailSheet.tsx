@@ -266,8 +266,8 @@ export const InvoiceDetailSheet = ({
                     </DropdownMenuItem>
                   )}
                   
-                  {/* Delete - only for draft invoices */}
-                  {invoice.status === 'draft' && onDelete && (
+                  {/* Delete - available for draft and cancelled invoices */}
+                  {(invoice.status === 'draft' || invoice.status === 'cancelled') && onDelete && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => setConfirmAction('delete')} className="text-destructive">
@@ -359,7 +359,7 @@ export const InvoiceDetailSheet = ({
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Invoice?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently delete the draft invoice. This action cannot be undone.
+                This will permanently delete the invoice. This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
