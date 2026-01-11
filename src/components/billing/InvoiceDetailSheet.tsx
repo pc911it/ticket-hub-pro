@@ -241,8 +241,8 @@ export const InvoiceDetailSheet = ({
               Download PDF
             </Button>
             
-            {/* More Actions Dropdown */}
-            {(invoice.status !== 'void' && invoice.status !== 'cancelled') && (
+            {/* More Actions Dropdown - show for non-void invoices (cancelled can be deleted) */}
+            {invoice.status !== 'void' && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="icon">
