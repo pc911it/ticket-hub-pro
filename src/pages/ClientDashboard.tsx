@@ -15,16 +15,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -64,7 +54,6 @@ import {
   Receipt,
   RefreshCw,
   Eye,
-  Trash2,
   XCircle
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
@@ -91,7 +80,6 @@ export default function ClientDashboard() {
   const [activeMainTab, setActiveMainTab] = useState("dashboard");
   const [selectedTicketForView, setSelectedTicketForView] = useState<any>(null);
   const [selectedInvoiceForView, setSelectedInvoiceForView] = useState<any>(null);
-  const [invoiceToDelete, setInvoiceToDelete] = useState<any>(null);
   const [requestForm, setRequestForm] = useState({
     title: '',
     description: '',
@@ -505,25 +493,6 @@ export default function ClientDashboard() {
     },
     onError: (error: any) => {
       toast({ variant: "destructive", title: "Error", description: error.message || "Failed to save approval." });
-    },
-  });
-
-  // Delete cancelled invoice
-  const deleteInvoiceMutation = useMutation({
-    mutationFn: async (invoiceId: string) => {
-      const { error } = await supabase
-        .from('client_invoices')
-        .delete()
-        .eq('id', invoiceId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({ title: "Invoice Deleted", description: "The cancelled invoice has been deleted." });
-      setInvoiceToDelete(null);
-      queryClient.invalidateQueries({ queryKey: ["client-invoices"] });
-    },
-    onError: (error: any) => {
-      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to delete invoice." });
     },
   });
 
@@ -1643,17 +1612,6 @@ export default function ClientDashboard() {
                                     <Eye className="h-3 w-3 mr-1" />
                                     View
                                   </Button>
-                                  {invoice.status === 'cancelled' && (
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      onClick={() => setInvoiceToDelete(invoice)}
-                                      disabled={deleteInvoiceMutation.isPending}
-                                    >
-                                      <Trash2 className="h-3 w-3 mr-1" />
-                                      Delete
-                                    </Button>
-                                  )}
                                   {invoice.status === 'sent' && (
                                     <Button
                                       size="sm"
@@ -1777,28 +1735,6 @@ export default function ClientDashboard() {
           hasPaymentCard={!!clientRecord?.square_card_id}
         />
 
-        {/* Delete Invoice Confirmation Dialog */}
-        <AlertDialog open={!!invoiceToDelete} onOpenChange={(open) => !open && setInvoiceToDelete(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Invoice?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete invoice {invoiceToDelete?.invoice_number}. This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction 
-                onClick={() => {
-                  deleteInvoiceMutation.mutate(invoiceToDelete.id);
-                }}
-                className="bg-destructive hover:bg-destructive/90"
-              >
-                Delete Invoice
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </main>
       
       {/* Session Timeout Warning */}
