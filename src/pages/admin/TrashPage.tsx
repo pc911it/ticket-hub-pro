@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -59,8 +60,34 @@ interface DeletedServiceType {
 }
 
 const TrashPage = () => {
-  const { isCompanyOwner, isSuperAdmin, isCompanyAdmin } = useAuth();
+  const { isCompanyOwner, isSuperAdmin, isCompanyAdmin, user } = useAuth();
   const canPermanentlyDelete = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
+
+  // Fetch company type to determine if vessels tab should be shown
+  const { data: companyType } = useQuery({
+    queryKey: ['user-company-type-trash', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data: membership } = await supabase
+        .from('company_members')
+        .select('company_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (!membership?.company_id) return null;
+      
+      const { data: company } = await supabase
+        .from('companies')
+        .select('type')
+        .eq('id', membership.company_id)
+        .single();
+      
+      return company?.type || null;
+    },
+    enabled: !!user,
+  });
+
+  const isBoatCompany = companyType === 'boat_services';
   
   const [deletedProjects, setDeletedProjects] = useState<DeletedProject[]>([]);
   const [deletedTickets, setDeletedTickets] = useState<DeletedTicket[]>([]);
@@ -272,7 +299,7 @@ const TrashPage = () => {
     return Math.max(0, diffDays);
   };
 
-  const totalDeletedItems = deletedProjects.length + deletedTickets.length + deletedClients.length + deletedInventory.length + deletedSuppliers.length + deletedVessels.length + deletedServiceTypes.length;
+  const totalDeletedItems = deletedProjects.length + deletedTickets.length + deletedClients.length + deletedInventory.length + deletedSuppliers.length + (isBoatCompany ? deletedVessels.length : 0) + deletedServiceTypes.length;
 
   if (loading) {
     return (
@@ -339,13 +366,15 @@ const TrashPage = () => {
                 <Badge variant="secondary" className="ml-1">{deletedSuppliers.length}</Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="vessels" className="gap-2">
-              <Ship className="h-4 w-4" />
-              Vessels
-              {deletedVessels.length > 0 && (
-                <Badge variant="secondary" className="ml-1">{deletedVessels.length}</Badge>
-              )}
-            </TabsTrigger>
+            {isBoatCompany && (
+              <TabsTrigger value="vessels" className="gap-2">
+                <Ship className="h-4 w-4" />
+                Vessels
+                {deletedVessels.length > 0 && (
+                  <Badge variant="secondary" className="ml-1">{deletedVessels.length}</Badge>
+                )}
+              </TabsTrigger>
+            )}
             <TabsTrigger value="servicetypes" className="gap-2">
               <Settings2 className="h-4 w-4" />
               Service Types
@@ -679,65 +708,67 @@ const TrashPage = () => {
             )}
           </TabsContent>
 
-          {/* Vessels Tab */}
-          <TabsContent value="vessels" className="space-y-4">
-            {deletedVessels.length > 0 && (
-              <div className="flex items-center gap-4">
-                <Button variant="outline" size="sm" onClick={() => selectAll('vessel')}>
-                  {selectedVessels.size === deletedVessels.length ? 'Deselect All' : 'Select All'}
-                </Button>
-                {selectedVessels.size > 0 && (
-                  <>
-                    <Button size="sm" onClick={() => handleRestore('vessel', Array.from(selectedVessels))} disabled={restoring}>
-                      <RotateCcw className="h-4 w-4 mr-2" />
-                      Restore ({selectedVessels.size})
-                    </Button>
-                    {canPermanentlyDelete && (
-                      <Button variant="destructive" size="sm" onClick={() => handleBulkPermanentDelete('vessel', Array.from(selectedVessels))} disabled={deleting}>
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete Forever ({selectedVessels.size})
+          {/* Vessels Tab - Only for boat_services companies */}
+          {isBoatCompany && (
+            <TabsContent value="vessels" className="space-y-4">
+              {deletedVessels.length > 0 && (
+                <div className="flex items-center gap-4">
+                  <Button variant="outline" size="sm" onClick={() => selectAll('vessel')}>
+                    {selectedVessels.size === deletedVessels.length ? 'Deselect All' : 'Select All'}
+                  </Button>
+                  {selectedVessels.size > 0 && (
+                    <>
+                      <Button size="sm" onClick={() => handleRestore('vessel', Array.from(selectedVessels))} disabled={restoring}>
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Restore ({selectedVessels.size})
                       </Button>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-            {deletedVessels.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">No deleted vessels.</p>
-            ) : (
-              <div className="space-y-2">
-                {deletedVessels.map(vessel => (
-                  <Card key={vessel.id} className="border shadow-sm">
-                    <CardContent className="p-4 flex items-center gap-4">
-                      <Checkbox checked={selectedVessels.has(vessel.id)} onCheckedChange={() => toggleSelection('vessel', vessel.id)} />
-                      <Ship className="h-5 w-5 text-muted-foreground" />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{vessel.boat_name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {vessel.hull_id ? `Hull: ${vessel.hull_id} • ` : ''}
-                          Deleted {formatDistanceToNow(new Date(vessel.deleted_at), { addSuffix: true })}
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="gap-1">
-                        <Clock className="h-3 w-3" />
-                        {getDaysRemaining(vessel.deleted_at)} days left
-                      </Badge>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => handleRestore('vessel', [vessel.id])} disabled={restoring}>
-                          <RotateCcw className="h-4 w-4" />
+                      {canPermanentlyDelete && (
+                        <Button variant="destructive" size="sm" onClick={() => handleBulkPermanentDelete('vessel', Array.from(selectedVessels))} disabled={deleting}>
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete Forever ({selectedVessels.size})
                         </Button>
-                        {canPermanentlyDelete && (
-                          <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setPermanentDeleteItem({ type: 'vessel', id: vessel.id, name: vessel.boat_name })}>
-                            <Trash2 className="h-4 w-4" />
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+              {deletedVessels.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No deleted vessels.</p>
+              ) : (
+                <div className="space-y-2">
+                  {deletedVessels.map(vessel => (
+                    <Card key={vessel.id} className="border shadow-sm">
+                      <CardContent className="p-4 flex items-center gap-4">
+                        <Checkbox checked={selectedVessels.has(vessel.id)} onCheckedChange={() => toggleSelection('vessel', vessel.id)} />
+                        <Ship className="h-5 w-5 text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{vessel.boat_name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {vessel.hull_id ? `Hull: ${vessel.hull_id} • ` : ''}
+                            Deleted {formatDistanceToNow(new Date(vessel.deleted_at), { addSuffix: true })}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="gap-1">
+                          <Clock className="h-3 w-3" />
+                          {getDaysRemaining(vessel.deleted_at)} days left
+                        </Badge>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => handleRestore('vessel', [vessel.id])} disabled={restoring}>
+                            <RotateCcw className="h-4 w-4" />
                           </Button>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
+                          {canPermanentlyDelete && (
+                            <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setPermanentDeleteItem({ type: 'vessel', id: vessel.id, name: vessel.boat_name })}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          )}
 
           {/* Service Types Tab */}
           <TabsContent value="servicetypes" className="space-y-4">
