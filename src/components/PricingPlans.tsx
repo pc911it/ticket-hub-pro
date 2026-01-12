@@ -32,7 +32,7 @@ export const defaultPlans: PricingPlan[] = [
       '100 tickets/month',
       'Mobile App Access',
       'Basic Job Scheduling',
-      'Client CRM',
+      'Client CRM & Billing',
     ],
   },
   {
@@ -50,8 +50,8 @@ export const defaultPlans: PricingPlan[] = [
       'Inventory Management',
       'Project Management',
       'Real-time Field Tracking',
-      'Advanced Reports',
-      'Priority support',
+      'Custom Reports',
+      'Priority Support',
     ],
     highlighted: ['Inventory Management', 'Project Management'],
   },
@@ -66,14 +66,14 @@ export const defaultPlans: PricingPlan[] = [
       'Unlimited dispatchers',
       'Unlimited field agents',
       'Unlimited tickets & projects',
-      'Advanced analytics',
-      'API access',
-      'Custom integrations',
+      'Advanced Analytics',
+      'API Access',
+      'Custom Integrations',
       '24/7 Priority Phone Support',
       'Dedicated Success Manager',
-      'SLA guarantee',
+      'SLA Guarantee',
     ],
-    highlighted: ['Unlimited users', 'API access', 'Dedicated Success Manager'],
+    highlighted: ['Unlimited users', 'API Access', 'Dedicated Success Manager'],
   },
 ];
 
@@ -282,9 +282,14 @@ export function PricingPlans({
       </div>
 
       {/* Bottom Note */}
-      <p className="text-center text-sm text-muted-foreground mt-8">
-        All plans include a 14-day free trial. No credit card required to start.
-      </p>
+      <div className="text-center mt-8 space-y-2">
+        <p className="text-sm text-muted-foreground">
+          All plans include a 14-day free trial. No credit card required to start.
+        </p>
+        <p className="text-xs text-muted-foreground/70">
+          Payment processing fees (2.9% + $0.30 per transaction) apply when billing your clients.
+        </p>
+      </div>
     </div>
   );
 }
