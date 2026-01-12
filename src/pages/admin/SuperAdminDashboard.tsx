@@ -97,11 +97,11 @@ export default function SuperAdminDashboard() {
 
   const handleDeleteCompany = async () => {
     if (!deleteCompany) return;
-    
+
     setIsDeleting(true);
     try {
       const response = await supabase.functions.invoke('delete-company', {
-        body: { 
+        body: {
           company_id: deleteCompany.id,
           reason: "Super Admin deletion"
         }
@@ -112,10 +112,10 @@ export default function SuperAdminDashboard() {
       }
 
       const result = response.data;
-      
+
       if (result.success) {
         toast.success("Company deleted", {
-          description: result.fee_charged 
+          description: result.fee_charged
             ? `${deleteCompany.name} has been deleted. A $${result.fee_amount} cancellation fee was charged.`
             : `${deleteCompany.name} has been deleted. ${result.charge_error || ''}`
         });
@@ -136,9 +136,9 @@ export default function SuperAdminDashboard() {
 
   const getCancellationFee = (plan: string | null) => {
     switch (plan) {
-      case 'enterprise': return 199;
-      case 'professional': return 79;
-      default: return 29;
+      case 'enterprise': return 599;
+      case 'professional': return 249;
+      default: return 79;
     }
   };
 

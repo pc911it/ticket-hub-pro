@@ -7,10 +7,11 @@ const corsHeaders = {
 };
 
 // Subscription plan monthly costs in cents
+// Subscription plan monthly costs in cents
 const PLAN_COSTS: Record<string, number> = {
-  starter: 2900,      // $29
-  professional: 7900, // $79
-  enterprise: 19900,  // $199
+  starter: 7900,      // $79
+  professional: 24900, // $249
+  enterprise: 59900,  // $599
 };
 
 serve(async (req: Request) => {
@@ -64,7 +65,7 @@ serve(async (req: Request) => {
 
     // Check if user is super admin or company owner
     const { data: isSuperAdmin } = await supabaseAdmin.rpc("is_super_admin", { _user_id: user.id });
-    
+
     const { data: company, error: companyError } = await supabaseAdmin
       .from("companies")
       .select("*")
@@ -104,10 +105,10 @@ serve(async (req: Request) => {
     // Charge cancellation fee if company has Square payment info
     if (company.square_customer_id && company.square_card_id && squareAccessToken && squareLocationId) {
       console.log("Attempting to charge cancellation fee via Square...");
-      
+
       try {
         const idempotencyKey = crypto.randomUUID();
-        
+
         const paymentResponse = await fetch("https://connect.squareup.com/v2/payments", {
           method: "POST",
           headers: {

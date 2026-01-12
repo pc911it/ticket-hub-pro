@@ -30,50 +30,53 @@ const plans: PricingPlan[] = [
   {
     id: 'starter',
     name: 'Starter',
-    price: 29,
+    price: 79,
     period: '/month',
-    description: 'Perfect for small teams getting started',
+    description: 'Essential dispatching for small teams getting organized',
     icon: <Zap className="h-5 w-5" />,
     features: [
       'Up to 5 dispatchers',
       'Up to 10 field agents',
       '100 tickets/month',
-      'Basic notifications',
-      'Email support',
+      'Mobile App for Agents',
+      'Digital Invoicing',
+      'Basic Map Routing',
     ],
   },
   {
     id: 'professional',
-    name: 'Professional',
-    price: 79,
+    name: 'Growth',
+    price: 249,
     period: '/month',
-    description: 'For growing companies with more needs',
+    description: 'Complete business OS to optimize operations',
     icon: <Shield className="h-5 w-5" />,
     popular: true,
     features: [
       'Up to 15 dispatchers',
       'Up to 50 field agents',
       'Unlimited tickets',
-      'Real-time tracking',
-      'Priority support',
-      'Custom reports',
+      'Inventory Management',
+      'Project Management',
+      'Automated SMS Notifications',
+      'Live GPS Tracking',
     ],
   },
   {
     id: 'enterprise',
-    name: 'Enterprise',
-    price: 199,
+    name: 'Scale',
+    price: 599,
     period: '/month',
-    description: 'For large operations needing full control',
+    description: 'Unlimited power for high-volume organizations',
     icon: <Users className="h-5 w-5" />,
     features: [
       'Unlimited dispatchers',
       'Unlimited field agents',
-      'Unlimited tickets',
-      'Advanced analytics',
-      '24/7 phone support',
-      'API access',
-      'Custom integrations',
+      'Unlimited tickets & projects',
+      'API & Webhooks',
+      'White-label Customer Portal',
+      'Custom Role Permissions',
+      'Dedicated Success Manager',
+      '24/7 Priority Support',
     ],
   },
 ];
@@ -154,13 +157,13 @@ const businessConfigs: Record<CompanyType, {
 };
 
 const usStates = [
-  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 
-  'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 
-  'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 
-  'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 
-  'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 
-  'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 
-  'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 
+  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut',
+  'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa',
+  'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan',
+  'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire',
+  'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio',
+  'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota',
+  'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia',
   'Wisconsin', 'Wyoming'
 ];
 
@@ -176,7 +179,7 @@ const CompanyRegister = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  
+
   // Username validation
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
@@ -191,7 +194,7 @@ const CompanyRegister = () => {
 
   // Plan selection
   const [selectedPlan, setSelectedPlan] = useState('professional');
-  
+
   // Created company ID for payment step
   const [createdCompanyId, setCreatedCompanyId] = useState<string | null>(null);
 
@@ -239,7 +242,7 @@ const CompanyRegister = () => {
 
   const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!fullName.trim() || !username.trim()) {
       toast({
         variant: 'destructive',
@@ -303,7 +306,7 @@ const CompanyRegister = () => {
             .update({ username: username.toLowerCase() })
             .eq('user_id', currentUser.id);
         }
-        
+
         toast({
           title: 'Account created!',
           description: 'Now let\'s set up your company.',
@@ -323,7 +326,7 @@ const CompanyRegister = () => {
 
   const handleStep2Submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!companyName.trim() || !state || !city.trim()) {
       toast({
         variant: 'destructive',
@@ -332,7 +335,7 @@ const CompanyRegister = () => {
       });
       return;
     }
-    
+
     setStep(3);
   };
 
@@ -341,7 +344,7 @@ const CompanyRegister = () => {
 
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
-      
+
       if (!currentUser) {
         toast({
           variant: 'destructive',
@@ -407,20 +410,20 @@ const CompanyRegister = () => {
 
       setCreatedCompanyId(company.id);
       setStep(4);
-      
+
       toast({
         title: 'Company created!',
         description: 'Now add a payment method to complete registration.',
       });
     } catch (err: any) {
       let errorMessage = 'Failed to create company.';
-      
+
       if (err.code === '23505' || err.message?.includes('duplicate key')) {
         errorMessage = 'A company with this email already exists. Please use a different email address.';
       } else if (err.message) {
         errorMessage = err.message;
       }
-      
+
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -433,9 +436,9 @@ const CompanyRegister = () => {
 
   const handleCardNonce = async (cardNonce: string) => {
     if (!createdCompanyId) return;
-    
+
     setIsLoading(true);
-    
+
     try {
       // Call Square edge function to create customer and save card
       const response = await supabase.functions.invoke('square-create-customer', {
@@ -452,7 +455,7 @@ const CompanyRegister = () => {
       }
 
       const data = response.data;
-      
+
       if (!data.success) {
         throw new Error(data.error || 'Failed to save payment method');
       }
@@ -488,10 +491,10 @@ const CompanyRegister = () => {
         <div className="absolute top-20 right-20 w-72 h-72 bg-secondary/10 rounded-full blur-3xl" />
         <div className="absolute bottom-20 left-20 w-96 h-96 bg-secondary/5 rounded-full blur-3xl" />
       </div>
-      
+
       <div className="relative max-w-4xl mx-auto">
-        <Link 
-          to="/" 
+        <Link
+          to="/"
           className="inline-flex items-center gap-2 text-primary-foreground/80 hover:text-primary-foreground mb-6 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -500,33 +503,29 @@ const CompanyRegister = () => {
 
         {/* Progress indicator */}
         <div className="flex items-center gap-2 mb-8 max-w-lg">
-          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors ${
-            step >= 1 ? 'bg-primary text-primary-foreground' : 'bg-primary/20 text-primary-foreground/60'
-          }`}>
+          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors ${step >= 1 ? 'bg-primary text-primary-foreground' : 'bg-primary/20 text-primary-foreground/60'
+            }`}>
             1
           </div>
           <div className="flex-1 h-1 bg-primary/20 rounded overflow-hidden">
             <div className={`h-full bg-primary rounded transition-all duration-300 ${step >= 2 ? 'w-full' : 'w-0'}`} />
           </div>
-          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors ${
-            step >= 2 ? 'bg-primary text-primary-foreground' : 'bg-primary/20 text-primary-foreground/60'
-          }`}>
+          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors ${step >= 2 ? 'bg-primary text-primary-foreground' : 'bg-primary/20 text-primary-foreground/60'
+            }`}>
             2
           </div>
           <div className="flex-1 h-1 bg-primary/20 rounded overflow-hidden">
             <div className={`h-full bg-primary rounded transition-all duration-300 ${step >= 3 ? 'w-full' : 'w-0'}`} />
           </div>
-          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors ${
-            step >= 3 ? 'bg-primary text-primary-foreground' : 'bg-primary/20 text-primary-foreground/60'
-          }`}>
+          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors ${step >= 3 ? 'bg-primary text-primary-foreground' : 'bg-primary/20 text-primary-foreground/60'
+            }`}>
             3
           </div>
           <div className="flex-1 h-1 bg-primary/20 rounded overflow-hidden">
             <div className={`h-full bg-primary rounded transition-all duration-300 ${step >= 4 ? 'w-full' : 'w-0'}`} />
           </div>
-          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors ${
-            step >= 4 ? 'bg-primary text-primary-foreground' : 'bg-primary/20 text-primary-foreground/60'
-          }`}>
+          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors ${step >= 4 ? 'bg-primary text-primary-foreground' : 'bg-primary/20 text-primary-foreground/60'
+            }`}>
             4
           </div>
         </div>
@@ -626,9 +625,9 @@ const CompanyRegister = () => {
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col gap-4">
-                <Button 
-                  type="submit" 
-                  className="w-full" 
+                <Button
+                  type="submit"
+                  className="w-full"
                   size="lg"
                   disabled={isLoading}
                 >
@@ -713,11 +712,10 @@ const CompanyRegister = () => {
                       <div
                         key={type.value}
                         onClick={() => setCompanyType(type.value)}
-                        className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                          companyType === type.value
+                        className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${companyType === type.value
                             ? 'border-primary bg-primary/5'
                             : 'border-border hover:border-primary/50'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-3">
                           <span className="text-2xl">{type.icon}</span>
@@ -784,9 +782,9 @@ const CompanyRegister = () => {
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col gap-4">
-                <Button 
-                  type="submit" 
-                  className="w-full" 
+                <Button
+                  type="submit"
+                  className="w-full"
                   size="lg"
                 >
                   Choose Your Plan
@@ -818,13 +816,12 @@ const CompanyRegister = () => {
 
             <div className="grid md:grid-cols-3 gap-6 mb-8">
               {plans.map((plan) => (
-                <Card 
+                <Card
                   key={plan.id}
-                  className={`relative cursor-pointer transition-all duration-200 hover:shadow-xl ${
-                    selectedPlan === plan.id 
-                      ? 'ring-2 ring-primary border-primary shadow-xl' 
+                  className={`relative cursor-pointer transition-all duration-200 hover:shadow-xl ${selectedPlan === plan.id
+                      ? 'ring-2 ring-primary border-primary shadow-xl'
                       : 'border-border hover:-translate-y-1'
-                  }`}
+                    }`}
                   onClick={() => setSelectedPlan(plan.id)}
                 >
                   {plan.popular && (
@@ -835,9 +832,8 @@ const CompanyRegister = () => {
                     </div>
                   )}
                   <CardHeader className="text-center pb-2">
-                    <div className={`mx-auto w-12 h-12 rounded-xl flex items-center justify-center mb-3 ${
-                      selectedPlan === plan.id ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                    }`}>
+                    <div className={`mx-auto w-12 h-12 rounded-xl flex items-center justify-center mb-3 ${selectedPlan === plan.id ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                      }`}>
                       {plan.icon}
                     </div>
                     <CardTitle className="text-xl">{plan.name}</CardTitle>
@@ -858,8 +854,8 @@ const CompanyRegister = () => {
                     </ul>
                   </CardContent>
                   <CardFooter>
-                    <Button 
-                      variant={selectedPlan === plan.id ? "default" : "outline"} 
+                    <Button
+                      variant={selectedPlan === plan.id ? "default" : "outline"}
                       className="w-full"
                     >
                       {selectedPlan === plan.id ? 'Selected' : 'Select Plan'}
@@ -878,7 +874,7 @@ const CompanyRegister = () => {
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </button>
-              <Button 
+              <Button
                 size="lg"
                 onClick={handleStep3Submit}
                 disabled={isLoading}

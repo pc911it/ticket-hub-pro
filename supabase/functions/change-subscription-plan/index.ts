@@ -7,9 +7,9 @@ const corsHeaders = {
 };
 
 const PLAN_PRICES = {
-  starter: 49,
-  professional: 99,
-  enterprise: 199,
+  starter: 79,
+  professional: 249,
+  enterprise: 599,
 };
 
 serve(async (req) => {
@@ -128,7 +128,7 @@ serve(async (req) => {
         newPlan,
         isUpgrade,
         isDowngrade,
-        message: isDowngrade 
+        message: isDowngrade
           ? "Plan downgraded. Your data is preserved - upgrade anytime to regain access to premium features."
           : "Plan upgraded successfully. All new features are now available.",
       }),

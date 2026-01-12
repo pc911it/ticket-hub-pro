@@ -6,10 +6,11 @@ const corsHeaders = {
 };
 
 // Plan prices in cents
+// Plan prices in cents
 const PLAN_PRICES: Record<string, number> = {
-  starter: 2900,      // $29.00
-  professional: 7900, // $79.00
-  enterprise: 19900,  // $199.00
+  starter: 7900,      // $79.00
+  professional: 24900, // $249.00
+  enterprise: 59900,  // $599.00
 };
 
 Deno.serve(async (req) => {
@@ -20,7 +21,7 @@ Deno.serve(async (req) => {
   try {
     const accessToken = Deno.env.get('SQUARE_ACCESS_TOKEN');
     const locationId = Deno.env.get('SQUARE_LOCATION_ID');
-    
+
     if (!accessToken || !locationId) {
       console.error('Missing Square configuration');
       return new Response(
@@ -52,7 +53,7 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${expiredTrials?.length || 0} companies with expired trials to charge`);
 
-    const squareBaseUrl = accessToken.startsWith('sandbox-') 
+    const squareBaseUrl = accessToken.startsWith('sandbox-')
       ? 'https://connect.squareupsandbox.com/v2'
       : 'https://connect.squareup.com/v2';
 
@@ -60,7 +61,7 @@ Deno.serve(async (req) => {
 
     for (const company of expiredTrials || []) {
       const planPrice = PLAN_PRICES[company.subscription_plan || 'starter'] || PLAN_PRICES.starter;
-      
+
       console.log(`Charging company ${company.name} (${company.id}) for ${company.subscription_plan}: $${planPrice / 100}`);
 
       try {
@@ -91,7 +92,7 @@ Deno.serve(async (req) => {
 
         if (!paymentResponse.ok || paymentData.errors) {
           console.error(`Payment failed for company ${company.id}:`, paymentData.errors);
-          
+
           // Update company status to indicate payment failure
           await supabase
             .from('companies')
@@ -136,7 +137,7 @@ Deno.serve(async (req) => {
 
         await supabase
           .from('companies')
-          .update({ 
+          .update({
             subscription_status: 'active',
             trial_ends_at: nextBillingDate.toISOString(),
           })

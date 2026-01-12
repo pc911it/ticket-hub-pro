@@ -594,11 +594,11 @@ export default function CompanySettingsPage() {
                   Permanently delete this company and all associated data. A cancellation fee equivalent to one month's subscription will be charged.
                 </p>
                 <p className="text-sm text-destructive mt-1">
-                  Cancellation fee: ${company.subscription_plan === 'enterprise' ? '199' : company.subscription_plan === 'professional' ? '79' : '29'}
+                  Cancellation fee: ${company.subscription_plan === 'enterprise' ? '599' : company.subscription_plan === 'professional' ? '249' : '79'}
                 </p>
               </div>
-              <Button 
-                variant="destructive" 
+              <Button
+                variant="destructive"
                 onClick={() => setIsDeleteDialogOpen(true)}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
@@ -628,7 +628,7 @@ export default function CompanySettingsPage() {
                 <li>All billing history</li>
               </ul>
               <p className="text-destructive font-medium">
-                A cancellation fee of ${company?.subscription_plan === 'enterprise' ? '199' : company?.subscription_plan === 'professional' ? '79' : '29'} will be charged to your payment method.
+                A cancellation fee of ${company?.subscription_plan === 'enterprise' ? '599' : company?.subscription_plan === 'professional' ? '249' : '79'} will be charged to your payment method.
               </p>
               <div className="pt-2">
                 <Label htmlFor="confirm-delete">
@@ -652,13 +652,13 @@ export default function CompanySettingsPage() {
               onClick={async (e) => {
                 e.preventDefault();
                 if (!company?.id) return;
-                
+
                 setIsDeleting(true);
                 try {
                   const { data: session } = await supabase.auth.getSession();
-                  
+
                   const response = await supabase.functions.invoke('delete-company', {
-                    body: { 
+                    body: {
                       company_id: company.id,
                       reason: "Owner requested deletion"
                     }
@@ -669,14 +669,14 @@ export default function CompanySettingsPage() {
                   }
 
                   const result = response.data;
-                  
+
                   if (result.success) {
                     toast.success("Company deleted", {
-                      description: result.fee_charged 
+                      description: result.fee_charged
                         ? `Your company has been deleted. A $${result.fee_amount} cancellation fee was charged.`
                         : "Your company has been deleted."
                     });
-                    
+
                     // Sign out and redirect
                     await signOut();
                     navigate('/');

@@ -7,9 +7,9 @@ const corsHeaders = {
 
 // Plan prices in cents
 const PLAN_PRICES: Record<string, number> = {
-  starter: 2900,      // $29.00
-  professional: 7900, // $79.00
-  enterprise: 19900,  // $199.00
+  starter: 7900,      // $79.00
+  professional: 24900, // $249.00
+  enterprise: 59900,  // $599.00
 };
 
 interface ChargeRequest {
@@ -24,10 +24,10 @@ Deno.serve(async (req) => {
   try {
     const accessToken = Deno.env.get('SQUARE_ACCESS_TOKEN');
     const locationId = Deno.env.get('SQUARE_LOCATION_ID');
-    
+
     console.log('Square config - Location ID:', locationId);
     console.log('Square config - Access Token exists:', !!accessToken);
-    
+
     if (!accessToken || !locationId) {
       console.error('Missing Square configuration');
       return new Response(
@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     }
 
     const { companyId } = await req.json() as ChargeRequest;
-    
+
     if (!companyId) {
       return new Response(
         JSON.stringify({ error: 'Company ID is required' }),
@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
     }
 
     const planPrice = PLAN_PRICES[company.subscription_plan || 'starter'] || PLAN_PRICES.starter;
-    
+
     console.log(`Charging company ${company.name} for ${company.subscription_plan}: $${planPrice / 100}`);
 
     // Determine environment
@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
 
     if (!paymentResponse.ok || paymentData.errors) {
       console.error('Payment failed:', paymentData.errors);
-      
+
       // Record failed payment
       await supabase.from('billing_history').insert({
         company_id: companyId,
@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
 
     await supabase
       .from('companies')
-      .update({ 
+      .update({
         subscription_status: 'active',
         trial_ends_at: nextBillingDate.toISOString(),
       })
