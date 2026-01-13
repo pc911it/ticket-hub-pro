@@ -12,6 +12,7 @@ import { Building2, ArrowLeft, Mail, Lock, User, Phone, MapPin, ArrowRight, Chec
 import { Link } from 'react-router-dom';
 import type { Database } from '@/integrations/supabase/types';
 import { SquareCardForm } from '@/components/SquareCardForm';
+import { VerificationStep } from '@/components/VerificationStep';
 
 type CompanyType = Database["public"]["Enums"]["company_type"];
 
@@ -168,8 +169,9 @@ const usStates = [
 ];
 
 const CompanyRegister = () => {
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [step, setStep] = useState<1 | 1.5 | 2 | 3 | 4>(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
   const { signUp, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -199,10 +201,10 @@ const CompanyRegister = () => {
   const [createdCompanyId, setCreatedCompanyId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user && step === 1) {
+    if (user && step === 1 && isVerified) {
       setStep(2);
     }
-  }, [user, step]);
+  }, [user, step, isVerified]);
 
   // Check username availability when it changes
   useEffect(() => {
@@ -309,9 +311,9 @@ const CompanyRegister = () => {
 
         toast({
           title: 'Account created!',
-          description: 'Now let\'s set up your company.',
+          description: 'Please verify your email or phone to continue.',
         });
-        setStep(2);
+        setStep(1.5);
       }
     } catch (err) {
       toast({
@@ -508,25 +510,32 @@ const CompanyRegister = () => {
             1
           </div>
           <div className="flex-1 h-1 bg-primary/20 rounded overflow-hidden">
+            <div className={`h-full bg-primary rounded transition-all duration-300 ${step >= 1.5 ? 'w-full' : 'w-0'}`} />
+          </div>
+          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors ${step >= 1.5 ? 'bg-primary text-primary-foreground' : 'bg-primary/20 text-primary-foreground/60'
+            }`}>
+            2
+          </div>
+          <div className="flex-1 h-1 bg-primary/20 rounded overflow-hidden">
             <div className={`h-full bg-primary rounded transition-all duration-300 ${step >= 2 ? 'w-full' : 'w-0'}`} />
           </div>
           <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors ${step >= 2 ? 'bg-primary text-primary-foreground' : 'bg-primary/20 text-primary-foreground/60'
             }`}>
-            2
+            3
           </div>
           <div className="flex-1 h-1 bg-primary/20 rounded overflow-hidden">
             <div className={`h-full bg-primary rounded transition-all duration-300 ${step >= 3 ? 'w-full' : 'w-0'}`} />
           </div>
           <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors ${step >= 3 ? 'bg-primary text-primary-foreground' : 'bg-primary/20 text-primary-foreground/60'
             }`}>
-            3
+            4
           </div>
           <div className="flex-1 h-1 bg-primary/20 rounded overflow-hidden">
             <div className={`h-full bg-primary rounded transition-all duration-300 ${step >= 4 ? 'w-full' : 'w-0'}`} />
           </div>
           <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors ${step >= 4 ? 'bg-primary text-primary-foreground' : 'bg-primary/20 text-primary-foreground/60'
             }`}>
-            4
+            5
           </div>
         </div>
 
@@ -647,6 +656,22 @@ const CompanyRegister = () => {
               </CardFooter>
             </form>
           </Card>
+        )}
+
+        {step === 1.5 && (
+          <VerificationStep
+            email={email}
+            phone={companyPhone}
+            onVerified={() => {
+              setIsVerified(true);
+              toast({
+                title: 'Verified!',
+                description: 'Now let\'s set up your company.',
+              });
+              setStep(2);
+            }}
+            onBack={() => setStep(1)}
+          />
         )}
 
         {step === 2 && (
