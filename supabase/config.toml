@@ -68,3 +68,9 @@ verify_jwt = false
 
 [functions.charge-company-now]
 verify_jwt = false
+
+[functions.send-verification-code]
+verify_jwt = false
+
+[functions.verify-code]
+verify_jwt = false

@@ -1993,6 +1993,36 @@ export type Database = {
         }
         Relationships: []
       }
+      verification_codes: {
+        Row: {
+          code: string
+          created_at: string
+          expires_at: string
+          id: string
+          identifier: string
+          type: string
+          verified: boolean
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          identifier: string
+          type: string
+          verified?: boolean
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          identifier?: string
+          type?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
       vessel_photos: {
         Row: {
           category: string
@@ -2142,6 +2172,7 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      cleanup_expired_verification_codes: { Args: never; Returns: undefined }
       get_user_company_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_company_ids_direct: {
         Args: { _user_id: string }
