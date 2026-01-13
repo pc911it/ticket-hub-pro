@@ -7,9 +7,9 @@ const corsHeaders = {
 };
 
 const PLAN_PRICES = {
-  starter: 79,
-  professional: 249,
-  enterprise: 599,
+  professional: 349,
+  advanced: 899,
+  enterprise: 0, // Custom pricing
 };
 
 serve(async (req) => {
@@ -45,7 +45,7 @@ serve(async (req) => {
     }
 
     // Validate plan
-    if (!["starter", "professional", "enterprise"].includes(newPlan)) {
+    if (!["professional", "advanced", "enterprise"].includes(newPlan)) {
       return new Response(
         JSON.stringify({ error: "Invalid plan" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -84,8 +84,8 @@ serve(async (req) => {
       );
     }
 
-    const currentPlan = company.subscription_plan || "starter";
-    const currentPrice = PLAN_PRICES[currentPlan as keyof typeof PLAN_PRICES] || 49;
+    const currentPlan = company.subscription_plan || "professional";
+    const currentPrice = PLAN_PRICES[currentPlan as keyof typeof PLAN_PRICES] || 349;
     const newPrice = PLAN_PRICES[newPlan as keyof typeof PLAN_PRICES];
 
     // Determine if upgrade or downgrade
