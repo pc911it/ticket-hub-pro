@@ -11,7 +11,6 @@ export interface PricingPlan {
   name: string;
   monthlyPrice: number;
   yearlyPrice: number;
-  priceRange?: string;
   description: string;
   features: string[];
   highlighted?: string[];
@@ -25,8 +24,7 @@ export const defaultPlans: PricingPlan[] = [
     id: 'professional',
     name: 'Professional',
     monthlyPrice: 349,
-    yearlyPrice: 3490,
-    priceRange: '$199 – $349',
+    yearlyPrice: 2990,
     description: 'Perfect for growing teams ready to scale operations',
     icon: 'professional',
     features: [
@@ -48,8 +46,7 @@ export const defaultPlans: PricingPlan[] = [
     id: 'advanced',
     name: 'Advanced',
     monthlyPrice: 899,
-    yearlyPrice: 8990,
-    priceRange: '$499 – $899',
+    yearlyPrice: 7490,
     description: 'Complete solution for high-volume organizations',
     icon: 'advanced',
     popular: true,
@@ -74,7 +71,6 @@ export const defaultPlans: PricingPlan[] = [
     name: 'Enterprise',
     monthlyPrice: 0,
     yearlyPrice: 0,
-    priceRange: 'Custom',
     description: 'Tailored solutions for large-scale operations',
     icon: 'enterprise',
     isCustomPricing: true,
@@ -227,17 +223,18 @@ export function PricingPlans({
                   ) : (
                     <>
                       <div className="flex items-baseline justify-center gap-1">
-                        <span className="text-3xl font-bold text-foreground">{plan.priceRange}</span>
+                        <span className="text-3xl font-bold text-foreground">${price}</span>
                         <span className="text-muted-foreground">/mo</span>
                       </div>
                       {isYearly && (
                         <p className="text-xs text-muted-foreground">
-                          Save up to 17% with yearly billing
+                          Billed ${plan.yearlyPrice}/year
+                          <span className="text-green-600 ml-1">(Save ${savings})</span>
                         </p>
                       )}
                       {!isYearly && (
                         <p className="text-xs text-muted-foreground">
-                          Based on team size & usage
+                          Billed monthly
                         </p>
                       )}
                     </>

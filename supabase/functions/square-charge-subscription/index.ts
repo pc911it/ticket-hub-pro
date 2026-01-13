@@ -6,11 +6,10 @@ const corsHeaders = {
 };
 
 // Plan prices in cents
-// Plan prices in cents
 const PLAN_PRICES: Record<string, number> = {
-  starter: 7900,      // $79.00
-  professional: 24900, // $249.00
-  enterprise: 59900,  // $599.00
+  professional: 34900, // $349.00
+  advanced: 89900,     // $899.00
+  enterprise: 0,       // Custom pricing - contact sales
 };
 
 Deno.serve(async (req) => {
@@ -60,7 +59,7 @@ Deno.serve(async (req) => {
     const results = [];
 
     for (const company of expiredTrials || []) {
-      const planPrice = PLAN_PRICES[company.subscription_plan || 'starter'] || PLAN_PRICES.starter;
+      const planPrice = PLAN_PRICES[company.subscription_plan || 'professional'] || PLAN_PRICES.professional;
 
       console.log(`Charging company ${company.name} (${company.id}) for ${company.subscription_plan}: $${planPrice / 100}`);
 
