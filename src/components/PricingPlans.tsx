@@ -11,75 +11,94 @@ export interface PricingPlan {
   name: string;
   monthlyPrice: number;
   yearlyPrice: number;
+  priceRange?: string;
   description: string;
   features: string[];
   highlighted?: string[];
   popular?: boolean;
-  icon: 'starter' | 'professional' | 'enterprise';
+  icon: 'professional' | 'advanced' | 'enterprise';
+  isCustomPricing?: boolean;
 }
 
 export const defaultPlans: PricingPlan[] = [
   {
-    id: 'starter',
-    name: 'Starter',
-    monthlyPrice: 79,
-    yearlyPrice: 790,
-    description: 'Essential dispatching for small teams getting organized',
-    icon: 'starter',
+    id: 'professional',
+    name: 'Professional',
+    monthlyPrice: 349,
+    yearlyPrice: 3490,
+    priceRange: '$199 – $349',
+    description: 'Perfect for growing teams ready to scale operations',
+    icon: 'professional',
     features: [
-      'Up to 5 dispatchers',
-      'Up to 10 field agents',
-      '100 tickets/month',
-      'Mobile App Access',
-      'Basic Job Scheduling',
-      'Client CRM & Billing',
+      '1,000 tickets/month',
+      'Unlimited projects',
+      'Up to 10 staff members',
+      'Full Inventory with barcode & supplier',
+      'Full Client Portal access',
+      'Geolocation Verification',
+      'Admin Approval Workflow',
+      'Project Chat',
+      'File Uploads (Tickets & Projects)',
+      'Billing Integration (Stripe/Square)',
+      'Standard Support',
     ],
+    highlighted: ['Full Inventory with barcode & supplier', 'Geolocation Verification'],
   },
   {
-    id: 'professional',
-    name: 'Growth',
-    monthlyPrice: 249,
-    yearlyPrice: 2490,
-    description: 'Complete business OS to optimize and expand operations',
-    icon: 'professional',
+    id: 'advanced',
+    name: 'Advanced',
+    monthlyPrice: 899,
+    yearlyPrice: 8990,
+    priceRange: '$499 – $899',
+    description: 'Complete solution for high-volume organizations',
+    icon: 'advanced',
     popular: true,
     features: [
-      'Up to 15 dispatchers',
-      'Up to 50 field agents',
       'Unlimited tickets',
-      'Inventory Management',
-      'Project Management',
-      'Real-time Field Tracking',
-      'Custom Reports',
+      'Unlimited projects',
+      'Unlimited staff members',
+      'Full Inventory + advanced reports',
+      'Full Portal + external company collaboration',
+      'Geolocation Verification',
+      'Admin Approval Workflow',
+      'Project Chat',
+      'File Uploads (Tickets & Projects)',
+      'Branding / White-label',
+      'Billing Integration (Stripe/Square)',
       'Priority Support',
     ],
-    highlighted: ['Inventory Management', 'Project Management'],
+    highlighted: ['Unlimited staff members', 'External company collaboration', 'Branding / White-label'],
   },
   {
     id: 'enterprise',
-    name: 'Scale',
-    monthlyPrice: 599,
-    yearlyPrice: 5990,
-    description: 'Unlimited power for high-volume organizations',
+    name: 'Enterprise',
+    monthlyPrice: 0,
+    yearlyPrice: 0,
+    priceRange: 'Custom',
+    description: 'Tailored solutions for large-scale operations',
     icon: 'enterprise',
+    isCustomPricing: true,
     features: [
-      'Unlimited dispatchers',
-      'Unlimited field agents',
-      'Unlimited tickets & projects',
-      'Advanced Analytics',
-      'API Access',
-      'Custom Integrations',
-      '24/7 Priority Phone Support',
-      'Dedicated Success Manager',
-      'SLA Guarantee',
+      'Unlimited tickets',
+      'Unlimited + multi-company projects',
+      'Enterprise-level users',
+      'Full Inventory + multi-location tracking',
+      'Full Portal + SLA & dedicated onboarding',
+      'Geolocation Verification',
+      'Admin Approval Workflow',
+      'Project Chat',
+      'File Uploads (Tickets & Projects)',
+      'Branding / White-label',
+      'Billing Integration (Stripe/Square)',
+      'Dedicated Support + SLA',
     ],
-    highlighted: ['Unlimited users', 'API Access', 'Dedicated Success Manager'],
+    highlighted: ['Multi-company projects', 'Multi-location tracking', 'Dedicated Support + SLA'],
   },
 ];
 
 const iconMap = {
-  starter: Zap,
-  professional: Shield,
+  professional: Zap,
+  advanced: Shield,
   enterprise: Users,
 };
 
@@ -196,20 +215,32 @@ export function PricingPlans({
 
                 {/* Pricing */}
                 <div className="mt-6 space-y-1">
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-4xl font-bold text-foreground">${price}</span>
-                    <span className="text-muted-foreground">/mo</span>
-                  </div>
-                  {isYearly && (
-                    <p className="text-xs text-muted-foreground">
-                      Billed ${plan.yearlyPrice}/year
-                      <span className="text-success ml-1">(Save ${savings})</span>
-                    </p>
-                  )}
-                  {!isYearly && (
-                    <p className="text-xs text-muted-foreground">
-                      Billed monthly
-                    </p>
+                  {plan.isCustomPricing ? (
+                    <>
+                      <div className="flex items-baseline justify-center gap-1">
+                        <span className="text-3xl font-bold text-foreground">Contact Us</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Custom pricing for your needs
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-baseline justify-center gap-1">
+                        <span className="text-3xl font-bold text-foreground">{plan.priceRange}</span>
+                        <span className="text-muted-foreground">/mo</span>
+                      </div>
+                      {isYearly && (
+                        <p className="text-xs text-muted-foreground">
+                          Save up to 17% with yearly billing
+                        </p>
+                      )}
+                      {!isYearly && (
+                        <p className="text-xs text-muted-foreground">
+                          Based on team size & usage
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
               </CardHeader>
@@ -258,7 +289,7 @@ export function PricingPlans({
                       )}
                       onClick={() => onSelectPlan(plan.id, isYearly)}
                     >
-                      {currentPlan ? 'Switch Plan' : 'Get Started'}
+                      {plan.isCustomPricing ? 'Contact Sales' : (currentPlan ? 'Switch Plan' : 'Get Started')}
                     </Button>
                   )
                 ) : (
@@ -270,8 +301,8 @@ export function PricingPlans({
                     )}
                     asChild
                   >
-                    <a href="/register-company">
-                      Start Free Trial
+                    <a href={plan.isCustomPricing ? 'mailto:sales@yourcompany.com' : '/register-company'}>
+                      {plan.isCustomPricing ? 'Contact Sales' : 'Start Free Trial'}
                     </a>
                   </Button>
                 )}
