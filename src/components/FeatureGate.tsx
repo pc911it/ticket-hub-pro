@@ -17,7 +17,7 @@ export function FeatureGate({
   featureKey, 
   children, 
   fallback,
-  showUpgradePrompt = true,
+  showUpgradePrompt = false, // Default to hiding features, not showing upgrade prompt
   featureName
 }: FeatureGateProps) {
   const { hasFeature, isLoading, companyPlan } = useFeatureAccess();
