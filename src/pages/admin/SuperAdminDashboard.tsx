@@ -8,7 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Building2, Users, Ticket, FolderKanban, Package, Clock, CheckCircle, AlertTriangle, Trash2 } from "lucide-react";
+import { Building2, Users, Ticket, FolderKanban, Package, Clock, CheckCircle, AlertTriangle, Trash2, Plus } from "lucide-react";
+import { CreateCompanyDialog } from "@/components/CreateCompanyDialog";
 
 interface PlatformStats {
   totalCompanies: number;
@@ -42,6 +43,7 @@ export default function SuperAdminDashboard() {
   const [deleteCompany, setDeleteCompany] = useState<RecentCompany | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showCreateCompanyDialog, setShowCreateCompanyDialog] = useState(false);
 
   useEffect(() => {
     fetchPlatformStats();
@@ -181,9 +183,15 @@ export default function SuperAdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Super Admin Dashboard</h1>
-        <p className="text-muted-foreground">Platform-wide statistics and overview</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Super Admin Dashboard</h1>
+          <p className="text-muted-foreground">Platform-wide statistics and overview</p>
+        </div>
+        <Button onClick={() => setShowCreateCompanyDialog(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Company
+        </Button>
       </div>
 
       {/* Company Stats */}
@@ -405,6 +413,13 @@ export default function SuperAdminDashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create Company Dialog */}
+      <CreateCompanyDialog 
+        open={showCreateCompanyDialog} 
+        onOpenChange={setShowCreateCompanyDialog}
+        onSuccess={fetchPlatformStats}
+      />
     </div>
   );
 }
