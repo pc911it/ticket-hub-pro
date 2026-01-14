@@ -58,7 +58,7 @@ export function SupportChatWidget() {
   const { toast } = useToast();
 
   // Configure your WhatsApp Business number here (format: country code + number, no + sign)
-  const whatsappNumber = '15551234567'; // Replace with actual WhatsApp Business number
+  const whatsappNumber = '17867043865'; // Your WhatsApp Business number
 
   useEffect(() => {
     if (scrollRef.current) {
