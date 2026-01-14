@@ -12,7 +12,8 @@ import {
   User, 
   Bot, 
   Headphones,
-  MessageSquare
+  MessageSquare,
+  ArrowLeft
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -35,9 +36,12 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+type ContactMode = 'chat' | 'text' | 'whatsapp';
+
 export function SupportChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [showContactOptions, setShowContactOptions] = useState(false);
+  const [contactMode, setContactMode] = useState<ContactMode | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -53,8 +57,8 @@ export function SupportChatWidget() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Phone number for SMS/WhatsApp (replace with your actual number)
-  const supportPhone = '+15551234567';
+  // Configure your WhatsApp Business number here (format: country code + number, no + sign)
+  const whatsappNumber = '15551234567'; // Replace with actual WhatsApp Business number
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -103,7 +107,21 @@ export function SupportChatWidget() {
     };
   }, [chatId]);
 
-  const startChat = async () => {
+  const getWelcomeMessage = (mode: ContactMode): string => {
+    switch (mode) {
+      case 'text':
+        return "Hi! 👋 You're in Text Mode. Type your message and our team will respond here. Ask us anything about TicketPro!";
+      case 'whatsapp':
+        return "Hi! 👋 You're chatting via WhatsApp integration. Send your message and we'll respond right here!";
+      case 'chat':
+      default:
+        return "Hi! 👋 I'm here to help you learn about TicketPro. Ask me anything about our features, pricing, or how we can help your business!";
+    }
+  };
+
+  const startChat = async (mode: ContactMode) => {
+    setContactMode(mode);
+    
     try {
       const { data, error } = await supabase
         .from('support_chats')
@@ -114,10 +132,10 @@ export function SupportChatWidget() {
       if (error) throw error;
       setChatId(data.id);
 
-      // Add welcome message
+      // Add welcome message based on mode
       const welcomeMsg: Message = {
         id: 'welcome',
-        content: "Hi! 👋 I'm here to help you learn about TicketPro. Ask me anything about our features, pricing, or how we can help your business!",
+        content: getWelcomeMessage(mode),
         sender: 'ai',
         timestamp: new Date(),
       };
@@ -206,7 +224,7 @@ export function SupportChatWidget() {
       setRequestedAgent(true);
       const agentMessage: Message = {
         id: `system_${Date.now()}`,
-        content: "I've notified our team. A live agent will join shortly. In the meantime, feel free to continue chatting with me or reach us via WhatsApp for immediate assistance!",
+        content: "I've notified our team. A live agent will join shortly. In the meantime, feel free to continue chatting with me!",
         sender: 'ai',
         timestamp: new Date(),
       };
@@ -223,12 +241,7 @@ export function SupportChatWidget() {
 
   const openWhatsApp = () => {
     const message = encodeURIComponent("Hi! I have a question about TicketPro.");
-    window.open(`https://wa.me/${supportPhone.replace(/\D/g, '')}?text=${message}`, '_blank');
-  };
-
-  const openSMS = () => {
-    const message = encodeURIComponent("Hi! I have a question about TicketPro.");
-    window.open(`sms:${supportPhone}?body=${message}`, '_blank');
+    window.open(`https://wa.me/${whatsappNumber}?text=${message}`, '_blank');
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -238,6 +251,39 @@ export function SupportChatWidget() {
     }
   };
 
+  const handleBack = () => {
+    setContactMode(null);
+    setMessages([]);
+    setChatId(null);
+    setRequestedAgent(false);
+  };
+
+  const getModeTitle = () => {
+    switch (contactMode) {
+      case 'text':
+        return 'Text Support';
+      case 'whatsapp':
+        return 'WhatsApp Chat';
+      case 'chat':
+      default:
+        return 'Live Chat';
+    }
+  };
+
+  const getModeSubtitle = () => {
+    if (requestedAgent) return 'Waiting for agent...';
+    switch (contactMode) {
+      case 'text':
+        return 'Web-based messaging';
+      case 'whatsapp':
+        return 'WhatsApp integration';
+      case 'chat':
+      default:
+        return 'AI-powered assistance';
+    }
+  };
+
+  // Closed state - show floating button
   if (!isOpen) {
     return (
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
@@ -252,7 +298,11 @@ export function SupportChatWidget() {
               WhatsApp
             </Button>
             <Button
-              onClick={openSMS}
+              onClick={() => {
+                setIsOpen(true);
+                setShowContactOptions(false);
+                startChat('text');
+              }}
               variant="outline"
               className="bg-background shadow-lg"
               size="lg"
@@ -264,7 +314,7 @@ export function SupportChatWidget() {
               onClick={() => {
                 setIsOpen(true);
                 setShowContactOptions(false);
-                if (!chatId) startChat();
+                startChat('chat');
               }}
               className="shadow-lg"
               size="lg"
@@ -289,18 +339,35 @@ export function SupportChatWidget() {
     );
   }
 
+  // Open state - show chat interface
   return (
     <Card className="fixed bottom-6 right-6 z-50 w-[380px] max-w-[calc(100vw-3rem)] shadow-2xl border-0 overflow-hidden animate-scale-in">
       <CardHeader className="bg-primary text-primary-foreground p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
+            {contactMode && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-primary-foreground hover:bg-primary-foreground/10 h-8 w-8"
+                onClick={handleBack}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
             <div className="w-10 h-10 rounded-full bg-primary-foreground/20 flex items-center justify-center">
-              <MessageCircle className="h-5 w-5" />
+              {contactMode === 'text' ? (
+                <Phone className="h-5 w-5" />
+              ) : contactMode === 'whatsapp' ? (
+                <WhatsAppIcon className="h-5 w-5" />
+              ) : (
+                <MessageCircle className="h-5 w-5" />
+              )}
             </div>
             <div>
-              <CardTitle className="text-lg">Support Chat</CardTitle>
+              <CardTitle className="text-lg">{getModeTitle()}</CardTitle>
               <p className="text-xs text-primary-foreground/70">
-                {requestedAgent ? 'Waiting for agent...' : 'AI-powered assistance'}
+                {getModeSubtitle()}
               </p>
             </div>
           </div>
@@ -316,111 +383,150 @@ export function SupportChatWidget() {
       </CardHeader>
 
       <CardContent className="p-0">
-        {/* Quick contact options */}
-        <div className="flex gap-2 p-3 bg-muted/50 border-b">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 text-xs"
-            onClick={openWhatsApp}
-          >
-            <WhatsAppIcon className="h-4 w-4 mr-1" />
-            WhatsApp
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 text-xs"
-            onClick={openSMS}
-          >
-            <Phone className="h-4 w-4 mr-1" />
-            Text Us
-          </Button>
-          {!requestedAgent && (
+        {/* Contact mode selection (if not selected) */}
+        {!contactMode && (
+          <div className="p-6 space-y-4">
+            <p className="text-center text-muted-foreground mb-4">
+              How would you like to contact us?
+            </p>
+            <Button
+              className="w-full justify-start"
+              size="lg"
+              onClick={() => startChat('chat')}
+            >
+              <MessageSquare className="h-5 w-5 mr-3" />
+              <div className="text-left">
+                <div className="font-medium">Live Chat</div>
+                <div className="text-xs opacity-70">AI-powered instant responses</div>
+              </div>
+            </Button>
             <Button
               variant="outline"
-              size="sm"
-              className="flex-1 text-xs"
-              onClick={requestLiveAgent}
+              className="w-full justify-start"
+              size="lg"
+              onClick={() => startChat('text')}
             >
-              <Headphones className="h-4 w-4 mr-1" />
-              Live Agent
+              <Phone className="h-5 w-5 mr-3" />
+              <div className="text-left">
+                <div className="font-medium">Text Us</div>
+                <div className="text-xs opacity-70">Web-based messaging</div>
+              </div>
             </Button>
-          )}
-        </div>
+            <Button
+              className="w-full justify-start bg-[#25D366] hover:bg-[#128C7E] text-white"
+              size="lg"
+              onClick={openWhatsApp}
+            >
+              <WhatsAppIcon className="h-5 w-5 mr-3" />
+              <div className="text-left">
+                <div className="font-medium">WhatsApp</div>
+                <div className="text-xs opacity-90">Opens WhatsApp app</div>
+              </div>
+            </Button>
+          </div>
+        )}
 
-        {/* Messages */}
-        <ScrollArea className="h-[350px] p-4" ref={scrollRef}>
-          <div className="space-y-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex gap-2 ${
-                  message.sender === 'visitor' ? 'justify-end' : 'justify-start'
-                }`}
+        {/* Chat interface */}
+        {contactMode && (
+          <>
+            {/* Quick actions */}
+            <div className="flex gap-2 p-3 bg-muted/50 border-b">
+              {!requestedAgent && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 text-xs"
+                  onClick={requestLiveAgent}
+                >
+                  <Headphones className="h-4 w-4 mr-1" />
+                  Live Agent
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 text-xs"
+                onClick={openWhatsApp}
               >
-                {message.sender !== 'visitor' && (
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                    message.sender === 'agent' ? 'bg-green-100' : 'bg-primary/10'
-                  }`}>
-                    {message.sender === 'agent' ? (
-                      <User className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <Bot className="h-4 w-4 text-primary" />
+                <WhatsAppIcon className="h-4 w-4 mr-1" />
+                WhatsApp
+              </Button>
+            </div>
+
+            {/* Messages */}
+            <ScrollArea className="h-[350px] p-4" ref={scrollRef}>
+              <div className="space-y-4">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex gap-2 ${
+                      message.sender === 'visitor' ? 'justify-end' : 'justify-start'
+                    }`}
+                  >
+                    {message.sender !== 'visitor' && (
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                        message.sender === 'agent' ? 'bg-green-100' : 'bg-primary/10'
+                      }`}>
+                        {message.sender === 'agent' ? (
+                          <User className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Bot className="h-4 w-4 text-primary" />
+                        )}
+                      </div>
+                    )}
+                    <div
+                      className={`max-w-[75%] rounded-2xl px-4 py-2 ${
+                        message.sender === 'visitor'
+                          ? 'bg-primary text-primary-foreground rounded-br-md'
+                          : message.sender === 'agent'
+                          ? 'bg-green-100 text-green-900 rounded-bl-md'
+                          : 'bg-muted rounded-bl-md'
+                      }`}
+                    >
+                      <p className="text-sm">{message.content}</p>
+                    </div>
+                    {message.sender === 'visitor' && (
+                      <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0">
+                        <User className="h-4 w-4 text-secondary-foreground" />
+                      </div>
                     )}
                   </div>
-                )}
-                <div
-                  className={`max-w-[75%] rounded-2xl px-4 py-2 ${
-                    message.sender === 'visitor'
-                      ? 'bg-primary text-primary-foreground rounded-br-md'
-                      : message.sender === 'agent'
-                      ? 'bg-green-100 text-green-900 rounded-bl-md'
-                      : 'bg-muted rounded-bl-md'
-                  }`}
-                >
-                  <p className="text-sm">{message.content}</p>
-                </div>
-                {message.sender === 'visitor' && (
-                  <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                    <User className="h-4 w-4 text-secondary-foreground" />
+                ))}
+                {isLoading && (
+                  <div className="flex gap-2 justify-start">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Bot className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
                   </div>
                 )}
               </div>
-            ))}
-            {isLoading && (
-              <div className="flex gap-2 justify-start">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Bot className="h-4 w-4 text-primary" />
-                </div>
-                <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                </div>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
+            </ScrollArea>
 
-        {/* Input */}
-        <div className="p-3 border-t bg-background">
-          <div className="flex gap-2">
-            <Input
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Type your message..."
-              disabled={isLoading}
-              className="flex-1"
-            />
-            <Button
-              onClick={sendMessage}
-              disabled={isLoading || !inputValue.trim()}
-              size="icon"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+            {/* Input */}
+            <div className="p-3 border-t bg-background">
+              <div className="flex gap-2">
+                <Input
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Type your message..."
+                  disabled={isLoading}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={sendMessage}
+                  disabled={isLoading || !inputValue.trim()}
+                  size="icon"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );
