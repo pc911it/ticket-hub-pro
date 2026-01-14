@@ -353,9 +353,17 @@ export function LiveChatDashboard() {
   }, [selectedChat, soundEnabled]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    // Auto-scroll to bottom when messages change
+    const scrollToBottom = () => {
+      if (scrollRef.current) {
+        const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+        if (scrollContainer) {
+          scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        }
+      }
+    };
+    // Small delay to ensure content is rendered
+    setTimeout(scrollToBottom, 50);
   }, [messages]);
 
   const joinChat = async (chat: Chat) => {
@@ -656,7 +664,7 @@ export function LiveChatDashboard() {
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[600px] max-h-[calc(100vh-14rem)]">
         {/* Chat List */}
         <Card className="md:col-span-1">
           <CardHeader className="pb-3">
@@ -775,7 +783,7 @@ export function LiveChatDashboard() {
         </Card>
 
         {/* Chat Messages */}
-        <Card className="md:col-span-2 flex flex-col">
+        <Card className="md:col-span-2 flex flex-col overflow-hidden">
           {selectedChat ? (
             <>
               <CardHeader className="pb-3 border-b">
@@ -851,8 +859,8 @@ export function LiveChatDashboard() {
                 </div>
               </CardHeader>
 
-              <CardContent className="flex-1 p-0 flex flex-col">
-                <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+              <CardContent className="flex-1 p-0 flex flex-col min-h-0 overflow-hidden">
+                <ScrollArea className="h-[350px] p-4" ref={scrollRef}>
                   <div className="space-y-4">
                     {messages.map((message) => (
                       <div
