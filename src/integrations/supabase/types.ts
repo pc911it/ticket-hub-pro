@@ -1600,6 +1600,74 @@ export type Database = {
           },
         ]
       }
+      support_chat_messages: {
+        Row: {
+          chat_id: string
+          content: string
+          created_at: string
+          id: string
+          sender_id: string | null
+          sender_type: string
+        }
+        Insert: {
+          chat_id: string
+          content: string
+          created_at?: string
+          id?: string
+          sender_id?: string | null
+          sender_type: string
+        }
+        Update: {
+          chat_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          sender_id?: string | null
+          sender_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_chat_messages_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "support_chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_chats: {
+        Row: {
+          assigned_agent_id: string | null
+          created_at: string
+          id: string
+          status: string
+          updated_at: string
+          visitor_email: string | null
+          visitor_id: string
+          visitor_name: string | null
+        }
+        Insert: {
+          assigned_agent_id?: string | null
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          visitor_email?: string | null
+          visitor_id: string
+          visitor_name?: string | null
+        }
+        Update: {
+          assigned_agent_id?: string | null
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          visitor_email?: string | null
+          visitor_id?: string
+          visitor_name?: string | null
+        }
+        Relationships: []
+      }
       support_ticket_messages: {
         Row: {
           created_at: string

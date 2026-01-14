@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { PricingPlans } from '@/components/PricingPlans';
+import { SupportChatWidget } from '@/components/SupportChatWidget';
 import { 
   Ticket, 
   Calendar, 
@@ -240,6 +241,9 @@ const Index = () => {
           </div>
         </div>
       </footer>
+
+      {/* Support Chat Widget */}
+      <SupportChatWidget />
     </div>
   );
 };
