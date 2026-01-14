@@ -719,64 +719,89 @@ export function LiveChatDashboard() {
               </div>
             ) : (
               <ScrollArea className="h-full">
-                {chats.map((chat) => (
-                  <div
-                    key={chat.id}
-                    className={`p-4 border-b cursor-pointer hover:bg-muted/50 transition-colors ${
-                      selectedChat?.id === chat.id ? 'bg-muted' : ''
-                    }`}
-                    onClick={() => joinChat(chat)}
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="relative">
-                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                            {chat.channel === 'sms' ? (
-                              <Phone className="h-4 w-4 text-primary" />
-                            ) : chat.channel === 'whatsapp' ? (
-                              <WhatsAppIcon className="h-4 w-4 text-green-600" />
-                            ) : (
-                              <User className="h-4 w-4 text-primary" />
+                {chats.map((chat) => {
+                  const hasUnread = unreadCounts[chat.id] > 0 && selectedChat?.id !== chat.id;
+                  return (
+                    <div
+                      key={chat.id}
+                      className={`p-4 border-b cursor-pointer transition-all relative ${
+                        selectedChat?.id === chat.id 
+                          ? 'bg-muted' 
+                          : hasUnread 
+                            ? 'bg-destructive/5 hover:bg-destructive/10 border-l-4 border-l-destructive' 
+                            : 'hover:bg-muted/50'
+                      }`}
+                      onClick={() => joinChat(chat)}
+                    >
+                      {/* Notification indicator bar */}
+                      {hasUnread && (
+                        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-destructive via-destructive to-transparent animate-pulse" />
+                      )}
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="relative">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                              hasUnread 
+                                ? 'bg-destructive/20 ring-2 ring-destructive ring-offset-1 ring-offset-background' 
+                                : 'bg-primary/10'
+                            }`}>
+                              {chat.channel === 'sms' ? (
+                                <Phone className={`h-4 w-4 ${hasUnread ? 'text-destructive' : 'text-primary'}`} />
+                              ) : chat.channel === 'whatsapp' ? (
+                                <WhatsAppIcon className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <User className={`h-4 w-4 ${hasUnread ? 'text-destructive' : 'text-primary'}`} />
+                              )}
+                            </div>
+                            {hasUnread && (
+                              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs font-bold animate-bounce shadow-lg">
+                                {unreadCounts[chat.id] > 9 ? '9+' : unreadCounts[chat.id]}
+                              </span>
                             )}
                           </div>
-                          {unreadCounts[chat.id] > 0 && selectedChat?.id !== chat.id && (
-                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs font-bold">
-                              {unreadCounts[chat.id] > 9 ? '9+' : unreadCounts[chat.id]}
-                            </span>
+                          <div>
+                            <p className={`text-sm flex items-center gap-2 ${hasUnread ? 'font-bold' : 'font-medium'}`}>
+                              {getVisitorDisplay(chat)}
+                              {hasUnread && (
+                                <>
+                                  <Bell className="h-3 w-3 text-destructive animate-pulse" />
+                                  <span className="text-xs text-destructive font-bold">NEW</span>
+                                </>
+                              )}
+                            </p>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {formatDistanceToNow(new Date(chat.updated_at), { addSuffix: true })}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          {getStatusBadge(chat.status)}
+                          {hasUnread && (
+                            <Badge variant="destructive" className="text-xs animate-pulse">
+                              {unreadCounts[chat.id]} new
+                            </Badge>
                           )}
                         </div>
-                        <div>
-                          <p className="text-sm font-medium flex items-center gap-2">
-                            {getVisitorDisplay(chat)}
-                            {unreadCounts[chat.id] > 0 && selectedChat?.id !== chat.id && (
-                              <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-                            )}
-                          </p>
-                          <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {formatDistanceToNow(new Date(chat.updated_at), { addSuffix: true })}
-                          </p>
-                        </div>
                       </div>
-                      {getStatusBadge(chat.status)}
+                      <div className="flex flex-wrap gap-1">
+                        {getChannelBadge(chat.channel)}
+                        {getDepartmentBadge(chat.department)}
+                        {chat.topic && (
+                          <Badge variant="outline" className="text-xs">
+                            <Tag className="h-3 w-3 mr-1" />
+                            {chat.topic}
+                          </Badge>
+                        )}
+                        {chat.order_reference && (
+                          <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700">
+                            Order: {chat.order_reference}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-1">
-                      {getChannelBadge(chat.channel)}
-                      {getDepartmentBadge(chat.department)}
-                      {chat.topic && (
-                        <Badge variant="outline" className="text-xs">
-                          <Tag className="h-3 w-3 mr-1" />
-                          {chat.topic}
-                        </Badge>
-                      )}
-                      {chat.order_reference && (
-                        <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700">
-                          Order: {chat.order_reference}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </ScrollArea>
             )}
           </CardContent>
