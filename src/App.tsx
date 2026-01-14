@@ -49,6 +49,7 @@ import ServiceTypesPage from "./pages/admin/ServiceTypesPage";
 import VesselDetailPage from "./pages/admin/VesselDetailPage";
 import PaymentSettingsPage from "./pages/admin/PaymentSettingsPage";
 import ChatTicketsPage from "./pages/admin/ChatTicketsPage";
+import CreateCompanyPage from "./pages/admin/CreateCompanyPage";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -295,6 +296,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AdminLayout>
                     <SuperAdminDashboard />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/create-company"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <CreateCompanyPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }

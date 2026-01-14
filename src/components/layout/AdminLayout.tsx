@@ -95,6 +95,7 @@ const staffNavigation: NavItem[] = [
 
 const baseSuperAdminNavigation: NavItem[] = [
   { name: 'Platform Overview', href: '/admin/super-dashboard', icon: LayoutDashboard },
+  { name: 'Create Company', href: '/admin/create-company', icon: Plus },
   { name: 'Company Approvals', href: '/admin/company-approvals', icon: CheckSquare },
   { name: 'Live Chats', href: '/admin/live-chats', icon: MessageSquare },
   { name: 'Chat Tickets', href: '/admin/chat-tickets', icon: Ticket },
