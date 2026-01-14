@@ -664,9 +664,9 @@ export function LiveChatDashboard() {
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[600px] max-h-[calc(100vh-14rem)]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[600px]">
         {/* Chat List */}
-        <Card className="md:col-span-1">
+        <Card className="md:col-span-1 flex flex-col overflow-hidden">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg flex items-center gap-2">
@@ -707,7 +707,7 @@ export function LiveChatDashboard() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="p-0 flex-1 overflow-hidden">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -718,7 +718,7 @@ export function LiveChatDashboard() {
                 <p>No active chats</p>
               </div>
             ) : (
-              <ScrollArea className="h-[400px]">
+              <ScrollArea className="h-full">
                 {chats.map((chat) => (
                   <div
                     key={chat.id}
@@ -859,9 +859,9 @@ export function LiveChatDashboard() {
                 </div>
               </CardHeader>
 
-              <CardContent className="flex-1 p-0 flex flex-col min-h-0 overflow-hidden">
-                <ScrollArea className="h-[350px] p-4" ref={scrollRef}>
-                  <div className="space-y-4">
+              <CardContent className="flex-1 p-0 flex flex-col min-h-0">
+                <ScrollArea className="flex-1 min-h-0" ref={scrollRef}>
+                  <div className="space-y-4 p-4">
                     {messages.map((message) => (
                       <div
                         key={message.id}
