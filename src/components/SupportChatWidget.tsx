@@ -58,11 +58,41 @@ export function SupportChatWidget() {
   const [requestedAgent, setRequestedAgent] = useState(false);
   const [chatStatus, setChatStatus] = useState<ChatStatus>('active');
   const [isAgentTyping, setIsAgentTyping] = useState(false);
+  const [showGreeting, setShowGreeting] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(() => {
+    return localStorage.getItem('support_has_interacted') === 'true';
+  });
   const scrollRef = useRef<HTMLDivElement>(null);
+  const greetingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   // Configure your WhatsApp Business number here (format: country code + number, no + sign)
   const whatsappNumber = '14155238886'; // Your WhatsApp Business number
+
+  // Proactive greeting - show after 5 seconds if visitor hasn't interacted
+  useEffect(() => {
+    if (!hasInteracted && !isOpen) {
+      greetingTimeoutRef.current = setTimeout(() => {
+        setShowGreeting(true);
+      }, 5000);
+    }
+
+    return () => {
+      if (greetingTimeoutRef.current) {
+        clearTimeout(greetingTimeoutRef.current);
+      }
+    };
+  }, [hasInteracted, isOpen]);
+
+  // Mark interaction and hide greeting when user engages
+  const handleInteraction = () => {
+    setHasInteracted(true);
+    localStorage.setItem('support_has_interacted', 'true');
+    setShowGreeting(false);
+    if (greetingTimeoutRef.current) {
+      clearTimeout(greetingTimeoutRef.current);
+    }
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -362,13 +392,55 @@ export function SupportChatWidget() {
   };
 
   // Closed state - show floating button
+  // Closed state - show floating button with proactive greeting
   if (!isOpen) {
     return (
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+        {/* Proactive greeting bubble */}
+        {showGreeting && !showContactOptions && (
+          <div className="animate-slide-up max-w-[280px]">
+            <div className="bg-background rounded-2xl shadow-xl border p-4 relative">
+              <button
+                onClick={() => setShowGreeting(false)}
+                className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0">
+                  <MessageCircle className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm">Need help?</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Hi! 👋 Have questions about TicketPro? We're here to help!
+                  </p>
+                  <Button
+                    size="sm"
+                    className="mt-3"
+                    onClick={() => {
+                      handleInteraction();
+                      setIsOpen(true);
+                      startChat('chat');
+                    }}
+                  >
+                    Start Chat
+                  </Button>
+                </div>
+              </div>
+              {/* Arrow pointing to button */}
+              <div className="absolute -bottom-2 right-8 w-4 h-4 bg-background border-b border-r rotate-45 transform" />
+            </div>
+          </div>
+        )}
+
         {showContactOptions && (
           <div className="flex flex-col gap-2 animate-slide-up">
             <Button
-              onClick={openWhatsApp}
+              onClick={() => {
+                handleInteraction();
+                openWhatsApp();
+              }}
               className="bg-[#25D366] hover:bg-[#128C7E] text-white shadow-lg"
               size="lg"
             >
@@ -377,6 +449,7 @@ export function SupportChatWidget() {
             </Button>
             <Button
               onClick={() => {
+                handleInteraction();
                 setIsOpen(true);
                 setShowContactOptions(false);
                 startChat('text');
@@ -390,6 +463,7 @@ export function SupportChatWidget() {
             </Button>
             <Button
               onClick={() => {
+                handleInteraction();
                 setIsOpen(true);
                 setShowContactOptions(false);
                 startChat('chat');
@@ -402,17 +476,30 @@ export function SupportChatWidget() {
             </Button>
           </div>
         )}
-        <Button
-          onClick={() => setShowContactOptions(!showContactOptions)}
-          size="lg"
-          className="h-14 w-14 rounded-full shadow-xl hover:scale-105 transition-transform"
-        >
-          {showContactOptions ? (
-            <X className="h-6 w-6" />
-          ) : (
-            <MessageCircle className="h-6 w-6" />
+        
+        <div className="relative">
+          {/* Notification pulse when greeting is showing */}
+          {showGreeting && (
+            <span className="absolute -top-1 -right-1 flex h-4 w-4">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-4 w-4 bg-primary"></span>
+            </span>
           )}
-        </Button>
+          <Button
+            onClick={() => {
+              handleInteraction();
+              setShowContactOptions(!showContactOptions);
+            }}
+            size="lg"
+            className="h-14 w-14 rounded-full shadow-xl hover:scale-105 transition-transform"
+          >
+            {showContactOptions ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <MessageCircle className="h-6 w-6" />
+            )}
+          </Button>
+        </div>
       </div>
     );
   }
