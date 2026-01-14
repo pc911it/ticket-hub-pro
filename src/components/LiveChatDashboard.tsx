@@ -24,34 +24,62 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
+// Global audio context that persists
+let audioContext: AudioContext | null = null;
+
+// Initialize audio context on first user interaction
+const initAudioContext = () => {
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+  }
+  // Resume if suspended (required by browsers after no user interaction)
+  if (audioContext.state === 'suspended') {
+    audioContext.resume();
+  }
+  return audioContext;
+};
+
 // Notification sound using Web Audio API
-const playNotificationSound = (type: 'newChat' | 'newMessage') => {
+const playNotificationSound = async (type: 'newChat' | 'newMessage') => {
   try {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
+    const ctx = initAudioContext();
+    
+    // Ensure context is running
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
+    }
+
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
     
     oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+    gainNode.connect(ctx.destination);
+    
+    oscillator.type = 'sine';
     
     if (type === 'newChat') {
-      // Two-tone alert for new chat
-      oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
-      oscillator.frequency.setValueAtTime(1100, audioContext.currentTime + 0.1);
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.3);
+      // Two-tone alert for new chat - louder and more noticeable
+      oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+      oscillator.frequency.setValueAtTime(1000, ctx.currentTime + 0.15);
+      oscillator.frequency.setValueAtTime(800, ctx.currentTime + 0.3);
+      gainNode.gain.setValueAtTime(0.5, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + 0.5);
     } else {
-      // Single soft tone for new message
-      oscillator.frequency.setValueAtTime(660, audioContext.currentTime);
-      gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.15);
+      // Double beep for new message
+      oscillator.frequency.setValueAtTime(600, ctx.currentTime);
+      gainNode.gain.setValueAtTime(0.4, ctx.currentTime);
+      gainNode.gain.setValueAtTime(0.01, ctx.currentTime + 0.1);
+      gainNode.gain.setValueAtTime(0.4, ctx.currentTime + 0.15);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + 0.25);
     }
+    
+    console.log('🔊 Playing notification sound:', type);
   } catch (error) {
-    console.log('Audio not supported');
+    console.error('Audio playback error:', error);
   }
 };
 
@@ -435,9 +463,18 @@ export function LiveChatDashboard() {
   };
 
   const toggleSound = () => {
+    // Initialize audio context on user interaction (required by browsers)
+    initAudioContext();
+    
     const newValue = !soundEnabled;
     setSoundEnabled(newValue);
     localStorage.setItem('chat_sound_enabled', String(newValue));
+    
+    // Play test sound when enabling
+    if (newValue) {
+      playNotificationSound('newMessage');
+    }
+    
     toast({
       title: newValue ? '🔊 Sound enabled' : '🔇 Sound muted',
       description: newValue ? 'You will hear notifications' : 'Notifications are muted',
@@ -510,18 +547,33 @@ export function LiveChatDashboard() {
                 </Badge>
               )}
             </CardTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleSound}
-              title={soundEnabled ? 'Mute notifications' : 'Enable notifications'}
-            >
-              {soundEnabled ? (
-                <Volume2 className="h-4 w-4" />
-              ) : (
-                <VolumeX className="h-4 w-4 text-muted-foreground" />
-              )}
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  initAudioContext();
+                  playNotificationSound('newChat');
+                }}
+                className="text-xs"
+                title="Test notification sound"
+              >
+                <Bell className="h-4 w-4 mr-1" />
+                Test
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleSound}
+                title={soundEnabled ? 'Mute notifications' : 'Enable notifications'}
+              >
+                {soundEnabled ? (
+                  <Volume2 className="h-4 w-4" />
+                ) : (
+                  <VolumeX className="h-4 w-4 text-muted-foreground" />
+                )}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
