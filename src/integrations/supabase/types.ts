@@ -1602,6 +1602,7 @@ export type Database = {
       }
       support_chat_messages: {
         Row: {
+          channel: string | null
           chat_id: string
           content: string
           created_at: string
@@ -1610,6 +1611,7 @@ export type Database = {
           sender_type: string
         }
         Insert: {
+          channel?: string | null
           chat_id: string
           content: string
           created_at?: string
@@ -1618,6 +1620,7 @@ export type Database = {
           sender_type: string
         }
         Update: {
+          channel?: string | null
           chat_id?: string
           content?: string
           created_at?: string
@@ -1638,6 +1641,7 @@ export type Database = {
       support_chats: {
         Row: {
           assigned_agent_id: string | null
+          channel: string
           created_at: string
           id: string
           status: string
@@ -1645,9 +1649,11 @@ export type Database = {
           visitor_email: string | null
           visitor_id: string
           visitor_name: string | null
+          visitor_phone: string | null
         }
         Insert: {
           assigned_agent_id?: string | null
+          channel?: string
           created_at?: string
           id?: string
           status?: string
@@ -1655,9 +1661,11 @@ export type Database = {
           visitor_email?: string | null
           visitor_id: string
           visitor_name?: string | null
+          visitor_phone?: string | null
         }
         Update: {
           assigned_agent_id?: string | null
+          channel?: string
           created_at?: string
           id?: string
           status?: string
@@ -1665,6 +1673,7 @@ export type Database = {
           visitor_email?: string | null
           visitor_id?: string
           visitor_name?: string | null
+          visitor_phone?: string | null
         }
         Relationships: []
       }
