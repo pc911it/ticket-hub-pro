@@ -38,6 +38,7 @@ import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
 import SuperAdminBillingPage from "./pages/admin/SuperAdminBillingPage";
 import SupportTicketsPage from "./pages/admin/SupportTicketsPage";
 import CompanySupportPage from "./pages/admin/CompanySupportPage";
+import LiveChatsPage from "./pages/admin/LiveChatsPage";
 import AgentJobPage from "./pages/AgentJobPage";
 import ClientDashboard from "./pages/ClientDashboard";
 import EmployeePortal from "./pages/EmployeePortal";
@@ -322,6 +323,16 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <CompanySupportPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/live-chats"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <LiveChatsPage />
+                  </AdminLayout>
                 </ProtectedRoute>
               }
             />
