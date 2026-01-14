@@ -47,6 +47,7 @@ interface Message {
   id: string;
   chat_id: string;
   sender_type: 'visitor' | 'ai' | 'agent';
+  sender_id: string | null;
   content: string;
   channel: string | null;
   created_at: string;
@@ -61,6 +62,7 @@ export function LiveChatDashboard() {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Fetch active chats
@@ -83,13 +85,20 @@ export function LiveChatDashboard() {
 
     fetchChats();
 
-    // Subscribe to new chats
+    // Subscribe to new chats and updates
     const channel = supabase
       .channel('support_chats_changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'support_chats' },
-        () => fetchChats()
+        (payload) => {
+          fetchChats();
+          // Play sound for new waiting chats
+          if (payload.eventType === 'INSERT' || 
+              (payload.eventType === 'UPDATE' && (payload.new as any).status === 'waiting_agent')) {
+            // Could add audio notification here
+          }
+        }
       )
       .subscribe();
 
@@ -121,6 +130,9 @@ export function LiveChatDashboard() {
 
     fetchMessages();
 
+    // Clear unread count for this chat
+    setUnreadCounts(prev => ({ ...prev, [selectedChat.id]: 0 }));
+
     // Subscribe to new messages
     const channel = supabase
       .channel(`chat_messages_${selectedChat.id}`)
@@ -133,7 +145,13 @@ export function LiveChatDashboard() {
           filter: `chat_id=eq.${selectedChat.id}`,
         },
         (payload) => {
-          setMessages((prev) => [...prev, payload.new as Message]);
+          const newMsg = payload.new as Message;
+          setMessages((prev) => [...prev, newMsg]);
+          
+          // If message is from visitor, increment unread if not viewing this chat
+          if (newMsg.sender_type === 'visitor') {
+            // Could add notification sound here
+          }
         }
       )
       .subscribe();
@@ -152,16 +170,34 @@ export function LiveChatDashboard() {
 
   const joinChat = async (chat: Chat) => {
     setSelectedChat(chat);
+    
+    // Clear unread count
+    setUnreadCounts(prev => ({ ...prev, [chat.id]: 0 }));
 
-    // Update chat status to with_agent
+    // Update chat status to with_agent if not already
     if (chat.status !== 'with_agent') {
-      await supabase
+      const { error } = await supabase
         .from('support_chats')
         .update({ 
           status: 'with_agent',
           assigned_agent_id: user?.id 
         })
         .eq('id', chat.id);
+
+      if (error) {
+        console.error('Error joining chat:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Failed to join chat',
+        });
+        return;
+      }
+
+      toast({
+        title: 'Chat joined',
+        description: 'You are now handling this conversation.',
+      });
     }
   };
 
@@ -173,18 +209,37 @@ export function LiveChatDashboard() {
     setInputValue('');
 
     try {
-      // Use edge function to send reply (handles SMS/WhatsApp via Twilio)
-      const { data, error } = await supabase.functions.invoke('send-chat-reply', {
-        body: {
-          chatId: selectedChat.id,
-          message: messageContent,
-          senderId: user?.id,
-        },
-      });
+      // For web chats, save directly to database
+      if (selectedChat.channel === 'web') {
+        const { error } = await supabase
+          .from('support_chat_messages')
+          .insert({
+            chat_id: selectedChat.id,
+            sender_type: 'agent',
+            sender_id: user?.id,
+            content: messageContent,
+          });
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+        if (error) throw error;
 
+        // Update chat timestamp
+        await supabase
+          .from('support_chats')
+          .update({ updated_at: new Date().toISOString() })
+          .eq('id', selectedChat.id);
+      } else {
+        // For SMS/WhatsApp, use edge function
+        const { data, error } = await supabase.functions.invoke('send-chat-reply', {
+          body: {
+            chatId: selectedChat.id,
+            message: messageContent,
+            senderId: user?.id,
+          },
+        });
+
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+      }
     } catch (error: any) {
       console.error('Error sending message:', error);
       toast({
@@ -195,6 +250,29 @@ export function LiveChatDashboard() {
       setInputValue(messageContent);
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const transferChat = async (chatId: string) => {
+    try {
+      await supabase
+        .from('support_chats')
+        .update({ 
+          status: 'waiting_agent',
+          assigned_agent_id: null 
+        })
+        .eq('id', chatId);
+
+      if (selectedChat?.id === chatId) {
+        setSelectedChat(null);
+      }
+
+      toast({
+        title: 'Chat transferred',
+        description: 'The chat is now available for other agents.',
+      });
+    } catch (error) {
+      console.error('Error transferring chat:', error);
     }
   };
 
@@ -372,6 +450,14 @@ export function LiveChatDashboard() {
                 </div>
                 <div className="flex items-center gap-2">
                   {getStatusBadge(selectedChat.status)}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => transferChat(selectedChat.id)}
+                    title="Transfer to another agent"
+                  >
+                    Transfer
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
