@@ -120,6 +120,7 @@ interface Chat {
   visitor_id: string;
   visitor_name: string | null;
   visitor_phone: string | null;
+  visitor_email: string | null;
   channel: string;
   status: string;
   topic: string | null;
@@ -540,11 +541,13 @@ export function LiveChatDashboard() {
         ?.map(m => `[${m.sender_type}]: ${m.content}`)
         .join('\n') || 'Chat conversation';
 
+      const visitorInfo = [chat.visitor_name, chat.visitor_email, chat.visitor_phone].filter(Boolean).join(' | ') || 'Visitor';
+      
       const { data: ticket, error } = await supabase
         .from('support_tickets')
         .insert({
-          subject: `${chat.topic ? `[${chat.topic}] ` : ''}Chat from ${chat.visitor_phone || chat.visitor_name || 'Visitor'} via ${chat.channel}`,
-          description: conversationSummary.substring(0, 1000),
+          subject: `${chat.topic ? `[${chat.topic}] ` : ''}Chat from ${visitorInfo} via ${chat.channel}`,
+          description: `**Visitor Info:**\nName: ${chat.visitor_name || 'Not provided'}\nEmail: ${chat.visitor_email || 'Not provided'}\nPhone: ${chat.visitor_phone || 'Not provided'}\nOrder: ${chat.order_reference || 'N/A'}\n\n**Conversation:**\n${conversationSummary.substring(0, 800)}`,
           status: 'open',
           priority: 'medium',
           category: 'chat',
@@ -801,6 +804,11 @@ export function LiveChatDashboard() {
                           <Badge variant="outline" className="text-xs">
                             <Tag className="h-3 w-3 mr-1" />
                             {selectedChat.topic}
+                          </Badge>
+                        )}
+                        {selectedChat.visitor_email && (
+                          <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                            ✉ {selectedChat.visitor_email}
                           </Badge>
                         )}
                         {selectedChat.order_reference && (

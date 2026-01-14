@@ -91,6 +91,11 @@ export function SupportChatWidget() {
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [orderReference, setOrderReference] = useState('');
   
+  // Visitor info state
+  const [visitorName, setVisitorName] = useState('');
+  const [visitorEmail, setVisitorEmail] = useState('');
+  const [visitorPhone, setVisitorPhone] = useState('');
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const greetingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
@@ -239,6 +244,26 @@ export function SupportChatWidget() {
       return;
     }
 
+    if (!visitorName.trim()) {
+      toast({
+        variant: 'destructive',
+        title: 'Name required',
+        description: 'Please enter your name.',
+      });
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (visitorEmail && !emailRegex.test(visitorEmail.trim())) {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid email',
+        description: 'Please enter a valid email address.',
+      });
+      return;
+    }
+
     setShowTopicSelection(false);
     
     try {
@@ -246,9 +271,12 @@ export function SupportChatWidget() {
         .from('support_chats')
         .insert({ 
           visitor_id: visitorId,
+          visitor_name: visitorName.trim().substring(0, 100),
+          visitor_email: visitorEmail.trim().substring(0, 255) || null,
+          visitor_phone: visitorPhone.trim().substring(0, 20) || null,
           topic: selectedTopic,
           department: selectedDepartment || (selectedTopic === 'billing' ? 'billing' : selectedTopic === 'technical' ? 'support' : 'general'),
-          order_reference: orderReference || null,
+          order_reference: orderReference.substring(0, 50) || null,
         })
         .select()
         .single();
@@ -407,6 +435,9 @@ export function SupportChatWidget() {
       setSelectedTopic('');
       setSelectedDepartment('');
       setOrderReference('');
+      setVisitorName('');
+      setVisitorEmail('');
+      setVisitorPhone('');
     } else {
       setContactMode(null);
       setMessages([]);
@@ -416,6 +447,9 @@ export function SupportChatWidget() {
       setSelectedTopic('');
       setSelectedDepartment('');
       setOrderReference('');
+      setVisitorName('');
+      setVisitorEmail('');
+      setVisitorPhone('');
     }
   };
 
@@ -645,30 +679,62 @@ export function SupportChatWidget() {
 
         {/* Topic Selection */}
         {showTopicSelection && (
-          <div className="p-6 space-y-4">
-            <div>
-              <Label className="text-sm font-medium">What do you need help with?</Label>
-              <div className="grid grid-cols-1 gap-2 mt-3">
-                {TOPICS.map((topic) => {
-                  const Icon = topic.icon;
-                  const isSelected = selectedTopic === topic.value;
-                  return (
-                    <button
-                      key={topic.value}
-                      onClick={() => setSelectedTopic(topic.value)}
-                      className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
-                        isSelected 
-                          ? 'border-primary bg-primary/10 text-primary' 
-                          : 'border-border hover:border-primary/50 hover:bg-muted'
-                      }`}
-                    >
-                      <Icon className={`h-5 w-5 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
-                      <span className="font-medium">{topic.label}</span>
-                    </button>
-                  );
-                })}
+          <ScrollArea className="h-[450px]">
+            <div className="p-6 space-y-4">
+              {/* Visitor Info Section */}
+              <div className="space-y-3 pb-4 border-b">
+                <Label className="text-sm font-medium">Your Information</Label>
+                <div className="space-y-2">
+                  <Input
+                    value={visitorName}
+                    onChange={(e) => setVisitorName(e.target.value)}
+                    placeholder="Your name *"
+                    maxLength={100}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Input
+                    type="email"
+                    value={visitorEmail}
+                    onChange={(e) => setVisitorEmail(e.target.value)}
+                    placeholder="Email address (optional)"
+                    maxLength={255}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Input
+                    type="tel"
+                    value={visitorPhone}
+                    onChange={(e) => setVisitorPhone(e.target.value)}
+                    placeholder="Phone number (optional)"
+                    maxLength={20}
+                  />
+                </div>
               </div>
-            </div>
+
+              <div>
+                <Label className="text-sm font-medium">What do you need help with?</Label>
+                <div className="grid grid-cols-1 gap-2 mt-3">
+                  {TOPICS.map((topic) => {
+                    const Icon = topic.icon;
+                    const isSelected = selectedTopic === topic.value;
+                    return (
+                      <button
+                        key={topic.value}
+                        onClick={() => setSelectedTopic(topic.value)}
+                        className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
+                          isSelected 
+                            ? 'border-primary bg-primary/10 text-primary' 
+                            : 'border-border hover:border-primary/50 hover:bg-muted'
+                        }`}
+                      >
+                        <Icon className={`h-5 w-5 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                        <span className="font-medium">{topic.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
             {selectedTopic === 'order' && (
               <div className="space-y-2">
@@ -702,16 +768,17 @@ export function SupportChatWidget() {
               </div>
             )}
 
-            <Button 
-              className="w-full" 
-              size="lg"
-              onClick={startChatWithTopic}
-              disabled={!selectedTopic}
-            >
-              <MessageCircle className="h-5 w-5 mr-2" />
-              Start Chat
-            </Button>
-          </div>
+              <Button 
+                className="w-full" 
+                size="lg"
+                onClick={startChatWithTopic}
+                disabled={!selectedTopic || !visitorName.trim()}
+              >
+                <MessageCircle className="h-5 w-5 mr-2" />
+                Start Chat
+              </Button>
+            </div>
+          </ScrollArea>
         )}
 
         {/* Chat interface */}
