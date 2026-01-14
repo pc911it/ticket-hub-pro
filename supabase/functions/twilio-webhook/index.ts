@@ -73,12 +73,25 @@ serve(async (req) => {
 
       chatId = newChat.id;
 
-      // Send welcome message back
-      await sendTwilioMessage(
-        phoneNumber,
-        channel,
-        "Thanks for contacting TicketPro support! A team member will respond shortly."
-      );
+      // Try to send welcome message back (don't fail if Twilio isn't configured)
+      try {
+        const twilioConfigured = channel === "whatsapp" 
+          ? Deno.env.get("TWILIO_WHATSAPP_NUMBER")
+          : Deno.env.get("TWILIO_PHONE_NUMBER");
+        
+        if (twilioConfigured && Deno.env.get("TWILIO_ACCOUNT_SID") && Deno.env.get("TWILIO_AUTH_TOKEN")) {
+          await sendTwilioMessage(
+            phoneNumber,
+            channel,
+            "Thanks for contacting support! A team member will respond shortly."
+          );
+        } else {
+          console.log("Twilio not fully configured, skipping welcome message");
+        }
+      } catch (twilioError) {
+        console.error("Failed to send welcome message (non-fatal):", twilioError);
+        // Don't throw - chat is still created, just no welcome message
+      }
     }
 
     // Save the incoming message
