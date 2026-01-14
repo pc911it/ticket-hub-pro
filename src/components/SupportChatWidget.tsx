@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { 
   MessageCircle, 
   X, 
@@ -13,7 +15,12 @@ import {
   Bot, 
   Headphones,
   MessageSquare,
-  ArrowLeft
+  ArrowLeft,
+  HelpCircle,
+  ShoppingBag,
+  CreditCard,
+  Settings,
+  FileQuestion
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -40,6 +47,21 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 
 type ContactMode = 'chat' | 'text' | 'whatsapp';
 
+const TOPICS = [
+  { value: 'general', label: 'General Question', icon: HelpCircle },
+  { value: 'order', label: 'Order Inquiry', icon: ShoppingBag },
+  { value: 'billing', label: 'Billing Issue', icon: CreditCard },
+  { value: 'technical', label: 'Technical Support', icon: Settings },
+  { value: 'other', label: 'Something Else', icon: FileQuestion },
+];
+
+const DEPARTMENTS = [
+  { value: 'sales', label: 'Sales' },
+  { value: 'support', label: 'Technical Support' },
+  { value: 'billing', label: 'Billing' },
+  { value: 'general', label: 'General Inquiry' },
+];
+
 export function SupportChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [showContactOptions, setShowContactOptions] = useState(false);
@@ -62,14 +84,19 @@ export function SupportChatWidget() {
   const [hasInteracted, setHasInteracted] = useState(() => {
     return localStorage.getItem('support_has_interacted') === 'true';
   });
+  
+  // Topic/Order selection state
+  const [showTopicSelection, setShowTopicSelection] = useState(false);
+  const [selectedTopic, setSelectedTopic] = useState('');
+  const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [orderReference, setOrderReference] = useState('');
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const greetingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
-  // Configure your WhatsApp Business number here (format: country code + number, no + sign)
-  const whatsappNumber = '14155238886'; // Your WhatsApp Business number
+  const whatsappNumber = '14155238886';
 
-  // Proactive greeting - show after 5 seconds if visitor hasn't interacted
   useEffect(() => {
     if (!hasInteracted && !isOpen) {
       greetingTimeoutRef.current = setTimeout(() => {
@@ -84,7 +111,6 @@ export function SupportChatWidget() {
     };
   }, [hasInteracted, isOpen]);
 
-  // Mark interaction and hide greeting when user engages
   const handleInteraction = () => {
     setHasInteracted(true);
     localStorage.setItem('support_has_interacted', 'true');
@@ -100,11 +126,9 @@ export function SupportChatWidget() {
     }
   }, [messages]);
 
-  // Subscribe to chat status changes and new messages when chatId exists
   useEffect(() => {
     if (!chatId) return;
 
-    // Subscribe to chat status changes
     const statusChannel = supabase
       .channel(`chat_status_${chatId}`)
       .on(
@@ -119,7 +143,6 @@ export function SupportChatWidget() {
           const newStatus = (payload.new as any).status as ChatStatus;
           setChatStatus(newStatus);
           
-          // Notify user when agent joins
           if (newStatus === 'with_agent' && chatStatus !== 'with_agent') {
             const agentJoinedMsg: Message = {
               id: `system_agent_joined_${Date.now()}`,
@@ -148,7 +171,6 @@ export function SupportChatWidget() {
       )
       .subscribe();
 
-    // Subscribe to new messages
     const messageChannel = supabase
       .channel(`chat_messages_${chatId}`)
       .on(
@@ -161,13 +183,11 @@ export function SupportChatWidget() {
         },
         (payload) => {
           const newMsg = payload.new as any;
-          // Only add agent messages (AI and visitor messages are added locally)
           if (newMsg.sender_type === 'agent') {
             setIsAgentTyping(false);
             setMessages((prev) => {
-              // Avoid duplicates and system messages
               if (prev.some((m) => m.id === newMsg.id)) return prev;
-              if (newMsg.content?.startsWith('🎉')) return prev; // Skip join message duplicates
+              if (newMsg.content?.startsWith('🎉')) return prev;
               return [
                 ...prev,
                 {
@@ -189,35 +209,56 @@ export function SupportChatWidget() {
     };
   }, [chatId, chatStatus, toast]);
 
-  const getWelcomeMessage = (mode: ContactMode): string => {
+  const getWelcomeMessage = (mode: ContactMode, topic?: string): string => {
+    const topicLabel = topic ? TOPICS.find(t => t.value === topic)?.label : null;
+    const topicIntro = topicLabel ? `I see you need help with: **${topicLabel}**. ` : '';
+    
     switch (mode) {
       case 'text':
-        return "Hi! 👋 You're in Text Mode. Type your message and our team will respond here. Ask us anything about TicketPro!";
+        return `Hi! 👋 ${topicIntro}You're in Text Mode. Type your message and our team will respond here!`;
       case 'whatsapp':
-        return "Hi! 👋 You're chatting via WhatsApp integration. Send your message and we'll respond right here!";
+        return `Hi! 👋 ${topicIntro}You're chatting via WhatsApp integration. Send your message and we'll respond right here!`;
       case 'chat':
       default:
-        return "Hi! 👋 I'm here to help you learn about TicketPro. Ask me anything about our features, pricing, or how we can help your business!";
+        return `Hi! 👋 ${topicIntro}I'm here to help you learn about TicketPro. Ask me anything!`;
     }
   };
 
-  const startChat = async (mode: ContactMode) => {
+  const initiateTopicSelection = (mode: ContactMode) => {
     setContactMode(mode);
+    setShowTopicSelection(true);
+  };
+
+  const startChatWithTopic = async () => {
+    if (!selectedTopic) {
+      toast({
+        variant: 'destructive',
+        title: 'Please select a topic',
+        description: 'Let us know what you need help with.',
+      });
+      return;
+    }
+
+    setShowTopicSelection(false);
     
     try {
       const { data, error } = await supabase
         .from('support_chats')
-        .insert({ visitor_id: visitorId })
+        .insert({ 
+          visitor_id: visitorId,
+          topic: selectedTopic,
+          department: selectedDepartment || (selectedTopic === 'billing' ? 'billing' : selectedTopic === 'technical' ? 'support' : 'general'),
+          order_reference: orderReference || null,
+        })
         .select()
         .single();
 
       if (error) throw error;
       setChatId(data.id);
 
-      // Add welcome message based on mode
       const welcomeMsg: Message = {
         id: 'welcome',
-        content: getWelcomeMessage(mode),
+        content: getWelcomeMessage(contactMode!, selectedTopic),
         sender: 'ai',
         timestamp: new Date(),
       };
@@ -230,6 +271,10 @@ export function SupportChatWidget() {
         description: 'Failed to start chat. Please try again.',
       });
     }
+  };
+
+  const startChat = async (mode: ContactMode) => {
+    initiateTopicSelection(mode);
   };
 
   const sendMessage = async () => {
@@ -248,12 +293,15 @@ export function SupportChatWidget() {
     setIsLoading(true);
 
     try {
-      // Start chat if not already started
       let currentChatId = chatId;
       if (!currentChatId) {
         const { data, error } = await supabase
           .from('support_chats')
-          .insert({ visitor_id: visitorId })
+          .insert({ 
+            visitor_id: visitorId,
+            topic: selectedTopic || 'general',
+            department: selectedDepartment || 'general',
+          })
           .select()
           .single();
 
@@ -262,7 +310,6 @@ export function SupportChatWidget() {
         setChatId(currentChatId);
       }
 
-      // If agent is connected, just save message to database (no AI)
       if (chatStatus === 'with_agent') {
         const { error: messageError } = await supabase
           .from('support_chat_messages')
@@ -274,14 +321,12 @@ export function SupportChatWidget() {
 
         if (messageError) throw messageError;
         
-        // Update chat timestamp to trigger notification
         await supabase
           .from('support_chats')
           .update({ updated_at: new Date().toISOString() })
           .eq('id', currentChatId);
           
       } else {
-        // No agent yet, use AI
         const { data: functionData, error: functionError } = await supabase.functions.invoke('support-chat', {
           body: { message: messageText, chatId: currentChatId, visitorId },
         });
@@ -292,7 +337,6 @@ export function SupportChatWidget() {
           throw new Error(functionData.error);
         }
 
-        // Only show AI response if not agent-handled
         if (functionData.response && !functionData.agentHandled) {
           const aiMessage: Message = {
             id: `ai_${Date.now()}`,
@@ -357,14 +401,26 @@ export function SupportChatWidget() {
   };
 
   const handleBack = () => {
-    setContactMode(null);
-    setMessages([]);
-    setChatId(null);
-    setRequestedAgent(false);
-    setChatStatus('active');
+    if (showTopicSelection) {
+      setShowTopicSelection(false);
+      setContactMode(null);
+      setSelectedTopic('');
+      setSelectedDepartment('');
+      setOrderReference('');
+    } else {
+      setContactMode(null);
+      setMessages([]);
+      setChatId(null);
+      setRequestedAgent(false);
+      setChatStatus('active');
+      setSelectedTopic('');
+      setSelectedDepartment('');
+      setOrderReference('');
+    }
   };
 
   const getModeTitle = () => {
+    if (showTopicSelection) return 'How can we help?';
     switch (contactMode) {
       case 'text':
         return 'Text Support';
@@ -377,6 +433,7 @@ export function SupportChatWidget() {
   };
 
   const getModeSubtitle = () => {
+    if (showTopicSelection) return 'Tell us what you need';
     if (chatStatus === 'with_agent') return '🟢 Speaking with agent';
     if (requestedAgent || chatStatus === 'waiting_agent') return '⏳ Waiting for agent...';
     if (chatStatus === 'closed') return 'Chat ended';
@@ -391,12 +448,10 @@ export function SupportChatWidget() {
     }
   };
 
-  // Closed state - show floating button
-  // Closed state - show floating button with proactive greeting
+  // Closed state - floating button
   if (!isOpen) {
     return (
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
-        {/* Proactive greeting bubble */}
         {showGreeting && !showContactOptions && (
           <div className="animate-slide-up max-w-[280px]">
             <div className="bg-background rounded-2xl shadow-xl border p-4 relative">
@@ -421,14 +476,12 @@ export function SupportChatWidget() {
                     onClick={() => {
                       handleInteraction();
                       setIsOpen(true);
-                      startChat('chat');
                     }}
                   >
                     Start Chat
                   </Button>
                 </div>
               </div>
-              {/* Arrow pointing to button */}
               <div className="absolute -bottom-2 right-8 w-4 h-4 bg-background border-b border-r rotate-45 transform" />
             </div>
           </div>
@@ -452,7 +505,7 @@ export function SupportChatWidget() {
                 handleInteraction();
                 setIsOpen(true);
                 setShowContactOptions(false);
-                startChat('text');
+                initiateTopicSelection('text');
               }}
               variant="outline"
               className="bg-background shadow-lg"
@@ -466,7 +519,7 @@ export function SupportChatWidget() {
                 handleInteraction();
                 setIsOpen(true);
                 setShowContactOptions(false);
-                startChat('chat');
+                initiateTopicSelection('chat');
               }}
               className="shadow-lg"
               size="lg"
@@ -478,7 +531,6 @@ export function SupportChatWidget() {
         )}
         
         <div className="relative">
-          {/* Notification pulse when greeting is showing */}
           {showGreeting && (
             <span className="absolute -top-1 -right-1 flex h-4 w-4">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
@@ -510,7 +562,7 @@ export function SupportChatWidget() {
       <CardHeader className="bg-primary text-primary-foreground p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {contactMode && (
+            {(contactMode || showTopicSelection) && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -548,8 +600,8 @@ export function SupportChatWidget() {
       </CardHeader>
 
       <CardContent className="p-0">
-        {/* Contact mode selection (if not selected) */}
-        {!contactMode && (
+        {/* Contact mode selection */}
+        {!contactMode && !showTopicSelection && (
           <div className="p-6 space-y-4">
             <p className="text-center text-muted-foreground mb-4">
               How would you like to contact us?
@@ -591,10 +643,80 @@ export function SupportChatWidget() {
           </div>
         )}
 
+        {/* Topic Selection */}
+        {showTopicSelection && (
+          <div className="p-6 space-y-4">
+            <div>
+              <Label className="text-sm font-medium">What do you need help with?</Label>
+              <div className="grid grid-cols-1 gap-2 mt-3">
+                {TOPICS.map((topic) => {
+                  const Icon = topic.icon;
+                  const isSelected = selectedTopic === topic.value;
+                  return (
+                    <button
+                      key={topic.value}
+                      onClick={() => setSelectedTopic(topic.value)}
+                      className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
+                        isSelected 
+                          ? 'border-primary bg-primary/10 text-primary' 
+                          : 'border-border hover:border-primary/50 hover:bg-muted'
+                      }`}
+                    >
+                      <Icon className={`h-5 w-5 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <span className="font-medium">{topic.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {selectedTopic === 'order' && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Order Number (optional)</Label>
+                <Input
+                  value={orderReference}
+                  onChange={(e) => setOrderReference(e.target.value)}
+                  placeholder="e.g., ORD-12345"
+                />
+                <p className="text-xs text-muted-foreground">
+                  If you have an order number, enter it here so we can help you faster.
+                </p>
+              </div>
+            )}
+
+            {selectedTopic && selectedTopic !== 'order' && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Department (optional)</Label>
+                <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Auto-route to best team" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEPARTMENTS.map(dept => (
+                      <SelectItem key={dept.value} value={dept.value}>
+                        {dept.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <Button 
+              className="w-full" 
+              size="lg"
+              onClick={startChatWithTopic}
+              disabled={!selectedTopic}
+            >
+              <MessageCircle className="h-5 w-5 mr-2" />
+              Start Chat
+            </Button>
+          </div>
+        )}
+
         {/* Chat interface */}
-        {contactMode && (
+        {contactMode && !showTopicSelection && (
           <>
-            {/* Quick actions - hide when agent is connected */}
             {chatStatus !== 'with_agent' && chatStatus !== 'closed' && (
               <div className="flex gap-2 p-3 bg-muted/50 border-b">
                 {!requestedAgent && chatStatus !== 'waiting_agent' && (
@@ -626,7 +748,6 @@ export function SupportChatWidget() {
               </div>
             )}
             
-            {/* Agent connected banner */}
             {chatStatus === 'with_agent' && (
               <div className="p-3 bg-green-50 border-b border-green-100 text-green-800 text-sm flex items-center gap-2">
                 <User className="h-4 w-4" />

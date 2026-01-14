@@ -1690,8 +1690,15 @@ export type Database = {
           assigned_agent_id: string | null
           channel: string
           created_at: string
+          department: string | null
+          ended_at: string | null
+          ended_by: string | null
           id: string
+          order_reference: string | null
           status: string
+          topic: string | null
+          transfer_reason: string | null
+          transferred_from: string | null
           updated_at: string
           visitor_email: string | null
           visitor_id: string
@@ -1702,8 +1709,15 @@ export type Database = {
           assigned_agent_id?: string | null
           channel?: string
           created_at?: string
+          department?: string | null
+          ended_at?: string | null
+          ended_by?: string | null
           id?: string
+          order_reference?: string | null
           status?: string
+          topic?: string | null
+          transfer_reason?: string | null
+          transferred_from?: string | null
           updated_at?: string
           visitor_email?: string | null
           visitor_id: string
@@ -1714,8 +1728,15 @@ export type Database = {
           assigned_agent_id?: string | null
           channel?: string
           created_at?: string
+          department?: string | null
+          ended_at?: string | null
+          ended_by?: string | null
           id?: string
+          order_reference?: string | null
           status?: string
+          topic?: string | null
+          transfer_reason?: string | null
+          transferred_from?: string | null
           updated_at?: string
           visitor_email?: string | null
           visitor_id?: string
@@ -1765,6 +1786,7 @@ export type Database = {
           category: string | null
           company_id: string | null
           created_at: string
+          department: string | null
           description: string
           id: string
           priority: string | null
@@ -1780,6 +1802,7 @@ export type Database = {
           category?: string | null
           company_id?: string | null
           created_at?: string
+          department?: string | null
           description: string
           id?: string
           priority?: string | null
@@ -1795,6 +1818,7 @@ export type Database = {
           category?: string | null
           company_id?: string | null
           created_at?: string
+          department?: string | null
           description?: string
           id?: string
           priority?: string | null
