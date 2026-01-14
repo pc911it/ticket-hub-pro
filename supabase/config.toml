@@ -77,3 +77,9 @@ verify_jwt = false
 
 [functions.support-chat]
 verify_jwt = false
+
+[functions.twilio-webhook]
+verify_jwt = false
+
+[functions.send-chat-reply]
+verify_jwt = false

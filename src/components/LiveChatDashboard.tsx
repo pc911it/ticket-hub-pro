@@ -15,14 +15,29 @@ import {
   Clock, 
   CheckCircle2,
   XCircle,
-  Loader2
+  Loader2,
+  Phone,
+  Globe
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+
+// WhatsApp icon component
+const WhatsAppIcon = ({ className }: { className?: string }) => (
+  <svg 
+    viewBox="0 0 24 24" 
+    fill="currentColor" 
+    className={className}
+  >
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+  </svg>
+);
 
 interface Chat {
   id: string;
   visitor_id: string;
   visitor_name: string | null;
+  visitor_phone: string | null;
+  channel: string;
   status: string;
   created_at: string;
   updated_at: string;
@@ -33,6 +48,7 @@ interface Message {
   chat_id: string;
   sender_type: 'visitor' | 'ai' | 'agent';
   content: string;
+  channel: string | null;
   created_at: string;
 }
 
@@ -60,7 +76,7 @@ export function LiveChatDashboard() {
       if (error) {
         console.error('Error fetching chats:', error);
       } else {
-        setChats(data || []);
+        setChats((data || []) as Chat[]);
       }
       setIsLoading(false);
     };
@@ -157,20 +173,24 @@ export function LiveChatDashboard() {
     setInputValue('');
 
     try {
-      const { error } = await supabase.from('support_chat_messages').insert({
-        chat_id: selectedChat.id,
-        sender_type: 'agent',
-        sender_id: user?.id,
-        content: messageContent,
+      // Use edge function to send reply (handles SMS/WhatsApp via Twilio)
+      const { data, error } = await supabase.functions.invoke('send-chat-reply', {
+        body: {
+          chatId: selectedChat.id,
+          message: messageContent,
+          senderId: user?.id,
+        },
       });
 
       if (error) throw error;
-    } catch (error) {
+      if (data?.error) throw new Error(data.error);
+
+    } catch (error: any) {
       console.error('Error sending message:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to send message',
+        description: error.message || 'Failed to send message',
       });
       setInputValue(messageContent);
     } finally {
@@ -216,6 +236,39 @@ export function LiveChatDashboard() {
     }
   };
 
+  const getChannelBadge = (channel: string) => {
+    switch (channel) {
+      case 'sms':
+        return (
+          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+            <Phone className="h-3 w-3 mr-1" />
+            SMS
+          </Badge>
+        );
+      case 'whatsapp':
+        return (
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+            <WhatsAppIcon className="h-3 w-3 mr-1" />
+            WhatsApp
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+            <Globe className="h-3 w-3 mr-1" />
+            Web
+          </Badge>
+        );
+    }
+  };
+
+  const getVisitorDisplay = (chat: Chat) => {
+    if (chat.visitor_phone) {
+      return chat.visitor_phone;
+    }
+    return chat.visitor_name || 'Visitor';
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
       {/* Chat List */}
@@ -251,14 +304,20 @@ export function LiveChatDashboard() {
                   }`}
                   onClick={() => joinChat(chat)}
                 >
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <User className="h-4 w-4 text-primary" />
+                        {chat.channel === 'sms' ? (
+                          <Phone className="h-4 w-4 text-primary" />
+                        ) : chat.channel === 'whatsapp' ? (
+                          <WhatsAppIcon className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <User className="h-4 w-4 text-primary" />
+                        )}
                       </div>
                       <div>
                         <p className="text-sm font-medium">
-                          {chat.visitor_name || `Visitor`}
+                          {getVisitorDisplay(chat)}
                         </p>
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <Clock className="h-3 w-3" />
@@ -267,6 +326,9 @@ export function LiveChatDashboard() {
                       </div>
                     </div>
                     {getStatusBadge(chat.status)}
+                  </div>
+                  <div className="flex gap-1">
+                    {getChannelBadge(chat.channel)}
                   </div>
                 </div>
               ))}
@@ -282,16 +344,30 @@ export function LiveChatDashboard() {
             <CardHeader className="pb-3 border-b">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="h-5 w-5 text-primary" />
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    selectedChat.channel === 'whatsapp' ? 'bg-green-100' : 
+                    selectedChat.channel === 'sms' ? 'bg-blue-100' : 'bg-primary/10'
+                  }`}>
+                    {selectedChat.channel === 'sms' ? (
+                      <Phone className="h-5 w-5 text-blue-600" />
+                    ) : selectedChat.channel === 'whatsapp' ? (
+                      <WhatsAppIcon className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <User className="h-5 w-5 text-primary" />
+                    )}
                   </div>
                   <div>
                     <CardTitle className="text-lg">
-                      {selectedChat.visitor_name || 'Visitor'}
+                      {getVisitorDisplay(selectedChat)}
                     </CardTitle>
-                    <p className="text-xs text-muted-foreground">
-                      ID: {selectedChat.visitor_id.slice(0, 20)}...
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      {getChannelBadge(selectedChat.channel)}
+                      {selectedChat.visitor_phone && selectedChat.channel === 'web' && (
+                        <span className="text-xs text-muted-foreground">
+                          {selectedChat.visitor_phone}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -366,7 +442,7 @@ export function LiveChatDashboard() {
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="Type your response..."
+                    placeholder={`Reply via ${selectedChat.channel === 'sms' ? 'SMS' : selectedChat.channel === 'whatsapp' ? 'WhatsApp' : 'chat'}...`}
                     disabled={isSending}
                     className="flex-1"
                   />
@@ -381,6 +457,11 @@ export function LiveChatDashboard() {
                     )}
                   </Button>
                 </div>
+                {(selectedChat.channel === 'sms' || selectedChat.channel === 'whatsapp') && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Your reply will be sent via {selectedChat.channel === 'sms' ? 'SMS' : 'WhatsApp'} to {selectedChat.visitor_phone}
+                  </p>
+                )}
               </div>
             </CardContent>
           </>
@@ -389,6 +470,9 @@ export function LiveChatDashboard() {
             <div className="text-center">
               <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>Select a chat to start responding</p>
+              <p className="text-sm mt-2">
+                Chats from Web, SMS, and WhatsApp appear here
+              </p>
             </div>
           </CardContent>
         )}
