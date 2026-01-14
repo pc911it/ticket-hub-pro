@@ -4,6 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -21,7 +25,11 @@ import {
   Volume2,
   VolumeX,
   Bell,
-  Ticket
+  Ticket,
+  UserPlus,
+  ArrowRightLeft,
+  PhoneOff,
+  Tag
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -33,7 +41,6 @@ const initAudioContext = () => {
   if (!audioContext) {
     audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
   }
-  // Resume if suspended (required by browsers after no user interaction)
   if (audioContext.state === 'suspended') {
     audioContext.resume();
   }
@@ -45,7 +52,6 @@ const playNotificationSound = async (type: 'newChat' | 'newMessage') => {
   try {
     const ctx = initAudioContext();
     
-    // Ensure context is running
     if (ctx.state === 'suspended') {
       await ctx.resume();
     }
@@ -59,7 +65,6 @@ const playNotificationSound = async (type: 'newChat' | 'newMessage') => {
     oscillator.type = 'sine';
     
     if (type === 'newChat') {
-      // Two-tone alert for new chat - louder and more noticeable
       oscillator.frequency.setValueAtTime(800, ctx.currentTime);
       oscillator.frequency.setValueAtTime(1000, ctx.currentTime + 0.15);
       oscillator.frequency.setValueAtTime(800, ctx.currentTime + 0.3);
@@ -68,7 +73,6 @@ const playNotificationSound = async (type: 'newChat' | 'newMessage') => {
       oscillator.start(ctx.currentTime);
       oscillator.stop(ctx.currentTime + 0.5);
     } else {
-      // Double beep for new message
       oscillator.frequency.setValueAtTime(600, ctx.currentTime);
       gainNode.gain.setValueAtTime(0.4, ctx.currentTime);
       gainNode.gain.setValueAtTime(0.01, ctx.currentTime + 0.1);
@@ -84,14 +88,12 @@ const playNotificationSound = async (type: 'newChat' | 'newMessage') => {
   }
 };
 
-// Request browser notification permission
 const requestNotificationPermission = async () => {
   if ('Notification' in window && Notification.permission === 'default') {
     await Notification.requestPermission();
   }
 };
 
-// Show browser notification
 const showBrowserNotification = (title: string, body: string) => {
   if ('Notification' in window && Notification.permission === 'granted') {
     new Notification(title, {
@@ -120,6 +122,9 @@ interface Chat {
   visitor_phone: string | null;
   channel: string;
   status: string;
+  topic: string | null;
+  department: string | null;
+  order_reference: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -134,12 +139,26 @@ interface Message {
   created_at: string;
 }
 
+interface Agent {
+  id: string;
+  user_id: string;
+  full_name: string;
+}
+
+const DEPARTMENTS = [
+  { value: 'sales', label: 'Sales', color: 'bg-blue-100 text-blue-800' },
+  { value: 'support', label: 'Technical Support', color: 'bg-purple-100 text-purple-800' },
+  { value: 'billing', label: 'Billing', color: 'bg-green-100 text-green-800' },
+  { value: 'general', label: 'General Inquiry', color: 'bg-gray-100 text-gray-800' },
+];
+
 export function LiveChatDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -148,20 +167,38 @@ export function LiveChatDashboard() {
     const stored = localStorage.getItem('chat_sound_enabled');
     return stored !== 'false';
   });
+  
+  // Dialog states
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
+  const [showEndDialog, setShowEndDialog] = useState(false);
+  const [transferDepartment, setTransferDepartment] = useState('');
+  const [transferAgentId, setTransferAgentId] = useState('');
+  const [transferReason, setTransferReason] = useState('');
+  const [endReason, setEndReason] = useState('');
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const selectedChatRef = useRef<Chat | null>(null);
 
-  // Keep ref in sync with state for use in subscriptions
   useEffect(() => {
     selectedChatRef.current = selectedChat;
   }, [selectedChat]);
 
-  // Request notification permission on mount
   useEffect(() => {
     requestNotificationPermission();
   }, []);
 
-  // Subscribe to ALL new messages (for notifications even when chat not selected)
+  // Fetch agents for transfer
+  useEffect(() => {
+    const fetchAgents = async () => {
+      const { data } = await supabase
+        .from('agents')
+        .select('id, user_id, full_name');
+      if (data) setAgents(data as Agent[]);
+    };
+    fetchAgents();
+  }, []);
+
+  // Subscribe to ALL new messages
   useEffect(() => {
     const channel = supabase
       .channel('all_chat_messages_notifications')
@@ -175,13 +212,10 @@ export function LiveChatDashboard() {
         (payload) => {
           const newMsg = payload.new as any;
           
-          // Only notify for visitor messages
           if (newMsg.sender_type === 'visitor') {
             const currentSelectedChat = selectedChatRef.current;
             
-            // If message is for a chat we're not currently viewing
             if (!currentSelectedChat || currentSelectedChat.id !== newMsg.chat_id) {
-              // Update unread count
               setUnreadCounts(prev => ({
                 ...prev,
                 [newMsg.chat_id]: (prev[newMsg.chat_id] || 0) + 1
@@ -191,7 +225,6 @@ export function LiveChatDashboard() {
                 playNotificationSound('newMessage');
               }
               
-              // Show toast for messages in other chats
               toast({
                 title: '💬 New Message',
                 description: newMsg.content.substring(0, 50) + (newMsg.content.length > 50 ? '...' : ''),
@@ -227,17 +260,14 @@ export function LiveChatDashboard() {
 
     fetchChats();
 
-    // Subscribe to new chats and updates
     const channel = supabase
       .channel('support_chats_changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'support_chats' },
         (payload) => {
-          const previousChats = chats;
           fetchChats();
           
-          // Play sound and show notification for new waiting chats
           if (payload.eventType === 'INSERT') {
             if (soundEnabled) {
               playNotificationSound('newChat');
@@ -281,19 +311,14 @@ export function LiveChatDashboard() {
         .eq('chat_id', selectedChat.id)
         .order('created_at', { ascending: true });
 
-      if (error) {
-        console.error('Error fetching messages:', error);
-      } else {
-        setMessages((data || []) as Message[]);
+      if (!error && data) {
+        setMessages(data as Message[]);
       }
     };
 
     fetchMessages();
-
-    // Clear unread count for this chat
     setUnreadCounts(prev => ({ ...prev, [selectedChat.id]: 0 }));
 
-    // Subscribe to new messages
     const channel = supabase
       .channel(`chat_messages_${selectedChat.id}`)
       .on(
@@ -308,13 +333,11 @@ export function LiveChatDashboard() {
           const newMsg = payload.new as Message;
           setMessages((prev) => [...prev, newMsg]);
           
-          // If message is from visitor, play sound and show notification
           if (newMsg.sender_type === 'visitor') {
             if (soundEnabled) {
               playNotificationSound('newMessage');
             }
             
-            // Update unread count if not viewing this chat
             if (!document.hasFocus()) {
               showBrowserNotification('New Message', newMsg.content.substring(0, 50));
             }
@@ -326,9 +349,8 @@ export function LiveChatDashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedChat]);
+  }, [selectedChat, soundEnabled]);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -337,11 +359,8 @@ export function LiveChatDashboard() {
 
   const joinChat = async (chat: Chat) => {
     setSelectedChat(chat);
-    
-    // Clear unread count
     setUnreadCounts(prev => ({ ...prev, [chat.id]: 0 }));
 
-    // Update chat status to with_agent if not already
     if (chat.status !== 'with_agent') {
       const { error } = await supabase
         .from('support_chats')
@@ -376,7 +395,6 @@ export function LiveChatDashboard() {
     setInputValue('');
 
     try {
-      // For web chats, save directly to database
       if (selectedChat.channel === 'web') {
         const { error } = await supabase
           .from('support_chat_messages')
@@ -389,13 +407,11 @@ export function LiveChatDashboard() {
 
         if (error) throw error;
 
-        // Update chat timestamp
         await supabase
           .from('support_chats')
           .update({ updated_at: new Date().toISOString() })
           .eq('id', selectedChat.id);
       } else {
-        // For SMS/WhatsApp, use edge function
         const { data, error } = await supabase.functions.invoke('send-chat-reply', {
           body: {
             chatId: selectedChat.id,
@@ -420,52 +436,99 @@ export function LiveChatDashboard() {
     }
   };
 
-  const transferChat = async (chatId: string) => {
+  const handleTransfer = async () => {
+    if (!selectedChat) return;
+
+    try {
+      const updates: any = { 
+        status: 'waiting_agent',
+        transferred_from: user?.id,
+        transfer_reason: transferReason,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (transferDepartment) {
+        updates.department = transferDepartment;
+      }
+
+      if (transferAgentId && transferAgentId !== 'queue') {
+        updates.assigned_agent_id = transferAgentId;
+        updates.status = 'with_agent';
+      } else {
+        updates.assigned_agent_id = null;
+      }
+
+      await supabase
+        .from('support_chats')
+        .update(updates)
+        .eq('id', selectedChat.id);
+
+      // Add system message about transfer
+      await supabase
+        .from('support_chat_messages')
+        .insert({
+          chat_id: selectedChat.id,
+          sender_type: 'ai',
+          content: `Chat transferred to ${transferDepartment ? DEPARTMENTS.find(d => d.value === transferDepartment)?.label : 'another agent'}. ${transferReason ? `Reason: ${transferReason}` : ''}`,
+        });
+
+      setSelectedChat(null);
+      setShowTransferDialog(false);
+      setTransferDepartment('');
+      setTransferAgentId('');
+      setTransferReason('');
+
+      toast({
+        title: '✅ Chat transferred',
+        description: transferAgentId && transferAgentId !== 'queue' 
+          ? 'Chat assigned to specific agent' 
+          : 'Chat returned to queue for next available agent',
+      });
+    } catch (error) {
+      console.error('Error transferring chat:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to transfer chat' });
+    }
+  };
+
+  const handleEndChat = async () => {
+    if (!selectedChat) return;
+
     try {
       await supabase
         .from('support_chats')
         .update({ 
-          status: 'waiting_agent',
-          assigned_agent_id: null 
+          status: 'closed',
+          ended_at: new Date().toISOString(),
+          ended_by: user?.id,
         })
-        .eq('id', chatId);
+        .eq('id', selectedChat.id);
 
-      if (selectedChat?.id === chatId) {
-        setSelectedChat(null);
-      }
-
-      toast({
-        title: 'Chat transferred',
-        description: 'The chat is now available for other agents.',
-      });
-    } catch (error) {
-      console.error('Error transferring chat:', error);
-    }
-  };
-
-  const closeChat = async (chatId: string) => {
-    try {
+      // Add closing message
       await supabase
-        .from('support_chats')
-        .update({ status: 'closed' })
-        .eq('id', chatId);
+        .from('support_chat_messages')
+        .insert({
+          chat_id: selectedChat.id,
+          sender_type: 'agent',
+          sender_id: user?.id,
+          content: endReason || 'This chat has been ended. Thank you for contacting us!',
+        });
 
-      if (selectedChat?.id === chatId) {
-        setSelectedChat(null);
-      }
+      setSelectedChat(null);
+      setShowEndDialog(false);
+      setEndReason('');
 
       toast({
-        title: 'Chat closed',
+        title: '✅ Chat ended',
         description: 'The conversation has been closed.',
       });
     } catch (error) {
-      console.error('Error closing chat:', error);
+      console.error('Error ending chat:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to end chat' });
     }
   };
 
   const convertToTicket = async (chat: Chat) => {
     try {
-      // Get chat messages for the ticket description
       const { data: chatMessages } = await supabase
         .from('support_chat_messages')
         .select('content, sender_type, created_at')
@@ -477,15 +540,15 @@ export function LiveChatDashboard() {
         ?.map(m => `[${m.sender_type}]: ${m.content}`)
         .join('\n') || 'Chat conversation';
 
-      // Create support ticket
       const { data: ticket, error } = await supabase
         .from('support_tickets')
         .insert({
-          subject: `Chat from ${chat.visitor_phone || chat.visitor_name || 'Visitor'} via ${chat.channel}`,
+          subject: `${chat.topic ? `[${chat.topic}] ` : ''}Chat from ${chat.visitor_phone || chat.visitor_name || 'Visitor'} via ${chat.channel}`,
           description: conversationSummary.substring(0, 1000),
           status: 'open',
           priority: 'medium',
           category: 'chat',
+          department: chat.department,
           user_id: user?.id,
         })
         .select()
@@ -495,10 +558,9 @@ export function LiveChatDashboard() {
 
       toast({
         title: '🎫 Ticket created',
-        description: `Ticket #${ticket.id.slice(0, 8)} has been created from this chat.`,
+        description: `Ticket #${ticket.id.slice(0, 8)} created from chat.`,
       });
 
-      // Navigate to tickets page
       window.location.href = '/admin/chat-tickets';
     } catch (error) {
       console.error('Error creating ticket:', error);
@@ -511,14 +573,12 @@ export function LiveChatDashboard() {
   };
 
   const toggleSound = () => {
-    // Initialize audio context on user interaction (required by browsers)
     initAudioContext();
     
     const newValue = !soundEnabled;
     setSoundEnabled(newValue);
     localStorage.setItem('chat_sound_enabled', String(newValue));
     
-    // Play test sound when enabling
     if (newValue) {
       playNotificationSound('newMessage');
     }
@@ -573,6 +633,17 @@ export function LiveChatDashboard() {
     }
   };
 
+  const getDepartmentBadge = (department: string | null) => {
+    if (!department) return null;
+    const dept = DEPARTMENTS.find(d => d.value === department);
+    if (!dept) return null;
+    return (
+      <Badge variant="outline" className={dept.color}>
+        {dept.label}
+      </Badge>
+    );
+  };
+
   const getVisitorDisplay = (chat: Chat) => {
     if (chat.visitor_phone) {
       return chat.visitor_phone;
@@ -581,270 +652,389 @@ export function LiveChatDashboard() {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
-      {/* Chat List */}
-      <Card className="md:col-span-1">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <MessageCircle className="h-5 w-5" />
-              Live Chats
-              {chats.filter(c => c.status === 'waiting_agent').length > 0 && (
-                <Badge variant="destructive" className="animate-pulse">
-                  {chats.filter(c => c.status === 'waiting_agent').length} waiting
-                </Badge>
-              )}
-            </CardTitle>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  initAudioContext();
-                  playNotificationSound('newChat');
-                }}
-                className="text-xs"
-                title="Test notification sound"
-              >
-                <Bell className="h-4 w-4 mr-1" />
-                Test
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleSound}
-                title={soundEnabled ? 'Mute notifications' : 'Enable notifications'}
-              >
-                {soundEnabled ? (
-                  <Volume2 className="h-4 w-4" />
-                ) : (
-                  <VolumeX className="h-4 w-4 text-muted-foreground" />
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
+        {/* Chat List */}
+        <Card className="md:col-span-1">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <MessageCircle className="h-5 w-5" />
+                Live Chats
+                {chats.filter(c => c.status === 'waiting_agent').length > 0 && (
+                  <Badge variant="destructive" className="animate-pulse">
+                    {chats.filter(c => c.status === 'waiting_agent').length} waiting
+                  </Badge>
                 )}
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : chats.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No active chats</p>
-            </div>
-          ) : (
-            <ScrollArea className="h-[400px]">
-              {chats.map((chat) => (
-                <div
-                  key={chat.id}
-                  className={`p-4 border-b cursor-pointer hover:bg-muted/50 transition-colors ${
-                    selectedChat?.id === chat.id ? 'bg-muted' : ''
-                  }`}
-                  onClick={() => joinChat(chat)}
+              </CardTitle>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    initAudioContext();
+                    playNotificationSound('newChat');
+                  }}
+                  className="text-xs"
+                  title="Test notification sound"
                 >
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="relative">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                          {chat.channel === 'sms' ? (
-                            <Phone className="h-4 w-4 text-primary" />
-                          ) : chat.channel === 'whatsapp' ? (
-                            <WhatsAppIcon className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <User className="h-4 w-4 text-primary" />
+                  <Bell className="h-4 w-4 mr-1" />
+                  Test
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleSound}
+                  title={soundEnabled ? 'Mute notifications' : 'Enable notifications'}
+                >
+                  {soundEnabled ? (
+                    <Volume2 className="h-4 w-4" />
+                  ) : (
+                    <VolumeX className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : chats.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>No active chats</p>
+              </div>
+            ) : (
+              <ScrollArea className="h-[400px]">
+                {chats.map((chat) => (
+                  <div
+                    key={chat.id}
+                    className={`p-4 border-b cursor-pointer hover:bg-muted/50 transition-colors ${
+                      selectedChat?.id === chat.id ? 'bg-muted' : ''
+                    }`}
+                    onClick={() => joinChat(chat)}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="relative">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                            {chat.channel === 'sms' ? (
+                              <Phone className="h-4 w-4 text-primary" />
+                            ) : chat.channel === 'whatsapp' ? (
+                              <WhatsAppIcon className="h-4 w-4 text-green-600" />
+                            ) : (
+                              <User className="h-4 w-4 text-primary" />
+                            )}
+                          </div>
+                          {unreadCounts[chat.id] > 0 && selectedChat?.id !== chat.id && (
+                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs font-bold">
+                              {unreadCounts[chat.id] > 9 ? '9+' : unreadCounts[chat.id]}
+                            </span>
                           )}
                         </div>
-                        {/* Unread count badge */}
-                        {unreadCounts[chat.id] > 0 && selectedChat?.id !== chat.id && (
-                          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs font-bold">
-                            {unreadCounts[chat.id] > 9 ? '9+' : unreadCounts[chat.id]}
-                          </span>
+                        <div>
+                          <p className="text-sm font-medium flex items-center gap-2">
+                            {getVisitorDisplay(chat)}
+                            {unreadCounts[chat.id] > 0 && selectedChat?.id !== chat.id && (
+                              <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+                            )}
+                          </p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {formatDistanceToNow(new Date(chat.updated_at), { addSuffix: true })}
+                          </p>
+                        </div>
+                      </div>
+                      {getStatusBadge(chat.status)}
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {getChannelBadge(chat.channel)}
+                      {getDepartmentBadge(chat.department)}
+                      {chat.topic && (
+                        <Badge variant="outline" className="text-xs">
+                          <Tag className="h-3 w-3 mr-1" />
+                          {chat.topic}
+                        </Badge>
+                      )}
+                      {chat.order_reference && (
+                        <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700">
+                          Order: {chat.order_reference}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </ScrollArea>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Chat Messages */}
+        <Card className="md:col-span-2 flex flex-col">
+          {selectedChat ? (
+            <>
+              <CardHeader className="pb-3 border-b">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      selectedChat.channel === 'whatsapp' ? 'bg-green-100' : 
+                      selectedChat.channel === 'sms' ? 'bg-blue-100' : 'bg-primary/10'
+                    }`}>
+                      {selectedChat.channel === 'sms' ? (
+                        <Phone className="h-5 w-5 text-blue-600" />
+                      ) : selectedChat.channel === 'whatsapp' ? (
+                        <WhatsAppIcon className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <User className="h-5 w-5 text-primary" />
+                      )}
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">
+                        {getVisitorDisplay(selectedChat)}
+                      </CardTitle>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {getChannelBadge(selectedChat.channel)}
+                        {getDepartmentBadge(selectedChat.department)}
+                        {selectedChat.topic && (
+                          <Badge variant="outline" className="text-xs">
+                            <Tag className="h-3 w-3 mr-1" />
+                            {selectedChat.topic}
+                          </Badge>
+                        )}
+                        {selectedChat.order_reference && (
+                          <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700">
+                            Order: {selectedChat.order_reference}
+                          </Badge>
                         )}
                       </div>
-                      <div>
-                        <p className="text-sm font-medium flex items-center gap-2">
-                          {getVisitorDisplay(chat)}
-                          {unreadCounts[chat.id] > 0 && selectedChat?.id !== chat.id && (
-                            <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-                          )}
-                        </p>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {formatDistanceToNow(new Date(chat.updated_at), { addSuffix: true })}
-                        </p>
-                      </div>
-                    </div>
-                    {getStatusBadge(chat.status)}
-                  </div>
-                  <div className="flex gap-1">
-                    {getChannelBadge(chat.channel)}
-                  </div>
-                </div>
-              ))}
-            </ScrollArea>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Chat Messages */}
-      <Card className="md:col-span-2 flex flex-col">
-        {selectedChat ? (
-          <>
-            <CardHeader className="pb-3 border-b">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    selectedChat.channel === 'whatsapp' ? 'bg-green-100' : 
-                    selectedChat.channel === 'sms' ? 'bg-blue-100' : 'bg-primary/10'
-                  }`}>
-                    {selectedChat.channel === 'sms' ? (
-                      <Phone className="h-5 w-5 text-blue-600" />
-                    ) : selectedChat.channel === 'whatsapp' ? (
-                      <WhatsAppIcon className="h-5 w-5 text-green-600" />
-                    ) : (
-                      <User className="h-5 w-5 text-primary" />
-                    )}
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg">
-                      {getVisitorDisplay(selectedChat)}
-                    </CardTitle>
-                    <div className="flex items-center gap-2 mt-1">
-                      {getChannelBadge(selectedChat.channel)}
-                      {selectedChat.visitor_phone && selectedChat.channel === 'web' && (
-                        <span className="text-xs text-muted-foreground">
-                          {selectedChat.visitor_phone}
-                        </span>
-                      )}
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {getStatusBadge(selectedChat.status)}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => convertToTicket(selectedChat)}
-                    title="Convert to support ticket"
-                  >
-                    <Ticket className="h-4 w-4 mr-1" />
-                    Create Ticket
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => transferChat(selectedChat.id)}
-                    title="Transfer to another agent"
-                  >
-                    Transfer
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => closeChat(selectedChat.id)}
-                  >
-                    <XCircle className="h-4 w-4 mr-1" />
-                    Close
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-
-            <CardContent className="flex-1 p-0 flex flex-col">
-              <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-                <div className="space-y-4">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex gap-2 ${
-                        message.sender_type === 'agent' ? 'justify-end' : 'justify-start'
-                      }`}
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(selectedChat.status)}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => convertToTicket(selectedChat)}
+                      title="Convert to support ticket"
                     >
-                      {message.sender_type !== 'agent' && (
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                          message.sender_type === 'visitor' ? 'bg-secondary' : 'bg-primary/10'
-                        }`}>
-                          {message.sender_type === 'visitor' ? (
-                            <User className="h-4 w-4" />
-                          ) : (
-                            <Bot className="h-4 w-4 text-primary" />
-                          )}
-                        </div>
-                      )}
+                      <Ticket className="h-4 w-4 mr-1" />
+                      Ticket
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowTransferDialog(true)}
+                      title="Transfer to another agent or department"
+                    >
+                      <ArrowRightLeft className="h-4 w-4 mr-1" />
+                      Transfer
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setShowEndDialog(true)}
+                    >
+                      <PhoneOff className="h-4 w-4 mr-1" />
+                      End Chat
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="flex-1 p-0 flex flex-col">
+                <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+                  <div className="space-y-4">
+                    {messages.map((message) => (
                       <div
-                        className={`max-w-[75%] rounded-2xl px-4 py-2 ${
-                          message.sender_type === 'agent'
-                            ? 'bg-primary text-primary-foreground rounded-br-md'
-                            : message.sender_type === 'visitor'
-                            ? 'bg-secondary rounded-bl-md'
-                            : 'bg-muted rounded-bl-md'
+                        key={message.id}
+                        className={`flex gap-2 ${
+                          message.sender_type === 'agent' ? 'justify-end' : 'justify-start'
                         }`}
                       >
-                        <p className="text-sm">{message.content}</p>
-                        <p className={`text-xs mt-1 ${
-                          message.sender_type === 'agent' 
-                            ? 'text-primary-foreground/60' 
-                            : 'text-muted-foreground'
-                        }`}>
-                          {new Date(message.created_at).toLocaleTimeString([], { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}
-                        </p>
-                      </div>
-                      {message.sender_type === 'agent' && (
-                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        {message.sender_type !== 'agent' && (
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                            message.sender_type === 'visitor' ? 'bg-secondary' : 'bg-primary/10'
+                          }`}>
+                            {message.sender_type === 'visitor' ? (
+                              <User className="h-4 w-4" />
+                            ) : (
+                              <Bot className="h-4 w-4 text-primary" />
+                            )}
+                          </div>
+                        )}
+                        <div
+                          className={`max-w-[75%] rounded-2xl px-4 py-2 ${
+                            message.sender_type === 'agent'
+                              ? 'bg-primary text-primary-foreground rounded-br-md'
+                              : message.sender_type === 'visitor'
+                              ? 'bg-secondary rounded-bl-md'
+                              : 'bg-muted rounded-bl-md'
+                          }`}
+                        >
+                          <p className="text-sm">{message.content}</p>
+                          <p className={`text-xs mt-1 ${
+                            message.sender_type === 'agent' 
+                              ? 'text-primary-foreground/60' 
+                              : 'text-muted-foreground'
+                          }`}>
+                            {new Date(message.created_at).toLocaleTimeString([], { 
+                              hour: '2-digit', 
+                              minute: '2-digit' 
+                            })}
+                          </p>
                         </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
+                        {message.sender_type === 'agent' && (
+                          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
 
-              <div className="p-4 border-t">
-                <div className="flex gap-2">
-                  <Input
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder={`Reply via ${selectedChat.channel === 'sms' ? 'SMS' : selectedChat.channel === 'whatsapp' ? 'WhatsApp' : 'chat'}...`}
-                    disabled={isSending}
-                    className="flex-1"
-                  />
-                  <Button
-                    onClick={sendMessage}
-                    disabled={isSending || !inputValue.trim()}
-                  >
-                    {isSending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </Button>
+                <div className="p-4 border-t">
+                  <div className="flex gap-2">
+                    <Input
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder={`Reply via ${selectedChat.channel === 'sms' ? 'SMS' : selectedChat.channel === 'whatsapp' ? 'WhatsApp' : 'chat'}...`}
+                      disabled={isSending}
+                      className="flex-1"
+                    />
+                    <Button
+                      onClick={sendMessage}
+                      disabled={isSending || !inputValue.trim()}
+                    >
+                      {isSending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  {(selectedChat.channel === 'sms' || selectedChat.channel === 'whatsapp') && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Your reply will be sent via {selectedChat.channel === 'sms' ? 'SMS' : 'WhatsApp'} to {selectedChat.visitor_phone}
+                    </p>
+                  )}
                 </div>
-                {(selectedChat.channel === 'sms' || selectedChat.channel === 'whatsapp') && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Your reply will be sent via {selectedChat.channel === 'sms' ? 'SMS' : 'WhatsApp'} to {selectedChat.visitor_phone}
-                  </p>
-                )}
+              </CardContent>
+            </>
+          ) : (
+            <CardContent className="flex-1 flex items-center justify-center text-muted-foreground">
+              <div className="text-center">
+                <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Select a chat to start responding</p>
+                <p className="text-sm mt-2">
+                  Chats from Web, SMS, and WhatsApp appear here
+                </p>
               </div>
             </CardContent>
-          </>
-        ) : (
-          <CardContent className="flex-1 flex items-center justify-center text-muted-foreground">
-            <div className="text-center">
-              <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Select a chat to start responding</p>
-              <p className="text-sm mt-2">
-                Chats from Web, SMS, and WhatsApp appear here
-              </p>
+          )}
+        </Card>
+      </div>
+
+      {/* Transfer Dialog */}
+      <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRightLeft className="h-5 w-5" />
+              Transfer Chat
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Department</Label>
+              <Select value={transferDepartment} onValueChange={setTransferDepartment}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DEPARTMENTS.map(dept => (
+                    <SelectItem key={dept.value} value={dept.value}>
+                      {dept.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </CardContent>
-        )}
-      </Card>
-    </div>
+            <div>
+              <Label>Transfer To</Label>
+              <Select value={transferAgentId} onValueChange={setTransferAgentId}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select agent or queue" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="queue">Return to Queue (Next Available)</SelectItem>
+                  {agents.map(agent => (
+                    <SelectItem key={agent.id} value={agent.user_id}>
+                      {agent.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Reason (optional)</Label>
+              <Textarea
+                value={transferReason}
+                onChange={(e) => setTransferReason(e.target.value)}
+                placeholder="Why are you transferring this chat?"
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTransferDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleTransfer}>
+              <ArrowRightLeft className="h-4 w-4 mr-2" />
+              Transfer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* End Chat Dialog */}
+      <Dialog open={showEndDialog} onOpenChange={setShowEndDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PhoneOff className="h-5 w-5" />
+              End Chat
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              This will close the chat and notify the visitor. You can optionally add a closing message.
+            </p>
+            <div>
+              <Label>Closing Message (optional)</Label>
+              <Textarea
+                value={endReason}
+                onChange={(e) => setEndReason(e.target.value)}
+                placeholder="Thank you for contacting us! Is there anything else I can help you with?"
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEndDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleEndChat}>
+              <PhoneOff className="h-4 w-4 mr-2" />
+              End Chat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
