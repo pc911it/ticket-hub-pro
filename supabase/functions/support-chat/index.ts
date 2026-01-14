@@ -43,6 +43,36 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Check if chat exists and has an agent assigned
+    if (chatId) {
+      const { data: chatData } = await supabase
+        .from('support_chats')
+        .select('status, assigned_agent_id')
+        .eq('id', chatId)
+        .single();
+
+      // If agent is handling, just save the visitor message and return
+      if (chatData?.status === 'with_agent') {
+        // Save visitor message
+        await supabase.from('support_chat_messages').insert({
+          chat_id: chatId,
+          sender_type: 'visitor',
+          content: message,
+        });
+
+        // Update chat timestamp
+        await supabase
+          .from('support_chats')
+          .update({ updated_at: new Date().toISOString() })
+          .eq('id', chatId);
+
+        return new Response(
+          JSON.stringify({ agentHandled: true, response: null }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // Get chat history for context
     let messages: Array<{ role: string; content: string }> = [
       { role: "system", content: SYSTEM_PROMPT }
@@ -120,10 +150,16 @@ serve(async (req) => {
         sender_type: 'ai',
         content: aiResponse,
       });
+
+      // Update chat timestamp
+      await supabase
+        .from('support_chats')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', chatId);
     }
 
     return new Response(
-      JSON.stringify({ response: aiResponse }),
+      JSON.stringify({ response: aiResponse, agentHandled: false }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

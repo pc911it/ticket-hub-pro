@@ -25,6 +25,8 @@ interface Message {
   timestamp: Date;
 }
 
+type ChatStatus = 'active' | 'waiting_agent' | 'with_agent' | 'closed';
+
 // WhatsApp icon component
 const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg 
@@ -54,6 +56,8 @@ export function SupportChatWidget() {
     return newId;
   });
   const [requestedAgent, setRequestedAgent] = useState(false);
+  const [chatStatus, setChatStatus] = useState<ChatStatus>('active');
+  const [isAgentTyping, setIsAgentTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -66,12 +70,57 @@ export function SupportChatWidget() {
     }
   }, [messages]);
 
-  // Subscribe to new messages when chatId exists
+  // Subscribe to chat status changes and new messages when chatId exists
   useEffect(() => {
     if (!chatId) return;
 
-    const channel = supabase
-      .channel(`chat_${chatId}`)
+    // Subscribe to chat status changes
+    const statusChannel = supabase
+      .channel(`chat_status_${chatId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'support_chats',
+          filter: `id=eq.${chatId}`,
+        },
+        (payload) => {
+          const newStatus = (payload.new as any).status as ChatStatus;
+          setChatStatus(newStatus);
+          
+          // Notify user when agent joins
+          if (newStatus === 'with_agent' && chatStatus !== 'with_agent') {
+            const agentJoinedMsg: Message = {
+              id: `system_agent_joined_${Date.now()}`,
+              content: "🎉 A support agent has joined the chat! You're now speaking directly with our team.",
+              sender: 'agent',
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, agentJoinedMsg]);
+            setRequestedAgent(false);
+            toast({
+              title: 'Agent connected',
+              description: 'You are now chatting with a live agent.',
+            });
+          }
+          
+          if (newStatus === 'closed') {
+            const closedMsg: Message = {
+              id: `system_closed_${Date.now()}`,
+              content: "This chat has been closed. Thank you for contacting us! Start a new chat if you need more help.",
+              sender: 'ai',
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, closedMsg]);
+          }
+        }
+      )
+      .subscribe();
+
+    // Subscribe to new messages
+    const messageChannel = supabase
+      .channel(`chat_messages_${chatId}`)
       .on(
         'postgres_changes',
         {
@@ -84,9 +133,11 @@ export function SupportChatWidget() {
           const newMsg = payload.new as any;
           // Only add agent messages (AI and visitor messages are added locally)
           if (newMsg.sender_type === 'agent') {
+            setIsAgentTyping(false);
             setMessages((prev) => {
-              // Avoid duplicates
+              // Avoid duplicates and system messages
               if (prev.some((m) => m.id === newMsg.id)) return prev;
+              if (newMsg.content?.startsWith('🎉')) return prev; // Skip join message duplicates
               return [
                 ...prev,
                 {
@@ -103,9 +154,10 @@ export function SupportChatWidget() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(statusChannel);
+      supabase.removeChannel(messageChannel);
     };
-  }, [chatId]);
+  }, [chatId, chatStatus, toast]);
 
   const getWelcomeMessage = (mode: ContactMode): string => {
     switch (mode) {
@@ -180,24 +232,47 @@ export function SupportChatWidget() {
         setChatId(currentChatId);
       }
 
-      const { data: functionData, error: functionError } = await supabase.functions.invoke('support-chat', {
-        body: { message: messageText, chatId: currentChatId, visitorId },
-      });
+      // If agent is connected, just save message to database (no AI)
+      if (chatStatus === 'with_agent') {
+        const { error: messageError } = await supabase
+          .from('support_chat_messages')
+          .insert({
+            chat_id: currentChatId,
+            sender_type: 'visitor',
+            content: messageText,
+          });
 
-      if (functionError) throw functionError;
+        if (messageError) throw messageError;
+        
+        // Update chat timestamp to trigger notification
+        await supabase
+          .from('support_chats')
+          .update({ updated_at: new Date().toISOString() })
+          .eq('id', currentChatId);
+          
+      } else {
+        // No agent yet, use AI
+        const { data: functionData, error: functionError } = await supabase.functions.invoke('support-chat', {
+          body: { message: messageText, chatId: currentChatId, visitorId },
+        });
 
-      if (functionData?.error) {
-        throw new Error(functionData.error);
+        if (functionError) throw functionError;
+
+        if (functionData?.error) {
+          throw new Error(functionData.error);
+        }
+
+        // Only show AI response if not agent-handled
+        if (functionData.response && !functionData.agentHandled) {
+          const aiMessage: Message = {
+            id: `ai_${Date.now()}`,
+            content: functionData.response,
+            sender: 'ai',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, aiMessage]);
+        }
       }
-
-      const aiMessage: Message = {
-        id: `ai_${Date.now()}`,
-        content: functionData.response,
-        sender: 'ai',
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, aiMessage]);
     } catch (error: any) {
       console.error('Chat error:', error);
       const errorMessage: Message = {
@@ -256,6 +331,7 @@ export function SupportChatWidget() {
     setMessages([]);
     setChatId(null);
     setRequestedAgent(false);
+    setChatStatus('active');
   };
 
   const getModeTitle = () => {
@@ -271,7 +347,9 @@ export function SupportChatWidget() {
   };
 
   const getModeSubtitle = () => {
-    if (requestedAgent) return 'Waiting for agent...';
+    if (chatStatus === 'with_agent') return '🟢 Speaking with agent';
+    if (requestedAgent || chatStatus === 'waiting_agent') return '⏳ Waiting for agent...';
+    if (chatStatus === 'closed') return 'Chat ended';
     switch (contactMode) {
       case 'text':
         return 'Web-based messaging';
@@ -429,29 +507,45 @@ export function SupportChatWidget() {
         {/* Chat interface */}
         {contactMode && (
           <>
-            {/* Quick actions */}
-            <div className="flex gap-2 p-3 bg-muted/50 border-b">
-              {!requestedAgent && (
+            {/* Quick actions - hide when agent is connected */}
+            {chatStatus !== 'with_agent' && chatStatus !== 'closed' && (
+              <div className="flex gap-2 p-3 bg-muted/50 border-b">
+                {!requestedAgent && chatStatus !== 'waiting_agent' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs"
+                    onClick={requestLiveAgent}
+                  >
+                    <Headphones className="h-4 w-4 mr-1" />
+                    Live Agent
+                  </Button>
+                )}
+                {(requestedAgent || chatStatus === 'waiting_agent') && (
+                  <div className="flex-1 text-xs text-center text-muted-foreground py-2">
+                    <Loader2 className="h-4 w-4 animate-spin inline mr-1" />
+                    Connecting to agent...
+                  </div>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
                   className="flex-1 text-xs"
-                  onClick={requestLiveAgent}
+                  onClick={openWhatsApp}
                 >
-                  <Headphones className="h-4 w-4 mr-1" />
-                  Live Agent
+                  <WhatsAppIcon className="h-4 w-4 mr-1" />
+                  WhatsApp
                 </Button>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 text-xs"
-                onClick={openWhatsApp}
-              >
-                <WhatsAppIcon className="h-4 w-4 mr-1" />
-                WhatsApp
-              </Button>
-            </div>
+              </div>
+            )}
+            
+            {/* Agent connected banner */}
+            {chatStatus === 'with_agent' && (
+              <div className="p-3 bg-green-50 border-b border-green-100 text-green-800 text-sm flex items-center gap-2">
+                <User className="h-4 w-4" />
+                <span>Connected with a support agent</span>
+              </div>
+            )}
 
             {/* Messages */}
             <ScrollArea className="h-[350px] p-4" ref={scrollRef}>
@@ -494,11 +588,23 @@ export function SupportChatWidget() {
                 ))}
                 {isLoading && (
                   <div className="flex gap-2 justify-start">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Bot className="h-4 w-4 text-primary" />
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      chatStatus === 'with_agent' ? 'bg-green-100' : 'bg-primary/10'
+                    }`}>
+                      {chatStatus === 'with_agent' ? (
+                        <User className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Bot className="h-4 w-4 text-primary" />
+                      )}
                     </div>
-                    <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-2">
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    <div className={`rounded-2xl rounded-bl-md px-4 py-2 ${
+                      chatStatus === 'with_agent' ? 'bg-green-100' : 'bg-muted'
+                    }`}>
+                      <div className="flex items-center gap-1">
+                        <span className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                        <span className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                        <span className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -507,23 +613,32 @@ export function SupportChatWidget() {
 
             {/* Input */}
             <div className="p-3 border-t bg-background">
-              <div className="flex gap-2">
-                <Input
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Type your message..."
-                  disabled={isLoading}
-                  className="flex-1"
-                />
-                <Button
-                  onClick={sendMessage}
-                  disabled={isLoading || !inputValue.trim()}
-                  size="icon"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
+              {chatStatus === 'closed' ? (
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground mb-2">This chat has ended</p>
+                  <Button size="sm" onClick={handleBack}>
+                    Start New Chat
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder={chatStatus === 'with_agent' ? 'Reply to agent...' : 'Type your message...'}
+                    disabled={isLoading}
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={sendMessage}
+                    disabled={isLoading || !inputValue.trim()}
+                    size="icon"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           </>
         )}
