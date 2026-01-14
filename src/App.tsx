@@ -48,6 +48,7 @@ import EmployeeTimeReportsPage from "./pages/admin/EmployeeTimeReportsPage";
 import ServiceTypesPage from "./pages/admin/ServiceTypesPage";
 import VesselDetailPage from "./pages/admin/VesselDetailPage";
 import PaymentSettingsPage from "./pages/admin/PaymentSettingsPage";
+import ChatTicketsPage from "./pages/admin/ChatTicketsPage";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -332,6 +333,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AdminLayout>
                     <LiveChatsPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/chat-tickets"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <ChatTicketsPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }

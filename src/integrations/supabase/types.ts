@@ -111,6 +111,53 @@ export type Database = {
           },
         ]
       }
+      canned_responses: {
+        Row: {
+          category: string | null
+          company_id: string | null
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_global: boolean | null
+          shortcut: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          company_id?: string | null
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_global?: boolean | null
+          shortcut?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          company_id?: string | null
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_global?: boolean | null
+          shortcut?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canned_responses_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_read_receipts: {
         Row: {
           comment_id: string
@@ -1808,6 +1855,50 @@ export type Database = {
             columns: ["ticket_id"]
             isOneToOne: false
             referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_views: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          filters: Json | null
+          id: string
+          is_default: boolean | null
+          name: string
+          sort_by: string | null
+          sort_order: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          filters?: Json | null
+          id?: string
+          is_default?: boolean | null
+          name: string
+          sort_by?: string | null
+          sort_order?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          filters?: Json | null
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          sort_by?: string | null
+          sort_order?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_views_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]

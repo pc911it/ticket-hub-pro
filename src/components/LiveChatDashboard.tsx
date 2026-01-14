@@ -20,7 +20,8 @@ import {
   Globe,
   Volume2,
   VolumeX,
-  Bell
+  Bell,
+  Ticket
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -462,6 +463,53 @@ export function LiveChatDashboard() {
     }
   };
 
+  const convertToTicket = async (chat: Chat) => {
+    try {
+      // Get chat messages for the ticket description
+      const { data: chatMessages } = await supabase
+        .from('support_chat_messages')
+        .select('content, sender_type, created_at')
+        .eq('chat_id', chat.id)
+        .order('created_at', { ascending: true })
+        .limit(5);
+
+      const conversationSummary = chatMessages
+        ?.map(m => `[${m.sender_type}]: ${m.content}`)
+        .join('\n') || 'Chat conversation';
+
+      // Create support ticket
+      const { data: ticket, error } = await supabase
+        .from('support_tickets')
+        .insert({
+          subject: `Chat from ${chat.visitor_phone || chat.visitor_name || 'Visitor'} via ${chat.channel}`,
+          description: conversationSummary.substring(0, 1000),
+          status: 'open',
+          priority: 'medium',
+          category: 'chat',
+          user_id: user?.id,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: '🎫 Ticket created',
+        description: `Ticket #${ticket.id.slice(0, 8)} has been created from this chat.`,
+      });
+
+      // Navigate to tickets page
+      window.location.href = '/admin/chat-tickets';
+    } catch (error) {
+      console.error('Error creating ticket:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to create ticket from chat',
+      });
+    }
+  };
+
   const toggleSound = () => {
     // Initialize audio context on user interaction (required by browsers)
     initAudioContext();
@@ -675,6 +723,15 @@ export function LiveChatDashboard() {
                 </div>
                 <div className="flex items-center gap-2">
                   {getStatusBadge(selectedChat.status)}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => convertToTicket(selectedChat)}
+                    title="Convert to support ticket"
+                  >
+                    <Ticket className="h-4 w-4 mr-1" />
+                    Create Ticket
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
