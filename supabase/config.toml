@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.verify-code]
 verify_jwt = false
+
+[functions.support-chat]
+verify_jwt = false
