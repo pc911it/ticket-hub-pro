@@ -130,6 +130,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   // Company owners and company admins (role=admin in company_members) should see these
   const isAdminLevel = isSuperAdmin || isCompanyOwner || isCompanyAdmin || userRole === 'admin';
 
+  // Pages that super admins see in their dedicated section (avoid duplicates)
+  const superAdminOnlyPages = ['/admin/live-chats', '/admin/chat-tickets'];
+
   // Build navigation with badges and filter based on role and features
   const navigation: NavItem[] = baseNavigation
     .filter(item => {
@@ -139,6 +142,10 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       }
       // Filter feature-gated pages based on plan
       if (item.featureKey && !hasFeature(item.featureKey)) {
+        return false;
+      }
+      // Hide items that appear in super admin section for super admins
+      if (isSuperAdmin && superAdminOnlyPages.includes(item.href)) {
         return false;
       }
       return true;
