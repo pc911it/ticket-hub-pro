@@ -95,11 +95,11 @@ const staffNavigation: NavItem[] = [
 
 const baseSuperAdminNavigation: NavItem[] = [
   { name: 'Platform Overview', href: '/admin/super-dashboard', icon: LayoutDashboard },
+  { name: 'Live Chats', href: '/admin/live-chats', icon: HeadphonesIcon },
+  { name: 'Chat Tickets', href: '/admin/chat-tickets', icon: MessageSquare },
   { name: 'Create Company', href: '/admin/create-company', icon: Plus },
   { name: 'Company Approvals', href: '/admin/company-approvals', icon: CheckSquare },
-  { name: 'Live Chats', href: '/admin/live-chats', icon: MessageSquare },
-  { name: 'Chat Tickets', href: '/admin/chat-tickets', icon: Ticket },
-  { name: 'Support Tickets', href: '/admin/support-tickets', icon: HeadphonesIcon },
+  { name: 'Support Tickets', href: '/admin/support-tickets', icon: Ticket },
   { name: 'Platform Billing', href: '/admin/platform-billing', icon: DollarSign },
 ];
 
