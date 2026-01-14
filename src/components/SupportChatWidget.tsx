@@ -103,10 +103,20 @@ export function SupportChatWidget() {
   const whatsappNumber = '14155238886';
 
   useEffect(() => {
+    console.log('Greeting check - hasInteracted:', hasInteracted, 'isOpen:', isOpen);
+    
+    // Clear any existing timeout
+    if (greetingTimeoutRef.current) {
+      clearTimeout(greetingTimeoutRef.current);
+    }
+    
+    // Show greeting after 3 seconds if user hasn't interacted and chat is closed
     if (!hasInteracted && !isOpen) {
+      console.log('Setting greeting timeout...');
       greetingTimeoutRef.current = setTimeout(() => {
+        console.log('Showing greeting popup!');
         setShowGreeting(true);
-      }, 5000);
+      }, 3000); // Reduced to 3 seconds for faster popup
     }
 
     return () => {
