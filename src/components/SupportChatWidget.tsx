@@ -81,8 +81,9 @@ export function SupportChatWidget() {
   const [chatStatus, setChatStatus] = useState<ChatStatus>('active');
   const [isAgentTyping, setIsAgentTyping] = useState(false);
   const [showGreeting, setShowGreeting] = useState(false);
+  // Use sessionStorage instead of localStorage so greeting shows once per session
   const [hasInteracted, setHasInteracted] = useState(() => {
-    return localStorage.getItem('support_has_interacted') === 'true';
+    return sessionStorage.getItem('support_has_interacted') === 'true';
   });
   
   // Topic/Order selection state
@@ -128,7 +129,7 @@ export function SupportChatWidget() {
 
   const handleInteraction = () => {
     setHasInteracted(true);
-    localStorage.setItem('support_has_interacted', 'true');
+    sessionStorage.setItem('support_has_interacted', 'true');
     setShowGreeting(false);
     if (greetingTimeoutRef.current) {
       clearTimeout(greetingTimeoutRef.current);
