@@ -25,6 +25,66 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+// Audio context for notification sounds
+let audioContext: AudioContext | null = null;
+
+const initAudioContext = () => {
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+  }
+  if (audioContext.state === 'suspended') {
+    audioContext.resume();
+  }
+  return audioContext;
+};
+
+const playNotificationSound = async (type: 'message' | 'greeting' | 'agent') => {
+  try {
+    const ctx = initAudioContext();
+    
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
+    }
+
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    oscillator.type = 'sine';
+    
+    if (type === 'greeting') {
+      // Friendly chime for greeting popup
+      oscillator.frequency.setValueAtTime(523, ctx.currentTime); // C5
+      oscillator.frequency.setValueAtTime(659, ctx.currentTime + 0.1); // E5
+      oscillator.frequency.setValueAtTime(784, ctx.currentTime + 0.2); // G5
+      gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + 0.4);
+    } else if (type === 'agent') {
+      // Special sound when agent joins
+      oscillator.frequency.setValueAtTime(440, ctx.currentTime); // A4
+      oscillator.frequency.setValueAtTime(554, ctx.currentTime + 0.15); // C#5
+      oscillator.frequency.setValueAtTime(659, ctx.currentTime + 0.3); // E5
+      gainNode.gain.setValueAtTime(0.35, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + 0.5);
+    } else {
+      // Simple blip for new message
+      oscillator.frequency.setValueAtTime(600, ctx.currentTime);
+      gainNode.gain.setValueAtTime(0.25, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + 0.15);
+    }
+  } catch (error) {
+    console.error('Audio playback error:', error);
+  }
+};
+
 interface Message {
   id: string;
   content: string;
@@ -117,6 +177,7 @@ export function SupportChatWidget() {
       greetingTimeoutRef.current = setTimeout(() => {
         console.log('Showing greeting popup!');
         setShowGreeting(true);
+        playNotificationSound('greeting');
       }, 3000); // Reduced to 3 seconds for faster popup
     }
 
@@ -176,6 +237,7 @@ export function SupportChatWidget() {
             };
             setMessages((prev) => [...prev, agentJoinedMsg]);
             setRequestedAgent(false);
+            playNotificationSound('agent');
             toast({
               title: 'Agent connected',
               description: 'You are now chatting with a live agent.',
@@ -212,6 +274,8 @@ export function SupportChatWidget() {
             setMessages((prev) => {
               if (prev.some((m) => m.id === newMsg.id)) return prev;
               if (newMsg.content?.startsWith('🎉')) return prev;
+              // Play sound for new agent message
+              playNotificationSound('message');
               return [
                 ...prev,
                 {
@@ -392,6 +456,7 @@ export function SupportChatWidget() {
             timestamp: new Date(),
           };
           setMessages((prev) => [...prev, aiMessage]);
+          playNotificationSound('message');
         }
       }
     } catch (error: any) {
