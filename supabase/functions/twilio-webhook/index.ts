@@ -137,12 +137,20 @@ serve(async (req) => {
 async function sendTwilioMessage(to: string, channel: string, body: string) {
   const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID")!;
   const authToken = Deno.env.get("TWILIO_AUTH_TOKEN")!;
-  const fromNumber = channel === "whatsapp" 
+  
+  let fromNumber = channel === "whatsapp" 
     ? Deno.env.get("TWILIO_WHATSAPP_NUMBER")!
     : Deno.env.get("TWILIO_PHONE_NUMBER")!;
 
-  const toNumber = channel === "whatsapp" ? `whatsapp:${to}` : to;
-  const fromFormatted = channel === "whatsapp" ? `whatsapp:${fromNumber}` : fromNumber;
+  // Normalize phone numbers - remove existing whatsapp: prefix if present
+  const cleanTo = to.replace(/^whatsapp:/, "");
+  const cleanFrom = fromNumber.replace(/^whatsapp:/, "");
+
+  // Format for Twilio API
+  const toNumber = channel === "whatsapp" ? `whatsapp:${cleanTo}` : cleanTo;
+  const fromFormatted = channel === "whatsapp" ? `whatsapp:${cleanFrom}` : cleanFrom;
+
+  console.log(`Sending ${channel} message from ${fromFormatted} to ${toNumber}`);
 
   const response = await fetch(
     `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
