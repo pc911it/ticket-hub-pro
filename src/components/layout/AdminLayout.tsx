@@ -77,6 +77,8 @@ const baseNavigation: NavItem[] = [
   { name: 'Projects', href: '/admin/projects', icon: Building2, featureKey: 'project_management' },
   { name: 'Plans', href: '/admin/plans', icon: FileText },
   { name: 'Tickets', href: '/admin/tickets', icon: Ticket },
+  { name: 'Chat Tickets', href: '/admin/chat-tickets', icon: MessageSquare },
+  { name: 'Live Chats', href: '/admin/live-chats', icon: HeadphonesIcon },
   { name: 'Inventory', href: '/admin/inventory', icon: Package, featureKey: 'inventory_management' },
   { name: 'Service Types', href: '/admin/service-types', icon: Wrench },
   { name: 'Trash', href: '/admin/trash', icon: Trash2 },
