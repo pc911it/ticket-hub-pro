@@ -17,9 +17,61 @@ import {
   XCircle,
   Loader2,
   Phone,
-  Globe
+  Globe,
+  Volume2,
+  VolumeX,
+  Bell
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+
+// Notification sound using Web Audio API
+const playNotificationSound = (type: 'newChat' | 'newMessage') => {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    if (type === 'newChat') {
+      // Two-tone alert for new chat
+      oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
+      oscillator.frequency.setValueAtTime(1100, audioContext.currentTime + 0.1);
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+    } else {
+      // Single soft tone for new message
+      oscillator.frequency.setValueAtTime(660, audioContext.currentTime);
+      gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.15);
+    }
+  } catch (error) {
+    console.log('Audio not supported');
+  }
+};
+
+// Request browser notification permission
+const requestNotificationPermission = async () => {
+  if ('Notification' in window && Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
+};
+
+// Show browser notification
+const showBrowserNotification = (title: string, body: string) => {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, {
+      body,
+      icon: '/favicon.ico',
+      tag: 'chat-notification',
+    });
+  }
+};
 
 // WhatsApp icon component
 const WhatsAppIcon = ({ className }: { className?: string }) => (
@@ -63,7 +115,68 @@ export function LiveChatDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    const stored = localStorage.getItem('chat_sound_enabled');
+    return stored !== 'false';
+  });
   const scrollRef = useRef<HTMLDivElement>(null);
+  const selectedChatRef = useRef<Chat | null>(null);
+
+  // Keep ref in sync with state for use in subscriptions
+  useEffect(() => {
+    selectedChatRef.current = selectedChat;
+  }, [selectedChat]);
+
+  // Request notification permission on mount
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
+
+  // Subscribe to ALL new messages (for notifications even when chat not selected)
+  useEffect(() => {
+    const channel = supabase
+      .channel('all_chat_messages_notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'support_chat_messages',
+        },
+        (payload) => {
+          const newMsg = payload.new as any;
+          
+          // Only notify for visitor messages
+          if (newMsg.sender_type === 'visitor') {
+            const currentSelectedChat = selectedChatRef.current;
+            
+            // If message is for a chat we're not currently viewing
+            if (!currentSelectedChat || currentSelectedChat.id !== newMsg.chat_id) {
+              // Update unread count
+              setUnreadCounts(prev => ({
+                ...prev,
+                [newMsg.chat_id]: (prev[newMsg.chat_id] || 0) + 1
+              }));
+              
+              if (soundEnabled) {
+                playNotificationSound('newMessage');
+              }
+              
+              // Show toast for messages in other chats
+              toast({
+                title: '💬 New Message',
+                description: newMsg.content.substring(0, 50) + (newMsg.content.length > 50 ? '...' : ''),
+              });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [soundEnabled, toast]);
 
   // Fetch active chats
   useEffect(() => {
@@ -92,11 +205,29 @@ export function LiveChatDashboard() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'support_chats' },
         (payload) => {
+          const previousChats = chats;
           fetchChats();
-          // Play sound for new waiting chats
-          if (payload.eventType === 'INSERT' || 
-              (payload.eventType === 'UPDATE' && (payload.new as any).status === 'waiting_agent')) {
-            // Could add audio notification here
+          
+          // Play sound and show notification for new waiting chats
+          if (payload.eventType === 'INSERT') {
+            if (soundEnabled) {
+              playNotificationSound('newChat');
+            }
+            showBrowserNotification('New Chat', 'A new visitor has started a chat');
+            toast({
+              title: '💬 New Chat',
+              description: 'A new visitor has started a conversation',
+            });
+          } else if (payload.eventType === 'UPDATE' && (payload.new as any).status === 'waiting_agent') {
+            if (soundEnabled) {
+              playNotificationSound('newChat');
+            }
+            showBrowserNotification('Agent Requested', 'A visitor is waiting for a live agent');
+            toast({
+              title: '🔔 Agent Requested',
+              description: 'A visitor is waiting for a live agent',
+              variant: 'destructive',
+            });
           }
         }
       )
@@ -105,7 +236,7 @@ export function LiveChatDashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [soundEnabled, toast]);
 
   // Fetch messages for selected chat
   useEffect(() => {
@@ -148,9 +279,16 @@ export function LiveChatDashboard() {
           const newMsg = payload.new as Message;
           setMessages((prev) => [...prev, newMsg]);
           
-          // If message is from visitor, increment unread if not viewing this chat
+          // If message is from visitor, play sound and show notification
           if (newMsg.sender_type === 'visitor') {
-            // Could add notification sound here
+            if (soundEnabled) {
+              playNotificationSound('newMessage');
+            }
+            
+            // Update unread count if not viewing this chat
+            if (!document.hasFocus()) {
+              showBrowserNotification('New Message', newMsg.content.substring(0, 50));
+            }
           }
         }
       )
@@ -296,6 +434,16 @@ export function LiveChatDashboard() {
     }
   };
 
+  const toggleSound = () => {
+    const newValue = !soundEnabled;
+    setSoundEnabled(newValue);
+    localStorage.setItem('chat_sound_enabled', String(newValue));
+    toast({
+      title: newValue ? '🔊 Sound enabled' : '🔇 Sound muted',
+      description: newValue ? 'You will hear notifications' : 'Notifications are muted',
+    });
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -352,15 +500,29 @@ export function LiveChatDashboard() {
       {/* Chat List */}
       <Card className="md:col-span-1">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <MessageCircle className="h-5 w-5" />
-            Live Chats
-            {chats.filter(c => c.status === 'waiting_agent').length > 0 && (
-              <Badge variant="destructive" className="ml-auto">
-                {chats.filter(c => c.status === 'waiting_agent').length} waiting
-              </Badge>
-            )}
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <MessageCircle className="h-5 w-5" />
+              Live Chats
+              {chats.filter(c => c.status === 'waiting_agent').length > 0 && (
+                <Badge variant="destructive" className="animate-pulse">
+                  {chats.filter(c => c.status === 'waiting_agent').length} waiting
+                </Badge>
+              )}
+            </CardTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleSound}
+              title={soundEnabled ? 'Mute notifications' : 'Enable notifications'}
+            >
+              {soundEnabled ? (
+                <Volume2 className="h-4 w-4" />
+              ) : (
+                <VolumeX className="h-4 w-4 text-muted-foreground" />
+              )}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
@@ -384,18 +546,29 @@ export function LiveChatDashboard() {
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        {chat.channel === 'sms' ? (
-                          <Phone className="h-4 w-4 text-primary" />
-                        ) : chat.channel === 'whatsapp' ? (
-                          <WhatsAppIcon className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <User className="h-4 w-4 text-primary" />
+                      <div className="relative">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                          {chat.channel === 'sms' ? (
+                            <Phone className="h-4 w-4 text-primary" />
+                          ) : chat.channel === 'whatsapp' ? (
+                            <WhatsAppIcon className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <User className="h-4 w-4 text-primary" />
+                          )}
+                        </div>
+                        {/* Unread count badge */}
+                        {unreadCounts[chat.id] > 0 && selectedChat?.id !== chat.id && (
+                          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs font-bold">
+                            {unreadCounts[chat.id] > 9 ? '9+' : unreadCounts[chat.id]}
+                          </span>
                         )}
                       </div>
                       <div>
-                        <p className="text-sm font-medium">
+                        <p className="text-sm font-medium flex items-center gap-2">
                           {getVisitorDisplay(chat)}
+                          {unreadCounts[chat.id] > 0 && selectedChat?.id !== chat.id && (
+                            <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+                          )}
                         </p>
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <Clock className="h-3 w-3" />
