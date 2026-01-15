@@ -1107,6 +1107,69 @@ export type Database = {
           },
         ]
       }
+      floor_plans: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string | null
+          floor_number: number | null
+          id: string
+          is_active: boolean | null
+          model_type: string | null
+          model_url: string | null
+          name: string
+          project_id: string | null
+          thumbnail_url: string | null
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description?: string | null
+          floor_number?: number | null
+          id?: string
+          is_active?: boolean | null
+          model_type?: string | null
+          model_url?: string | null
+          name: string
+          project_id?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          floor_number?: number | null
+          id?: string
+          is_active?: boolean | null
+          model_type?: string | null
+          model_url?: string | null
+          name?: string
+          project_id?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "floor_plans_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "floor_plans_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_items: {
         Row: {
           barcode: string | null
@@ -1335,6 +1398,187 @@ export type Database = {
             columns: ["ticket_id"]
             isOneToOne: false
             referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      permit_documents: {
+        Row: {
+          created_at: string
+          document_type: string
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          permit_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          document_type: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          permit_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          document_type?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          permit_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permit_documents_permit_id_fkey"
+            columns: ["permit_id"]
+            isOneToOne: false
+            referencedRelation: "permits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      permit_inspections: {
+        Row: {
+          completed_date: string | null
+          created_at: string
+          id: string
+          inspection_type: string
+          inspector_name: string | null
+          notes: string | null
+          permit_id: string
+          result: string | null
+          scheduled_date: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          completed_date?: string | null
+          created_at?: string
+          id?: string
+          inspection_type: string
+          inspector_name?: string | null
+          notes?: string | null
+          permit_id: string
+          result?: string | null
+          scheduled_date?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          completed_date?: string | null
+          created_at?: string
+          id?: string
+          inspection_type?: string
+          inspector_name?: string | null
+          notes?: string | null
+          permit_id?: string
+          result?: string | null
+          scheduled_date?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permit_inspections_permit_id_fkey"
+            columns: ["permit_id"]
+            isOneToOne: false
+            referencedRelation: "permits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      permits: {
+        Row: {
+          application_date: string | null
+          approval_date: string | null
+          company_id: string
+          conditions: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          expiration_date: string | null
+          fee_amount: number | null
+          fee_paid: boolean | null
+          id: string
+          issue_date: string | null
+          issuing_authority: string | null
+          notes: string | null
+          permit_number: string
+          permit_type: string
+          project_id: string | null
+          renewal_date: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          application_date?: string | null
+          approval_date?: string | null
+          company_id: string
+          conditions?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expiration_date?: string | null
+          fee_amount?: number | null
+          fee_paid?: boolean | null
+          id?: string
+          issue_date?: string | null
+          issuing_authority?: string | null
+          notes?: string | null
+          permit_number: string
+          permit_type: string
+          project_id?: string | null
+          renewal_date?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          application_date?: string | null
+          approval_date?: string | null
+          company_id?: string
+          conditions?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expiration_date?: string | null
+          fee_amount?: number | null
+          fee_paid?: boolean | null
+          id?: string
+          issue_date?: string | null
+          issuing_authority?: string | null
+          notes?: string | null
+          permit_number?: string
+          permit_type?: string
+          project_id?: string | null
+          renewal_date?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permits_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "permits_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -2086,6 +2330,232 @@ export type Database = {
             columns: ["ticket_id"]
             isOneToOne: false
             referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      submittal_activity_log: {
+        Row: {
+          action: string
+          created_at: string
+          description: string | null
+          id: string
+          performed_by: string | null
+          submittal_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          performed_by?: string | null
+          submittal_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          performed_by?: string | null
+          submittal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submittal_activity_log_submittal_id_fkey"
+            columns: ["submittal_id"]
+            isOneToOne: false
+            referencedRelation: "submittals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      submittal_attachments: {
+        Row: {
+          category: string | null
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          revision_id: string | null
+          submittal_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          revision_id?: string | null
+          submittal_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          revision_id?: string | null
+          submittal_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submittal_attachments_revision_id_fkey"
+            columns: ["revision_id"]
+            isOneToOne: false
+            referencedRelation: "submittal_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submittal_attachments_submittal_id_fkey"
+            columns: ["submittal_id"]
+            isOneToOne: false
+            referencedRelation: "submittals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      submittal_revisions: {
+        Row: {
+          changes_description: string | null
+          created_at: string
+          id: string
+          review_comments: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          revision_number: number
+          status: string | null
+          submittal_id: string
+          submitted_at: string | null
+          submitted_by: string | null
+        }
+        Insert: {
+          changes_description?: string | null
+          created_at?: string
+          id?: string
+          review_comments?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          revision_number: number
+          status?: string | null
+          submittal_id: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+        }
+        Update: {
+          changes_description?: string | null
+          created_at?: string
+          id?: string
+          review_comments?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          revision_number?: number
+          status?: string | null
+          submittal_id?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submittal_revisions_submittal_id_fkey"
+            columns: ["submittal_id"]
+            isOneToOne: false
+            referencedRelation: "submittals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      submittals: {
+        Row: {
+          approval_status: string | null
+          approved_at: string | null
+          approved_by: string | null
+          company_id: string
+          created_at: string
+          description: string | null
+          drawing_reference: string | null
+          due_date: string | null
+          id: string
+          notes: string | null
+          priority: string | null
+          project_id: string | null
+          rejection_reason: string | null
+          revision_number: number | null
+          spec_section: string | null
+          status: string
+          submittal_number: string
+          submitted_at: string | null
+          submitted_by: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          company_id: string
+          created_at?: string
+          description?: string | null
+          drawing_reference?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          priority?: string | null
+          project_id?: string | null
+          rejection_reason?: string | null
+          revision_number?: number | null
+          spec_section?: string | null
+          status?: string
+          submittal_number: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          drawing_reference?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          priority?: string | null
+          project_id?: string | null
+          rejection_reason?: string | null
+          revision_number?: number | null
+          spec_section?: string | null
+          status?: string
+          submittal_number?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submittals_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submittals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]

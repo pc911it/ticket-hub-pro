@@ -42,7 +42,10 @@ import {
   HeadphonesIcon,
   Wrench,
   Gavel,
-  FileQuestion
+  FileQuestion,
+  ClipboardList,
+  Box,
+  FileCheck
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -78,6 +81,9 @@ const baseNavigation: NavItem[] = [
   { name: 'Client Billing', href: '/admin/client-billing', icon: DollarSign },
   { name: 'Bids', href: '/admin/bids', icon: Gavel },
   { name: 'RFIs', href: '/admin/rfis', icon: FileQuestion },
+  { name: 'Submittals', href: '/admin/submittals', icon: ClipboardList },
+  { name: 'Permits', href: '/admin/permits', icon: FileCheck },
+  { name: '3D Plans', href: '/admin/floor-plans', icon: Box },
   { name: 'Projects', href: '/admin/projects', icon: Building2, featureKey: 'project_management' },
   { name: 'Plans', href: '/admin/plans', icon: FileText },
   { name: 'Tickets', href: '/admin/tickets', icon: Ticket },
