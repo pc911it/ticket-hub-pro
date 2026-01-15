@@ -62,6 +62,7 @@ export default function RFIsPage() {
           tickets:ticket_id(title)
         `)
         .or(`company_id.eq.${effectiveCompanyId},partner_company_id.eq.${effectiveCompanyId}`)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (statusFilter !== 'all') {
