@@ -1845,6 +1845,251 @@ export type Database = {
           },
         ]
       }
+      rfi_activity_log: {
+        Row: {
+          action: string
+          created_at: string
+          description: string | null
+          id: string
+          performed_by: string | null
+          rfi_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          performed_by?: string | null
+          rfi_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          performed_by?: string | null
+          rfi_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rfi_activity_log_rfi_id_fkey"
+            columns: ["rfi_id"]
+            isOneToOne: false
+            referencedRelation: "rfis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rfi_attachments: {
+        Row: {
+          category: string | null
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          rfi_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          rfi_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          rfi_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rfi_attachments_rfi_id_fkey"
+            columns: ["rfi_id"]
+            isOneToOne: false
+            referencedRelation: "rfis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rfi_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_internal: boolean | null
+          rfi_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean | null
+          rfi_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean | null
+          rfi_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rfi_comments_rfi_id_fkey"
+            columns: ["rfi_id"]
+            isOneToOne: false
+            referencedRelation: "rfis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rfis: {
+        Row: {
+          answered_at: string | null
+          approval_status: string | null
+          approved_at: string | null
+          approved_by: string | null
+          assigned_to: string | null
+          closed_at: string | null
+          company_id: string
+          created_at: string
+          description: string | null
+          drawing_reference: string | null
+          due_date: string | null
+          id: string
+          notes: string | null
+          partner_company_id: string | null
+          partner_submitted: boolean | null
+          priority: string | null
+          project_id: string | null
+          rejection_reason: string | null
+          response: string | null
+          response_at: string | null
+          response_by: string | null
+          rfi_number: string
+          spec_reference: string | null
+          status: string
+          submitted_at: string | null
+          submitted_by: string | null
+          ticket_id: string | null
+          title: string
+          under_review_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          answered_at?: string | null
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          assigned_to?: string | null
+          closed_at?: string | null
+          company_id: string
+          created_at?: string
+          description?: string | null
+          drawing_reference?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          partner_company_id?: string | null
+          partner_submitted?: boolean | null
+          priority?: string | null
+          project_id?: string | null
+          rejection_reason?: string | null
+          response?: string | null
+          response_at?: string | null
+          response_by?: string | null
+          rfi_number: string
+          spec_reference?: string | null
+          status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          ticket_id?: string | null
+          title: string
+          under_review_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          answered_at?: string | null
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          assigned_to?: string | null
+          closed_at?: string | null
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          drawing_reference?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          partner_company_id?: string | null
+          partner_submitted?: boolean | null
+          priority?: string | null
+          project_id?: string | null
+          rejection_reason?: string | null
+          response?: string | null
+          response_at?: string | null
+          response_by?: string | null
+          rfi_number?: string
+          spec_reference?: string | null
+          status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          ticket_id?: string | null
+          title?: string
+          under_review_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rfis_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rfis_partner_company_id_fkey"
+            columns: ["partner_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rfis_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rfis_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           address: string | null
