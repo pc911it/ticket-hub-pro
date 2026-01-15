@@ -1,5 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+const Model3DViewer = lazy(() => import('@/components/Model3DViewer'));
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
 import { useAuth } from '@/hooks/useAuth';
@@ -492,30 +494,23 @@ export default function FloorPlansPage() {
 
       {/* 3D Viewer Dialog */}
       <Dialog open={isViewerOpen} onOpenChange={setIsViewerOpen}>
-        <DialogContent className="max-w-4xl h-[80vh]">
+        <DialogContent className="max-w-5xl h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{selectedFloorPlan?.name}</DialogTitle>
           </DialogHeader>
-          <div className="flex-1 bg-muted rounded-lg flex items-center justify-center">
-            <div className="text-center p-8">
-              <Box className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">3D Viewer</h3>
-              <p className="text-muted-foreground mb-4">
-                For the best viewing experience, download the model and open it in your preferred 3D viewer application.
-              </p>
-              <div className="flex gap-2 justify-center">
-                <Button asChild>
-                  <a href={selectedFloorPlan?.model_url} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Download Model
-                  </a>
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-4">
-                Model type: {getModelTypeLabel(selectedFloorPlan?.model_type)}
-              </p>
+          <Suspense fallback={
+            <div className="flex-1 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
             </div>
-          </div>
+          }>
+            {selectedFloorPlan && (
+              <Model3DViewer 
+                modelUrl={selectedFloorPlan.model_url}
+                modelType={selectedFloorPlan.model_type}
+                modelName={selectedFloorPlan.name}
+              />
+            )}
+          </Suspense>
         </DialogContent>
       </Dialog>
     </div>
