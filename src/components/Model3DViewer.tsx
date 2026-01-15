@@ -1,6 +1,9 @@
-import { Suspense, useRef, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Suspense, useRef, useState, useEffect } from 'react';
+import { Canvas, useLoader } from '@react-three/fiber';
 import { OrbitControls, Environment, useGLTF, Center, Html, useProgress } from '@react-three/drei';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
+import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
+import * as THREE from 'three';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, RotateCcw, ZoomIn, ZoomOut, Maximize2, Box } from 'lucide-react';
 
@@ -27,6 +30,43 @@ function GLTFModel({ url }: { url: string }) {
   return (
     <Center>
       <primitive object={scene} />
+    </Center>
+  );
+}
+
+function OBJModel({ url }: { url: string }) {
+  const obj = useLoader(OBJLoader, url);
+  
+  useEffect(() => {
+    // Add default material to OBJ if none exists
+    obj.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        if (!child.material || (Array.isArray(child.material) && child.material.length === 0)) {
+          child.material = new THREE.MeshStandardMaterial({ 
+            color: 0x888888,
+            roughness: 0.5,
+            metalness: 0.1
+          });
+        }
+      }
+    });
+  }, [obj]);
+
+  return (
+    <Center>
+      <primitive object={obj} />
+    </Center>
+  );
+}
+
+function STLModel({ url }: { url: string }) {
+  const geometry = useLoader(STLLoader, url);
+  
+  return (
+    <Center>
+      <mesh geometry={geometry}>
+        <meshStandardMaterial color={0x888888} roughness={0.5} metalness={0.1} />
+      </mesh>
     </Center>
   );
 }
@@ -66,15 +106,29 @@ function UnsupportedFormatMessage({
   );
 }
 
+function ModelRenderer({ url, type }: { url: string; type: string | null }) {
+  if (type === 'gltf' || type === 'glb') {
+    return <GLTFModel url={url} />;
+  }
+  if (type === 'obj') {
+    return <OBJModel url={url} />;
+  }
+  if (type === 'stl') {
+    return <STLModel url={url} />;
+  }
+  return null;
+}
+
 export default function Model3DViewer({ modelUrl, modelType, modelName }: Model3DViewerProps) {
   const controlsRef = useRef<any>(null);
   const [autoRotate, setAutoRotate] = useState(true);
   
-  // Check if the format is viewable in browser
-  const isGLTF = modelType === 'gltf' || modelType === 'glb';
+  // Supported formats for in-browser viewing
+  const supportedFormats = ['gltf', 'glb', 'obj', 'stl'];
+  const isSupported = supportedFormats.includes(modelType || '');
   
-  // For non-GLTF formats, show download message
-  if (!isGLTF) {
+  // For unsupported formats, show download message
+  if (!isSupported) {
     return (
       <UnsupportedFormatMessage 
         modelUrl={modelUrl} 
@@ -148,7 +202,7 @@ export default function Model3DViewer({ modelUrl, modelType, modelName }: Model3
             <ambientLight intensity={0.5} />
             <directionalLight position={[10, 10, 5]} intensity={1} />
             <directionalLight position={[-10, -10, -5]} intensity={0.5} />
-            <GLTFModel url={modelUrl} />
+            <ModelRenderer url={modelUrl} type={modelType} />
             <OrbitControls 
               ref={controlsRef}
               autoRotate={autoRotate}
