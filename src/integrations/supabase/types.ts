@@ -70,6 +70,254 @@ export type Database = {
           },
         ]
       }
+      bid_activity_log: {
+        Row: {
+          action: string
+          bid_id: string
+          created_at: string
+          description: string | null
+          id: string
+          performed_by: string | null
+        }
+        Insert: {
+          action: string
+          bid_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          performed_by?: string | null
+        }
+        Update: {
+          action?: string
+          bid_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          performed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_activity_log_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_attachments: {
+        Row: {
+          bid_id: string
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          bid_id: string
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          bid_id?: string
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_attachments_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_line_items: {
+        Row: {
+          bid_id: string
+          created_at: string
+          description: string
+          discount_percent: number | null
+          id: string
+          quantity: number
+          sort_order: number | null
+          total: number
+          unit_price: number
+        }
+        Insert: {
+          bid_id: string
+          created_at?: string
+          description: string
+          discount_percent?: number | null
+          id?: string
+          quantity?: number
+          sort_order?: number | null
+          total?: number
+          unit_price?: number
+        }
+        Update: {
+          bid_id?: string
+          created_at?: string
+          description?: string
+          discount_percent?: number | null
+          id?: string
+          quantity?: number
+          sort_order?: number | null
+          total?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_line_items_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bids: {
+        Row: {
+          amount: number
+          bid_number: string
+          client_approval_status: string | null
+          client_approved_at: string | null
+          client_approved_by: string | null
+          client_id: string | null
+          client_rejection_reason: string | null
+          client_signature_url: string | null
+          company_id: string
+          converted_at: string | null
+          converted_to_invoice_id: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string | null
+          id: string
+          internal_approval_status: string | null
+          internal_approved_at: string | null
+          internal_approved_by: string | null
+          internal_rejection_reason: string | null
+          lost_at: string | null
+          notes: string | null
+          project_id: string | null
+          status: string
+          submission_deadline: string | null
+          submitted_at: string | null
+          title: string
+          updated_at: string
+          valid_until: string | null
+          won_at: string | null
+        }
+        Insert: {
+          amount?: number
+          bid_number: string
+          client_approval_status?: string | null
+          client_approved_at?: string | null
+          client_approved_by?: string | null
+          client_id?: string | null
+          client_rejection_reason?: string | null
+          client_signature_url?: string | null
+          company_id: string
+          converted_at?: string | null
+          converted_to_invoice_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          id?: string
+          internal_approval_status?: string | null
+          internal_approved_at?: string | null
+          internal_approved_by?: string | null
+          internal_rejection_reason?: string | null
+          lost_at?: string | null
+          notes?: string | null
+          project_id?: string | null
+          status?: string
+          submission_deadline?: string | null
+          submitted_at?: string | null
+          title: string
+          updated_at?: string
+          valid_until?: string | null
+          won_at?: string | null
+        }
+        Update: {
+          amount?: number
+          bid_number?: string
+          client_approval_status?: string | null
+          client_approved_at?: string | null
+          client_approved_by?: string | null
+          client_id?: string | null
+          client_rejection_reason?: string | null
+          client_signature_url?: string | null
+          company_id?: string
+          converted_at?: string | null
+          converted_to_invoice_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          id?: string
+          internal_approval_status?: string | null
+          internal_approved_at?: string | null
+          internal_approved_by?: string | null
+          internal_rejection_reason?: string | null
+          lost_at?: string | null
+          notes?: string | null
+          project_id?: string | null
+          status?: string
+          submission_deadline?: string | null
+          submitted_at?: string | null
+          title?: string
+          updated_at?: string
+          valid_until?: string | null
+          won_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bids_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_converted_to_invoice_id_fkey"
+            columns: ["converted_to_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "client_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_history: {
         Row: {
           amount: number
