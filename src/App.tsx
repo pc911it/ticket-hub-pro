@@ -51,6 +51,7 @@ import PaymentSettingsPage from "./pages/admin/PaymentSettingsPage";
 import ChatTicketsPage from "./pages/admin/ChatTicketsPage";
 import CreateCompanyPage from "./pages/admin/CreateCompanyPage";
 import BidsPage from "./pages/admin/BidsPage";
+import RFIsPage from "./pages/admin/RFIsPage";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -227,6 +228,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AdminLayout>
                     <BidsPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/rfis"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <RFIsPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }
