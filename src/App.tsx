@@ -52,6 +52,10 @@ import ChatTicketsPage from "./pages/admin/ChatTicketsPage";
 import CreateCompanyPage from "./pages/admin/CreateCompanyPage";
 import BidsPage from "./pages/admin/BidsPage";
 import RFIsPage from "./pages/admin/RFIsPage";
+import SubmittalsPage from "./pages/admin/SubmittalsPage";
+import PermitsPage from "./pages/admin/PermitsPage";
+import FloorPlansPage from "./pages/admin/FloorPlansPage";
+
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -238,6 +242,36 @@ const App = () => (
                 <ProtectedRoute>
                   <AdminLayout>
                     <RFIsPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/submittals"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <SubmittalsPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/permits"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <PermitsPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/floor-plans"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <FloorPlansPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }

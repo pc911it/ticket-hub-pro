@@ -54,6 +54,11 @@ export const defaultPlans: PricingPlan[] = [
       'Unlimited tickets',
       'Unlimited projects',
       'Unlimited staff members',
+      'Bid Management & Tracking',
+      'RFI Management System',
+      'Submittal Workflow & Approvals',
+      'Permit Tracking & Alerts',
+      '3D Floor Plan Viewer',
       'Full Inventory + advanced reports',
       'Full Portal + external company collaboration',
       'Geolocation Verification',
@@ -64,7 +69,7 @@ export const defaultPlans: PricingPlan[] = [
       'Billing Integration (Stripe/Square)',
       'Priority Support',
     ],
-    highlighted: ['Unlimited staff members', 'External company collaboration', 'Branding / White-label'],
+    highlighted: ['Bid Management & Tracking', 'RFI Management System', 'Submittal Workflow & Approvals', 'Permit Tracking & Alerts', '3D Floor Plan Viewer'],
   },
   {
     id: 'enterprise',
@@ -78,6 +83,8 @@ export const defaultPlans: PricingPlan[] = [
       'Unlimited tickets',
       'Unlimited + multi-company projects',
       'Enterprise-level users',
+      'Full Bid, RFI, Submittal & Permit Management',
+      '3D Floor Plan Viewer + Advanced',
       'Full Inventory + multi-location tracking',
       'Full Portal + SLA & dedicated onboarding',
       'Geolocation Verification',
@@ -88,7 +95,7 @@ export const defaultPlans: PricingPlan[] = [
       'Billing Integration (Stripe/Square)',
       'Dedicated Support + SLA',
     ],
-    highlighted: ['Multi-company projects', 'Multi-location tracking', 'Dedicated Support + SLA'],
+    highlighted: ['Full Bid, RFI, Submittal & Permit Management', 'Multi-company projects', 'Dedicated Support + SLA'],
   },
 ];
 
