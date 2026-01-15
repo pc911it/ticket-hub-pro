@@ -50,6 +50,7 @@ import VesselDetailPage from "./pages/admin/VesselDetailPage";
 import PaymentSettingsPage from "./pages/admin/PaymentSettingsPage";
 import ChatTicketsPage from "./pages/admin/ChatTicketsPage";
 import CreateCompanyPage from "./pages/admin/CreateCompanyPage";
+import BidsPage from "./pages/admin/BidsPage";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -216,6 +217,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AdminLayout>
                     <ClientBillingPage />
+              </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/bids"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <BidsPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }

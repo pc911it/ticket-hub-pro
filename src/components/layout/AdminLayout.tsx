@@ -40,7 +40,8 @@ import {
   Clock,
   MessageSquare,
   HeadphonesIcon,
-  Wrench
+  Wrench,
+  Gavel
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -74,6 +75,7 @@ const baseNavigation: NavItem[] = [
   { name: 'Calendar', href: '/admin/calendar', icon: Calendar },
   { name: 'Clients', href: '/admin/clients', icon: Users },
   { name: 'Client Billing', href: '/admin/client-billing', icon: DollarSign },
+  { name: 'Bids', href: '/admin/bids', icon: Gavel },
   { name: 'Projects', href: '/admin/projects', icon: Building2, featureKey: 'project_management' },
   { name: 'Plans', href: '/admin/plans', icon: FileText },
   { name: 'Tickets', href: '/admin/tickets', icon: Ticket },
