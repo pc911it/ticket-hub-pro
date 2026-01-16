@@ -45,7 +45,12 @@ import {
   FileQuestion,
   ClipboardList,
   Box,
-  FileCheck
+  FileCheck,
+  UserPlus,
+  FileSignature,
+  NotebookPen,
+  ClipboardCheck,
+  Hammer
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -77,14 +82,20 @@ const baseNavigation: NavItem[] = [
   { name: 'Time Reports', href: '/admin/time-reports', icon: Clock },
   { name: 'Updates', href: '/admin/updates', icon: LayoutDashboard },
   { name: 'Calendar', href: '/admin/calendar', icon: Calendar },
+  { name: 'Leads', href: '/admin/leads', icon: UserPlus, featureKey: 'leads_management' },
   { name: 'Clients', href: '/admin/clients', icon: Users },
   { name: 'Client Billing', href: '/admin/client-billing', icon: DollarSign },
   { name: 'Bids', href: '/admin/bids', icon: Gavel, featureKey: 'bid_management' },
+  { name: 'Change Orders', href: '/admin/change-orders', icon: FileSignature, featureKey: 'change_orders' },
   { name: 'RFIs', href: '/admin/rfis', icon: FileQuestion, featureKey: 'rfi_management' },
   { name: 'Submittals', href: '/admin/submittals', icon: ClipboardList, featureKey: 'submittal_management' },
   { name: 'Permits', href: '/admin/permits', icon: FileCheck, featureKey: 'permit_tracking' },
   { name: '3D Plans', href: '/admin/floor-plans', icon: Box, featureKey: 'floor_plans_3d' },
   { name: 'Projects', href: '/admin/projects', icon: Building2, featureKey: 'project_management' },
+  { name: 'Daily Logs', href: '/admin/daily-logs', icon: NotebookPen, featureKey: 'daily_logs' },
+  { name: 'Work Orders', href: '/admin/work-orders', icon: Hammer, featureKey: 'work_orders' },
+  { name: 'Punch Lists', href: '/admin/punch-lists', icon: ClipboardCheck, featureKey: 'punch_lists' },
+  { name: 'Inspections', href: '/admin/inspections', icon: ClipboardCheck, featureKey: 'inspections' },
   { name: 'Plans', href: '/admin/plans', icon: FileText },
   { name: 'Tickets', href: '/admin/tickets', icon: Ticket },
   { name: 'Chat Tickets', href: '/admin/chat-tickets', icon: MessageSquare },
