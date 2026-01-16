@@ -55,6 +55,17 @@ import RFIsPage from "./pages/admin/RFIsPage";
 import SubmittalsPage from "./pages/admin/SubmittalsPage";
 import PermitsPage from "./pages/admin/PermitsPage";
 import FloorPlansPage from "./pages/admin/FloorPlansPage";
+import LeadsPage from "./pages/admin/LeadsPage";
+import ChangeOrdersPage from "./pages/admin/ChangeOrdersPage";
+import DailyLogsPage from "./pages/admin/DailyLogsPage";
+import WorkOrdersPage from "./pages/admin/WorkOrdersPage";
+import PunchListsPage from "./pages/admin/PunchListsPage";
+import InspectionsPage from "./pages/admin/InspectionsPage";
+import ContractsPage from "./pages/admin/ContractsPage";
+import BudgetingPage from "./pages/admin/BudgetingPage";
+import WarrantiesPage from "./pages/admin/WarrantiesPage";
+import EquipmentPage from "./pages/admin/EquipmentPage";
+import SelectionsPage from "./pages/admin/SelectionsPage";
 
 const queryClient = new QueryClient();
 
@@ -481,6 +492,17 @@ const App = () => (
               }
             />
             <Route path="/client" element={<ClientDashboard />} />
+            <Route path="/admin/leads" element={<ProtectedRoute><AdminLayout><LeadsPage /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/change-orders" element={<ProtectedRoute><AdminLayout><ChangeOrdersPage /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/daily-logs" element={<ProtectedRoute><AdminLayout><DailyLogsPage /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/work-orders" element={<ProtectedRoute><AdminLayout><WorkOrdersPage /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/punch-lists" element={<ProtectedRoute><AdminLayout><PunchListsPage /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/inspections" element={<ProtectedRoute><AdminLayout><InspectionsPage /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/contracts" element={<ProtectedRoute><AdminLayout><ContractsPage /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/budgeting" element={<ProtectedRoute><AdminLayout><BudgetingPage /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/warranties" element={<ProtectedRoute><AdminLayout><WarrantiesPage /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/equipment" element={<ProtectedRoute><AdminLayout><EquipmentPage /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/selections" element={<ProtectedRoute><AdminLayout><SelectionsPage /></AdminLayout></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           </SuperAdminCompanyProvider>
