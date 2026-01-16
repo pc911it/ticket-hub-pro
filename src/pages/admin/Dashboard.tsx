@@ -6,6 +6,7 @@ import { format, startOfMonth, endOfMonth, isToday } from 'date-fns';
 import { PendingPartnerships } from '@/components/PendingPartnerships';
 import { PendingProjectInvitations } from '@/components/PendingProjectInvitations';
 import { ClientRequestApprovals } from '@/components/ClientRequestApprovals';
+import { CompleteProfileBanner } from '@/components/CompleteProfileBanner';
 
 interface Stats {
   totalClients: number;
@@ -122,6 +123,9 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-8 animate-fade-in">
+      {/* Complete Profile Banner */}
+      <CompleteProfileBanner />
+
       <div>
         <h1 className="text-3xl font-display font-bold text-foreground">Dashboard</h1>
         <p className="text-muted-foreground mt-1">Welcome back! Here's your overview.</p>

@@ -455,6 +455,15 @@ const CompanyRegister = () => {
           <p className="text-primary-foreground/80">
             Complete your registration in just a few steps
           </p>
+          {user && (
+            <Button 
+              variant="ghost" 
+              className="mt-4 text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
+              onClick={() => navigate('/admin')}
+            >
+              Skip for now, I'll complete this later →
+            </Button>
+          )}
         </div>
 
         <Card className="shadow-2xl border-0">
