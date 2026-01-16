@@ -53,7 +53,11 @@ import {
   Hammer,
   Calculator,
   Truck,
-  Palette
+  Palette,
+  HardHat,
+  Shapes,
+  Library,
+  BellRing
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -104,6 +108,11 @@ const baseNavigation: NavItem[] = [
   { name: 'Warranties', href: '/admin/warranties', icon: Shield, featureKey: 'warranties' },
   { name: 'Equipment', href: '/admin/equipment', icon: Truck, featureKey: 'equipment_tracking' },
   { name: 'Selections', href: '/admin/selections', icon: Palette, featureKey: 'selections_allowances' },
+  { name: 'Subcontractors', href: '/admin/subcontractors', icon: HardHat, featureKey: 'subcontractor_matching' },
+  { name: 'Cost Calculator', href: '/admin/cost-calculator', icon: Calculator, featureKey: 'cost_estimating' },
+  { name: 'Mood Boards', href: '/admin/mood-boards', icon: Shapes, featureKey: 'mood_boards' },
+  { name: 'Product Library', href: '/admin/product-library', icon: Library, featureKey: 'product_library' },
+  { name: 'Follow-Ups', href: '/admin/follow-ups', icon: BellRing, featureKey: 'follow_ups' },
   { name: 'Plans', href: '/admin/plans', icon: FileText },
   { name: 'Tickets', href: '/admin/tickets', icon: Ticket },
   { name: 'Chat Tickets', href: '/admin/chat-tickets', icon: MessageSquare },
