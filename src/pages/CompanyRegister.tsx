@@ -437,6 +437,21 @@ const CompanyRegister = () => {
       if (response.error) throw new Error(response.error.message);
       if (!response.data.success) throw new Error(response.data.error);
 
+      // Notify super admin of new registration (fire and forget)
+      supabase.functions.invoke('notify-new-registration', {
+        body: {
+          type: 'new_company',
+          data: {
+            company_name: companyName,
+            company_email: companyEmail || userEmail,
+            user_name: currentUser.user_metadata?.full_name || 'New User',
+            user_email: userEmail,
+            company_id: company.id,
+            additional_info: `Plan: ${selectedPlan}, Type: ${companyType}`,
+          }
+        }
+      }).catch(err => console.log('Notification send failed (non-critical):', err));
+
       toast({
         title: 'Registration complete! 🎉',
         description: `Your ${getTrialDays()}-day free trial has started.`,

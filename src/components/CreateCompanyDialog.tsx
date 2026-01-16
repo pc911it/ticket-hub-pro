@@ -212,6 +212,23 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
           full_name: ownerName,
         });
 
+      // Notify super admin of new company creation (fire and forget)
+      supabase.functions.invoke('notify-new-registration', {
+        body: {
+          type: 'new_company',
+          data: {
+            company_name: companyName,
+            company_email: companyEmail,
+            user_name: ownerName,
+            user_email: ownerEmail,
+            company_id: companyData.id,
+            additional_info: isFreeAccount 
+              ? `Free Account - Plan: ${subscriptionPlan}` 
+              : `Plan: ${subscriptionPlan}${applyDiscount ? `, Discount: ${discountValue}${discountType === 'percentage' ? '%' : '$'}` : ''}`,
+          }
+        }
+      }).catch(err => console.log('Notification send failed (non-critical):', err));
+
       toast.success("Company created successfully!", {
         description: `${companyName} has been set up with ${ownerEmail} as the owner.`
       });
