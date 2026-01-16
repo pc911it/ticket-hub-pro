@@ -5,14 +5,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useToast } from '@/hooks/use-toast';
 import { PromoCodeInput } from '@/components/PromoCodeInput';
 import { PromoValidationResult } from '@/hooks/usePromoCodes';
 import { SquareCardForm } from '@/components/SquareCardForm';
-import { VerificationStep } from '@/components/VerificationStep';
 import { 
   Building2, ArrowLeft, Mail, Lock, User, Phone, MapPin, 
   Check, Zap, Shield, Users, CreditCard, Loader2, AlertCircle, 
@@ -99,11 +100,11 @@ const businessConfigs: Record<CompanyType, { ticketLabel: string; clientLabel: s
   other: { ticketLabel: 'Work Order', clientLabel: 'Client', exampleServices: ['General Repair', 'Installation', 'Maintenance'], inventoryCategories: ['General', 'Tools', 'Materials'] },
 };
 
-type RegistrationStep = 'account' | 'verify' | 'complete';
+type AuthMethod = 'email' | 'phone' | 'google';
 
 const CompanyRegister = () => {
-  const [currentStep, setCurrentStep] = useState<RegistrationStep>('account');
   const [isLoading, setIsLoading] = useState(false);
+  const [authMethod, setAuthMethod] = useState<AuthMethod>('email');
   const { signUp, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -119,13 +120,21 @@ const CompanyRegister = () => {
   const [companyComplete, setCompanyComplete] = useState(false);
   const [planComplete, setPlanComplete] = useState(false);
 
-  // Account fields
+  // Email auth fields
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
+
+  // Phone auth fields
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneFullName, setPhoneFullName] = useState('');
+  const [phoneUsername, setPhoneUsername] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
 
   // Company fields
   const [companyName, setCompanyName] = useState('');
@@ -139,10 +148,17 @@ const CompanyRegister = () => {
   const [selectedPlan, setSelectedPlan] = useState('professional');
   const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
 
-  // Company ID after creation
-  const [createdCompanyId, setCreatedCompanyId] = useState<string | null>(null);
+  // Check if user is already logged in (e.g., from Google OAuth)
+  useEffect(() => {
+    if (user && !accountComplete) {
+      setAccountComplete(true);
+      setAccountOpen(false);
+      setCompanyOpen(true);
+      toast({ title: 'Welcome!', description: 'Please complete your company registration.' });
+    }
+  }, [user]);
 
-  // Username validation
+  // Username validation for email
   useEffect(() => {
     const checkUsername = async () => {
       if (!username || username.length < 3) {
@@ -151,11 +167,7 @@ const CompanyRegister = () => {
       }
       setCheckingUsername(true);
       try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('username')
-          .eq('username', username.toLowerCase())
-          .maybeSingle();
+        const { data } = await supabase.from('profiles').select('username').eq('username', username.toLowerCase()).maybeSingle();
         setUsernameError(data ? 'This username is already taken' : null);
       } catch {
         setUsernameError(null);
@@ -167,7 +179,22 @@ const CompanyRegister = () => {
     return () => clearTimeout(timer);
   }, [username]);
 
-  const handleAccountSubmit = async () => {
+  // Username validation for phone
+  useEffect(() => {
+    const checkPhoneUsername = async () => {
+      if (!phoneUsername || phoneUsername.length < 3) return;
+      try {
+        const { data } = await supabase.from('profiles').select('username').eq('username', phoneUsername.toLowerCase()).maybeSingle();
+        if (data) {
+          toast({ variant: 'destructive', title: 'Username taken', description: 'Please choose another.' });
+        }
+      } catch {}
+    };
+    const timer = setTimeout(checkPhoneUsername, 500);
+    return () => clearTimeout(timer);
+  }, [phoneUsername]);
+
+  const handleEmailSignUp = async () => {
     if (!fullName.trim() || !username.trim() || !email.trim() || !password.trim()) {
       toast({ variant: 'destructive', title: 'Error', description: 'Please fill in all fields.' });
       return;
@@ -196,8 +223,10 @@ const CompanyRegister = () => {
         await supabase.from('profiles').update({ username: username.toLowerCase() }).eq('user_id', currentUser.id);
       }
 
-      toast({ title: 'Account created!', description: 'Please verify your email to continue.' });
-      setCurrentStep('verify');
+      setAccountComplete(true);
+      setAccountOpen(false);
+      setCompanyOpen(true);
+      toast({ title: 'Account created!', description: 'Now complete your company registration.' });
     } catch {
       toast({ variant: 'destructive', title: 'Error', description: 'An unexpected error occurred.' });
     } finally {
@@ -205,12 +234,87 @@ const CompanyRegister = () => {
     }
   };
 
-  const handleVerificationComplete = () => {
-    setAccountComplete(true);
-    setAccountOpen(false);
-    setCompanyOpen(true);
-    setCurrentStep('complete');
-    toast({ title: 'Verified!', description: 'Now complete your registration.' });
+  const handleSendPhoneOTP = async () => {
+    if (!phoneNumber.trim() || !phoneFullName.trim() || !phoneUsername.trim()) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please fill in all fields.' });
+      return;
+    }
+
+    const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+1${phoneNumber.replace(/\D/g, '')}`;
+    
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: formattedPhone,
+        options: {
+          data: {
+            full_name: phoneFullName,
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      setOtpSent(true);
+      toast({ title: 'Code sent!', description: `Enter the 6-digit code sent to ${formattedPhone}` });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to send code.' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyPhoneOTP = async () => {
+    if (otpCode.length !== 6) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please enter the 6-digit code.' });
+      return;
+    }
+
+    const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+1${phoneNumber.replace(/\D/g, '')}`;
+
+    setVerifyingOtp(true);
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone: formattedPhone,
+        token: otpCode,
+        type: 'sms',
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        await supabase.from('profiles').update({ 
+          username: phoneUsername.toLowerCase(),
+          full_name: phoneFullName 
+        }).eq('user_id', data.user.id);
+      }
+
+      setAccountComplete(true);
+      setAccountOpen(false);
+      setCompanyOpen(true);
+      toast({ title: 'Phone verified!', description: 'Now complete your company registration.' });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Verification failed', description: error.message || 'Invalid code.' });
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/register-company`,
+        }
+      });
+
+      if (error) throw error;
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error', description: error.message || 'Google sign-in failed.' });
+      setIsLoading(false);
+    }
   };
 
   const handleCompanyComplete = () => {
@@ -265,12 +369,14 @@ const CompanyRegister = () => {
       const trialEndsAt = new Date();
       trialEndsAt.setDate(trialEndsAt.getDate() + getTrialDays());
 
+      const userEmail = currentUser.email || companyEmail || email;
+
       // Create company
       const { data: company, error: companyError } = await supabase
         .from('companies')
         .insert({
           name: companyName,
-          email: companyEmail || email,
+          email: companyEmail || userEmail,
           phone: companyPhone,
           type: companyType,
           state,
@@ -314,7 +420,7 @@ const CompanyRegister = () => {
 
       // Save card via Square
       const response = await supabase.functions.invoke('square-create-customer', {
-        body: { companyId: company.id, email: companyEmail || email, companyName, cardNonce },
+        body: { companyId: company.id, email: companyEmail || userEmail, companyName, cardNonce },
       });
 
       if (response.error) throw new Error(response.error.message);
@@ -322,7 +428,7 @@ const CompanyRegister = () => {
 
       toast({
         title: 'Registration complete! 🎉',
-        description: `Your ${getTrialDays()}-day free trial has started. Card ending in ${response.data.last4} will be charged $${calculateFinalPrice()}/month after the trial.`,
+        description: `Your ${getTrialDays()}-day free trial has started.`,
       });
 
       navigate('/admin');
@@ -357,24 +463,6 @@ const CompanyRegister = () => {
     </CollapsibleTrigger>
   );
 
-  if (currentStep === 'verify') {
-    return (
-      <div className="min-h-screen py-8 px-4" style={{ background: 'var(--gradient-hero)' }}>
-        <div className="max-w-lg mx-auto">
-          <Link to="/" className="inline-flex items-center gap-2 text-primary-foreground/80 hover:text-primary-foreground mb-6">
-            <ArrowLeft className="h-4 w-4" /> Back to home
-          </Link>
-          <VerificationStep
-            email={email}
-            phone={companyPhone}
-            onVerified={handleVerificationComplete}
-            onBack={() => setCurrentStep('account')}
-          />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen py-8 px-4" style={{ background: 'var(--gradient-hero)' }}>
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -399,64 +487,180 @@ const CompanyRegister = () => {
         <Card className="shadow-2xl border-0">
           <CardContent className="p-0">
             {/* Section 1: Account */}
-            <Collapsible open={accountOpen && currentStep === 'account'} onOpenChange={setAccountOpen}>
+            <Collapsible open={accountOpen && !accountComplete} onOpenChange={setAccountOpen}>
               <SectionHeader
                 title="Create Account"
                 icon={User}
                 complete={accountComplete}
-                open={accountOpen && currentStep === 'account'}
+                open={accountOpen && !accountComplete}
                 onToggle={() => !accountComplete && setAccountOpen(!accountOpen)}
                 number={1}
                 disabled={accountComplete}
               />
               <CollapsibleContent>
-                <div className="px-4 pb-4 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="fullName">Full Name *</Label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="fullName" placeholder="John Doe" value={fullName} onChange={(e) => setFullName(e.target.value)} className="pl-10" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="username">Username *</Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">@</span>
-                        <Input
-                          id="username"
-                          placeholder="johndoe"
-                          value={username}
-                          onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, ''))}
-                          className={`pl-10 pr-10 ${usernameError ? 'border-destructive' : username.length >= 3 && !checkingUsername ? 'border-green-500' : ''}`}
-                        />
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          {checkingUsername && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                          {!checkingUsername && usernameError && <AlertCircle className="h-4 w-4 text-destructive" />}
-                          {!checkingUsername && !usernameError && username.length >= 3 && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                <div className="px-4 pb-4">
+                  <Tabs value={authMethod} onValueChange={(v) => setAuthMethod(v as AuthMethod)} className="w-full">
+                    <TabsList className="grid w-full grid-cols-3 mb-4">
+                      <TabsTrigger value="email" className="flex items-center gap-2">
+                        <Mail className="h-4 w-4" />
+                        Email
+                      </TabsTrigger>
+                      <TabsTrigger value="phone" className="flex items-center gap-2">
+                        <Phone className="h-4 w-4" />
+                        Phone
+                      </TabsTrigger>
+                      <TabsTrigger value="google" className="flex items-center gap-2">
+                        <svg className="h-4 w-4" viewBox="0 0 24 24">
+                          <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                          <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                          <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                          <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        Google
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="email" className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="fullName">Full Name *</Label>
+                          <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input id="fullName" placeholder="John Doe" value={fullName} onChange={(e) => setFullName(e.target.value)} className="pl-10" />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="username">Username *</Label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">@</span>
+                            <Input
+                              id="username"
+                              placeholder="johndoe"
+                              value={username}
+                              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, ''))}
+                              className={`pl-10 pr-10 ${usernameError ? 'border-destructive' : username.length >= 3 && !checkingUsername ? 'border-green-500' : ''}`}
+                            />
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              {checkingUsername && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                              {!checkingUsername && usernameError && <AlertCircle className="h-4 w-4 text-destructive" />}
+                              {!checkingUsername && !usernameError && username.length >= 3 && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                            </div>
+                          </div>
+                          {usernameError && <p className="text-xs text-destructive">{usernameError}</p>}
                         </div>
                       </div>
-                      {usernameError && <p className="text-xs text-destructive">{usernameError}</p>}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email *</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10" />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password *</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" minLength={6} />
-                    </div>
-                  </div>
-                  <Button className="w-full" onClick={handleAccountSubmit} disabled={isLoading}>
-                    {isLoading ? 'Creating Account...' : 'Continue'}
-                  </Button>
-                  <p className="text-sm text-center text-muted-foreground">
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email *</Label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10" />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="password">Password *</Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" minLength={6} />
+                        </div>
+                      </div>
+                      <Button className="w-full" onClick={handleEmailSignUp} disabled={isLoading}>
+                        {isLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating Account...</> : 'Continue with Email'}
+                      </Button>
+                    </TabsContent>
+
+                    <TabsContent value="phone" className="space-y-4">
+                      {!otpSent ? (
+                        <>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="phoneFullName">Full Name *</Label>
+                              <Input id="phoneFullName" placeholder="John Doe" value={phoneFullName} onChange={(e) => setPhoneFullName(e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="phoneUsername">Username *</Label>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">@</span>
+                                <Input
+                                  id="phoneUsername"
+                                  placeholder="johndoe"
+                                  value={phoneUsername}
+                                  onChange={(e) => setPhoneUsername(e.target.value.toLowerCase().replace(/\s/g, ''))}
+                                  className="pl-10"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="phoneNumber">Phone Number *</Label>
+                            <div className="relative">
+                              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                id="phoneNumber"
+                                type="tel"
+                                placeholder="+1 (555) 000-0000"
+                                value={phoneNumber}
+                                onChange={(e) => setPhoneNumber(e.target.value)}
+                                className="pl-10"
+                              />
+                            </div>
+                            <p className="text-xs text-muted-foreground">We'll send a 6-digit verification code</p>
+                          </div>
+                          <Button className="w-full" onClick={handleSendPhoneOTP} disabled={isLoading}>
+                            {isLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sending Code...</> : 'Send Verification Code'}
+                          </Button>
+                        </>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="text-center">
+                            <p className="text-sm text-muted-foreground mb-4">
+                              Enter the 6-digit code sent to {phoneNumber}
+                            </p>
+                            <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode}>
+                              <InputOTPGroup className="justify-center">
+                                <InputOTPSlot index={0} />
+                                <InputOTPSlot index={1} />
+                                <InputOTPSlot index={2} />
+                                <InputOTPSlot index={3} />
+                                <InputOTPSlot index={4} />
+                                <InputOTPSlot index={5} />
+                              </InputOTPGroup>
+                            </InputOTP>
+                          </div>
+                          <Button className="w-full" onClick={handleVerifyPhoneOTP} disabled={verifyingOtp || otpCode.length !== 6}>
+                            {verifyingOtp ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Verifying...</> : 'Verify Code'}
+                          </Button>
+                          <Button variant="ghost" className="w-full" onClick={() => { setOtpSent(false); setOtpCode(''); }}>
+                            Use a different number
+                          </Button>
+                        </div>
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="google" className="space-y-4">
+                      <div className="text-center py-4">
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Sign up quickly with your Google account
+                        </p>
+                        <Button className="w-full" variant="outline" onClick={handleGoogleSignIn} disabled={isLoading}>
+                          {isLoading ? (
+                            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Connecting...</>
+                          ) : (
+                            <>
+                              <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
+                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                              </svg>
+                              Continue with Google
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+
+                  <p className="text-sm text-center text-muted-foreground mt-4">
                     Already have an account? <Link to="/auth" className="text-primary hover:underline">Sign in</Link>
                   </p>
                 </div>
@@ -594,10 +798,7 @@ const CompanyRegister = () => {
                     ))}
                   </div>
 
-                  <PromoCodeInput
-                    plan={selectedPlan}
-                    onPromoApplied={setAppliedPromo}
-                  />
+                  <PromoCodeInput plan={selectedPlan} onPromoApplied={setAppliedPromo} />
 
                   {appliedPromo?.valid && (
                     <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
@@ -607,9 +808,7 @@ const CompanyRegister = () => {
                     </div>
                   )}
 
-                  <Button className="w-full" onClick={handlePlanComplete}>
-                    Continue to Payment
-                  </Button>
+                  <Button className="w-full" onClick={handlePlanComplete}>Continue to Payment</Button>
                 </div>
               </CollapsibleContent>
             </Collapsible>
