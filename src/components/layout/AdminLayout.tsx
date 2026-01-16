@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeAlerts } from '@/hooks/useRealtimeAlerts';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { useSupportTicketNotifications } from '@/hooks/useSupportTicketNotifications';
+import { useSuperAdminNotifications } from '@/hooks/useSuperAdminNotifications';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { LiveAlertsBanner } from '@/components/LiveAlertsBanner';
 import { GlobalProjectChat } from '@/components/GlobalProjectChat';
@@ -153,6 +154,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   
   // Enable real-time alerts
   useRealtimeAlerts();
+  
+  // Super admin real-time notifications with sound
+  useSuperAdminNotifications();
   
   // Support ticket notifications
   const { unreadCount: supportUnreadCount, clearUnreadCount } = useSupportTicketNotifications();

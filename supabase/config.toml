@@ -83,3 +83,6 @@ verify_jwt = false
 
 [functions.send-chat-reply]
 verify_jwt = false
+
+[functions.notify-new-registration]
+verify_jwt = false
