@@ -176,6 +176,22 @@ const CompanyRegister = () => {
       setEmailError(null);
     }
   }, [email]);
+
+  // Password strength validation
+  const validatePassword = (pwd: string) => {
+    const requirements = {
+      minLength: pwd.length >= 8,
+      hasUppercase: /[A-Z]/.test(pwd),
+      hasLowercase: /[a-z]/.test(pwd),
+      hasNumber: /[0-9]/.test(pwd),
+      hasSymbol: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pwd),
+    };
+    return requirements;
+  };
+
+  const passwordRequirements = validatePassword(password);
+  const isPasswordStrong = Object.values(passwordRequirements).every(Boolean);
+
   // Password match validation
   useEffect(() => {
     if (!confirmPassword) {
@@ -203,8 +219,8 @@ const CompanyRegister = () => {
       toast({ variant: 'destructive', title: 'Password mismatch', description: 'Passwords do not match.' });
       return;
     }
-    if (password.length < 6) {
-      toast({ variant: 'destructive', title: 'Weak password', description: 'Password must be at least 6 characters.' });
+    if (!isPasswordStrong) {
+      toast({ variant: 'destructive', title: 'Weak password', description: 'Password must meet all requirements.' });
       return;
     }
 
@@ -562,9 +578,33 @@ const CompanyRegister = () => {
                         <Label htmlFor="password">Password *</Label>
                         <div className="relative">
                           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" minLength={6} />
+                          <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" minLength={8} />
                         </div>
-                        <p className="text-xs text-muted-foreground">Minimum 6 characters</p>
+                        {password && (
+                          <div className="space-y-1 mt-2">
+                            <div className="flex items-center gap-2 text-xs">
+                              {passwordRequirements.minLength ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : <AlertCircle className="h-3 w-3 text-muted-foreground" />}
+                              <span className={passwordRequirements.minLength ? 'text-green-600' : 'text-muted-foreground'}>At least 8 characters</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs">
+                              {passwordRequirements.hasUppercase ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : <AlertCircle className="h-3 w-3 text-muted-foreground" />}
+                              <span className={passwordRequirements.hasUppercase ? 'text-green-600' : 'text-muted-foreground'}>One uppercase letter</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs">
+                              {passwordRequirements.hasLowercase ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : <AlertCircle className="h-3 w-3 text-muted-foreground" />}
+                              <span className={passwordRequirements.hasLowercase ? 'text-green-600' : 'text-muted-foreground'}>One lowercase letter</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs">
+                              {passwordRequirements.hasNumber ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : <AlertCircle className="h-3 w-3 text-muted-foreground" />}
+                              <span className={passwordRequirements.hasNumber ? 'text-green-600' : 'text-muted-foreground'}>One number</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs">
+                              {passwordRequirements.hasSymbol ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : <AlertCircle className="h-3 w-3 text-muted-foreground" />}
+                              <span className={passwordRequirements.hasSymbol ? 'text-green-600' : 'text-muted-foreground'}>One symbol (!@#$%^&*...)</span>
+                            </div>
+                          </div>
+                        )}
+                        {!password && <p className="text-xs text-muted-foreground">Min 8 chars: uppercase, lowercase, number, symbol</p>}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="confirmPassword">Confirm Password *</Label>
