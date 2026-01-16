@@ -52,7 +52,6 @@ import {
   ClipboardCheck,
   Hammer,
   Calculator,
-  Shield,
   Truck,
   Palette
 } from 'lucide-react';
