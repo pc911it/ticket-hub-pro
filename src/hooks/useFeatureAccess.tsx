@@ -94,8 +94,33 @@ export function useFeatureAccess(): UseFeatureAccessReturn {
         .select('feature_key, is_enabled, limit_value')
         .eq('plan_id', planToLoad);
 
-      if (featuresData) {
-        setFeatures(featuresData);
+      // Also fetch company-specific overrides
+      const { data: overridesData } = await supabase
+        .from('company_feature_overrides')
+        .select('feature_key, is_enabled, limit_value')
+        .eq('company_id', companyId);
+
+      // Merge plan features with overrides (overrides take precedence)
+      let mergedFeatures = featuresData || [];
+      if (overridesData && overridesData.length > 0) {
+        const overrideMap = new Map(overridesData.map(o => [o.feature_key, o]));
+        mergedFeatures = mergedFeatures.map(f => {
+          const override = overrideMap.get(f.feature_key);
+          if (override) {
+            return { ...f, is_enabled: override.is_enabled, limit_value: override.limit_value };
+          }
+          return f;
+        });
+        // Add any overrides that don't exist in plan features
+        overridesData.forEach(o => {
+          if (!mergedFeatures.find(f => f.feature_key === o.feature_key)) {
+            mergedFeatures.push(o);
+          }
+        });
+      }
+
+      if (mergedFeatures) {
+        setFeatures(mergedFeatures);
       }
 
       setIsLoading(false);
