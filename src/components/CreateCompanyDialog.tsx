@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Building2, Mail, Phone, MapPin, User, DollarSign, Percent, Calendar, Loader2, Gift, Shield } from "lucide-react";
+import { Building2, Mail, Phone, MapPin, User, DollarSign, Percent, Calendar, Loader2, Gift, Shield, Sparkles } from "lucide-react";
 
 interface CreateCompanyDialogProps {
   open: boolean;
@@ -54,6 +54,7 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
   const [tempPassword, setTempPassword] = useState("");
   
   // Subscription & Billing
+  const [isFreeAccount, setIsFreeAccount] = useState(false);
   const [subscriptionPlan, setSubscriptionPlan] = useState<string>("basic");
   const [applyDiscount, setApplyDiscount] = useState(false);
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
@@ -76,6 +77,7 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
     setOwnerName("");
     setOwnerEmail("");
     setTempPassword("");
+    setIsFreeAccount(false);
     setSubscriptionPlan("basic");
     setApplyDiscount(false);
     setDiscountType("percentage");
@@ -96,6 +98,8 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
   };
 
   const calculateFinalPrice = () => {
+    if (isFreeAccount) return 0;
+    
     const plan = SUBSCRIPTION_PLANS.find(p => p.value === subscriptionPlan);
     if (!plan) return 0;
     
@@ -143,7 +147,11 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
       // Build business config with discount info
       const businessConfig: Record<string, any> = {};
       
-      if (applyDiscount && discountValue) {
+      if (isFreeAccount) {
+        businessConfig.is_free_account = true;
+        businessConfig.free_account_granted_by = 'super_admin';
+        businessConfig.free_account_granted_at = new Date().toISOString();
+      } else if (applyDiscount && discountValue) {
         businessConfig.discount = {
           type: discountType,
           value: parseFloat(discountValue),
@@ -172,9 +180,9 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
           owner_id: userId,
           approval_status: skipApproval ? 'approved' : 'pending',
           approved_at: skipApproval ? new Date().toISOString() : null,
-          subscription_plan: subscriptionPlan,
-          subscription_status: extendedTrial ? 'trial' : 'active',
-          trial_ends_at: extendedTrial ? trialEndsAt.toISOString() : null,
+          subscription_plan: isFreeAccount ? 'free' : subscriptionPlan,
+          subscription_status: isFreeAccount ? 'active' : (extendedTrial ? 'trial' : 'active'),
+          trial_ends_at: (isFreeAccount || !extendedTrial) ? null : trialEndsAt.toISOString(),
           is_active: true,
           business_config: Object.keys(businessConfig).length > 0 ? businessConfig : null,
         })
@@ -387,125 +395,155 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
               Subscription & Billing
             </h3>
             <div className="space-y-4">
-              <div>
-                <Label>Subscription Plan</Label>
-                <div className="grid grid-cols-3 gap-3 mt-2">
-                  {SUBSCRIPTION_PLANS.map((plan) => (
-                    <div
-                      key={plan.value}
-                      className={`p-3 border rounded-lg cursor-pointer transition-all ${
-                        subscriptionPlan === plan.value
-                          ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
-                          : 'hover:border-muted-foreground/50'
-                      }`}
-                      onClick={() => setSubscriptionPlan(plan.value)}
-                    >
-                      <p className="font-medium">{plan.label}</p>
-                      <p className="text-lg font-bold">${plan.price}<span className="text-xs font-normal text-muted-foreground">/mo</span></p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Discount Section */}
-              <div className="border rounded-lg p-4 bg-muted/30">
-                <div className="flex items-center justify-between mb-3">
+              {/* Free Account Option */}
+              <div className="border rounded-lg p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border-purple-200 dark:border-purple-800">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Gift className="h-4 w-4 text-green-600" />
-                    <Label htmlFor="apply-discount" className="font-medium">Apply Discount</Label>
+                    <Sparkles className="h-4 w-4 text-purple-600" />
+                    <div>
+                      <Label htmlFor="free-account" className="font-medium">Free Account</Label>
+                      <p className="text-xs text-muted-foreground">Grant this company free access (no billing)</p>
+                    </div>
                   </div>
                   <Switch
-                    id="apply-discount"
-                    checked={applyDiscount}
-                    onCheckedChange={setApplyDiscount}
+                    id="free-account"
+                    checked={isFreeAccount}
+                    onCheckedChange={setIsFreeAccount}
                   />
                 </div>
-                
-                {applyDiscount && (
-                  <div className="grid grid-cols-2 gap-3 mt-3">
-                    <div>
-                      <Label>Discount Type</Label>
-                      <Select value={discountType} onValueChange={(v: "percentage" | "fixed") => setDiscountType(v)}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="percentage">
-                            <span className="flex items-center gap-2">
-                              <Percent className="h-3 w-3" /> Percentage
-                            </span>
-                          </SelectItem>
-                          <SelectItem value="fixed">
-                            <span className="flex items-center gap-2">
-                              <DollarSign className="h-3 w-3" /> Fixed Amount
-                            </span>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                {isFreeAccount && (
+                  <div className="mt-3 p-2 bg-purple-100 dark:bg-purple-900/30 rounded-md">
+                    <p className="text-xs text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                      <Sparkles className="h-3 w-3" />
+                      This account will have full access without any subscription fees
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {!isFreeAccount && (
+                <>
+                  <div>
+                    <Label>Subscription Plan</Label>
+                    <div className="grid grid-cols-3 gap-3 mt-2">
+                      {SUBSCRIPTION_PLANS.map((plan) => (
+                        <div
+                          key={plan.value}
+                          className={`p-3 border rounded-lg cursor-pointer transition-all ${
+                            subscriptionPlan === plan.value
+                              ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                              : 'hover:border-muted-foreground/50'
+                          }`}
+                          onClick={() => setSubscriptionPlan(plan.value)}
+                        >
+                          <p className="font-medium">{plan.label}</p>
+                          <p className="text-lg font-bold">${plan.price}<span className="text-xs font-normal text-muted-foreground">/mo</span></p>
+                        </div>
+                      ))}
                     </div>
-                    <div>
-                      <Label>
-                        {discountType === "percentage" ? "Discount %" : "Discount Amount ($)"}
-                      </Label>
-                      <Input
-                        type="number"
-                        value={discountValue}
-                        onChange={(e) => setDiscountValue(e.target.value)}
-                        placeholder={discountType === "percentage" ? "20" : "50"}
+                  </div>
+
+                  {/* Discount Section */}
+                  <div className="border rounded-lg p-4 bg-muted/30">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Gift className="h-4 w-4 text-green-600" />
+                        <Label htmlFor="apply-discount" className="font-medium">Apply Discount</Label>
+                      </div>
+                      <Switch
+                        id="apply-discount"
+                        checked={applyDiscount}
+                        onCheckedChange={setApplyDiscount}
                       />
                     </div>
-                    {discountValue && (
-                      <div className="col-span-2 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Original Price:</span>
-                          <span className="line-through">${selectedPlan?.price}/mo</span>
+                    
+                    {applyDiscount && (
+                      <div className="grid grid-cols-2 gap-3 mt-3">
+                        <div>
+                          <Label>Discount Type</Label>
+                          <Select value={discountType} onValueChange={(v: "percentage" | "fixed") => setDiscountType(v)}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="percentage">
+                                <span className="flex items-center gap-2">
+                                  <Percent className="h-3 w-3" /> Percentage
+                                </span>
+                              </SelectItem>
+                              <SelectItem value="fixed">
+                                <span className="flex items-center gap-2">
+                                  <DollarSign className="h-3 w-3" /> Fixed Amount
+                                </span>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
-                        <div className="flex items-center justify-between mt-1">
-                          <span className="text-sm font-medium">Final Price:</span>
-                          <span className="text-lg font-bold text-green-600">${calculateFinalPrice().toFixed(2)}/mo</span>
+                        <div>
+                          <Label>
+                            {discountType === "percentage" ? "Discount %" : "Discount Amount ($)"}
+                          </Label>
+                          <Input
+                            type="number"
+                            value={discountValue}
+                            onChange={(e) => setDiscountValue(e.target.value)}
+                            placeholder={discountType === "percentage" ? "20" : "50"}
+                          />
                         </div>
-                        <Badge className="mt-2 bg-green-100 text-green-700 hover:bg-green-100">
-                          {discountType === "percentage" 
-                            ? `${discountValue}% OFF`
-                            : `$${discountValue} OFF`
-                          }
-                        </Badge>
+                        {discountValue && (
+                          <div className="col-span-2 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-muted-foreground">Original Price:</span>
+                              <span className="line-through">${selectedPlan?.price}/mo</span>
+                            </div>
+                            <div className="flex items-center justify-between mt-1">
+                              <span className="text-sm font-medium">Final Price:</span>
+                              <span className="text-lg font-bold text-green-600">${calculateFinalPrice().toFixed(2)}/mo</span>
+                            </div>
+                            <Badge className="mt-2 bg-green-100 text-green-700 hover:bg-green-100">
+                              {discountType === "percentage" 
+                                ? `${discountValue}% OFF`
+                                : `$${discountValue} OFF`
+                              }
+                            </Badge>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
 
-              {/* Trial Section */}
-              <div className="border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    <Label htmlFor="extended-trial" className="font-medium">Extended Trial Period</Label>
+                  {/* Trial Section */}
+                  <div className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <Label htmlFor="extended-trial" className="font-medium">Extended Trial Period</Label>
+                      </div>
+                      <Switch
+                        id="extended-trial"
+                        checked={extendedTrial}
+                        onCheckedChange={setExtendedTrial}
+                      />
+                    </div>
+                    {extendedTrial && (
+                      <div className="mt-3">
+                        <Label>Trial Duration (days)</Label>
+                        <Select value={trialDays} onValueChange={setTrialDays}>
+                          <SelectTrigger className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="14">14 days (Standard)</SelectItem>
+                            <SelectItem value="30">30 days</SelectItem>
+                            <SelectItem value="60">60 days</SelectItem>
+                            <SelectItem value="90">90 days</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
-                  <Switch
-                    id="extended-trial"
-                    checked={extendedTrial}
-                    onCheckedChange={setExtendedTrial}
-                  />
-                </div>
-                {extendedTrial && (
-                  <div className="mt-3">
-                    <Label>Trial Duration (days)</Label>
-                    <Select value={trialDays} onValueChange={setTrialDays}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="14">14 days (Standard)</SelectItem>
-                        <SelectItem value="30">30 days</SelectItem>
-                        <SelectItem value="60">60 days</SelectItem>
-                        <SelectItem value="90">90 days</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
+                </>
+              )}
 
               {/* Skip Approval */}
               <div className="flex items-center justify-between border rounded-lg p-4">
