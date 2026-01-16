@@ -38,12 +38,6 @@ export function SquareCardForm({ onCardNonce, isLoading, disabled, buttonText = 
 
   const applicationId = import.meta.env.VITE_SQUARE_APPLICATION_ID || '';
   const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID || '';
-  
-  // Debug logging
-  console.log('Square config:', { 
-    applicationId: applicationId ? `${applicationId.substring(0, 15)}...` : 'NOT SET',
-    locationId: locationId ? `${locationId.substring(0, 10)}...` : 'NOT SET'
-  });
 
   useEffect(() => {
     // Load Square Web SDK
@@ -73,8 +67,7 @@ export function SquareCardForm({ onCardNonce, isLoading, disabled, buttonText = 
         } else {
           await initializeCard();
         }
-      } catch (err) {
-        console.error('Error loading Square:', err);
+      } catch {
         setError('Failed to initialize payment form.');
         setIsInitializing(false);
       }
@@ -92,8 +85,7 @@ export function SquareCardForm({ onCardNonce, isLoading, disabled, buttonText = 
         await cardInstance.attach('#card-container');
         setCard(cardInstance);
         setIsInitializing(false);
-      } catch (err) {
-        console.error('Error initializing card:', err);
+      } catch {
         setError('Failed to initialize payment form.');
         setIsInitializing(false);
       }
@@ -123,8 +115,7 @@ export function SquareCardForm({ onCardNonce, isLoading, disabled, buttonText = 
       } else {
         setError('Failed to process card. Please try again.');
       }
-    } catch (err) {
-      console.error('Tokenization error:', err);
+    } catch {
       setError('Failed to process card. Please try again.');
     }
   };

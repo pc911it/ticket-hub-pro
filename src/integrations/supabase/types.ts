@@ -249,6 +249,39 @@ export type Database = {
           },
         ]
       }
+      auth_rate_limits: {
+        Row: {
+          attempt_type: string
+          attempts_count: number | null
+          blocked_until: string | null
+          email: string | null
+          first_attempt_at: string | null
+          id: string
+          ip_address: string
+          last_attempt_at: string | null
+        }
+        Insert: {
+          attempt_type: string
+          attempts_count?: number | null
+          blocked_until?: string | null
+          email?: string | null
+          first_attempt_at?: string | null
+          id?: string
+          ip_address: string
+          last_attempt_at?: string | null
+        }
+        Update: {
+          attempt_type?: string
+          attempts_count?: number | null
+          blocked_until?: string | null
+          email?: string | null
+          first_attempt_at?: string | null
+          id?: string
+          ip_address?: string
+          last_attempt_at?: string | null
+        }
+        Relationships: []
+      }
       bid_activity_log: {
         Row: {
           action: string
@@ -4478,6 +4511,36 @@ export type Database = {
           },
         ]
       }
+      security_audit_log: {
+        Row: {
+          created_at: string | null
+          details: Json | null
+          event_type: string
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          details?: Json | null
+          event_type: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          details?: Json | null
+          event_type?: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       selections: {
         Row: {
           allowance_amount: number | null
@@ -5112,6 +5175,7 @@ export type Database = {
           ended_by: string | null
           id: string
           order_reference: string | null
+          session_id: string | null
           status: string
           topic: string | null
           transfer_reason: string | null
@@ -5131,6 +5195,7 @@ export type Database = {
           ended_by?: string | null
           id?: string
           order_reference?: string | null
+          session_id?: string | null
           status?: string
           topic?: string | null
           transfer_reason?: string | null
@@ -5150,6 +5215,7 @@ export type Database = {
           ended_by?: string | null
           id?: string
           order_reference?: string | null
+          session_id?: string | null
           status?: string
           topic?: string | null
           transfer_reason?: string | null
@@ -6045,14 +6111,12 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_company_admin: {
-        Args: { _company_id: string; _user_id: string }
-        Returns: boolean
-      }
-      is_company_member: {
-        Args: { _company_id: string; _user_id: string }
-        Returns: boolean
-      }
+      is_company_admin:
+        | { Args: { _company_id: string; _user_id: string }; Returns: boolean }
+        | { Args: { company_uuid: string }; Returns: boolean }
+      is_company_member:
+        | { Args: { _company_id: string; _user_id: string }; Returns: boolean }
+        | { Args: { company_uuid: string }; Returns: boolean }
       is_company_owner: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
