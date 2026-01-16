@@ -50,7 +50,11 @@ import {
   FileSignature,
   NotebookPen,
   ClipboardCheck,
-  Hammer
+  Hammer,
+  Calculator,
+  Shield,
+  Truck,
+  Palette
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -96,6 +100,11 @@ const baseNavigation: NavItem[] = [
   { name: 'Work Orders', href: '/admin/work-orders', icon: Hammer, featureKey: 'work_orders' },
   { name: 'Punch Lists', href: '/admin/punch-lists', icon: ClipboardCheck, featureKey: 'punch_lists' },
   { name: 'Inspections', href: '/admin/inspections', icon: ClipboardCheck, featureKey: 'inspections' },
+  { name: 'Contracts', href: '/admin/contracts', icon: FileSignature, featureKey: 'contracts_esign' },
+  { name: 'Budgeting', href: '/admin/budgeting', icon: Calculator, featureKey: 'basic_budgeting' },
+  { name: 'Warranties', href: '/admin/warranties', icon: Shield, featureKey: 'warranties' },
+  { name: 'Equipment', href: '/admin/equipment', icon: Truck, featureKey: 'equipment_tracking' },
+  { name: 'Selections', href: '/admin/selections', icon: Palette, featureKey: 'selections_allowances' },
   { name: 'Plans', href: '/admin/plans', icon: FileText },
   { name: 'Tickets', href: '/admin/tickets', icon: Ticket },
   { name: 'Chat Tickets', href: '/admin/chat-tickets', icon: MessageSquare },
