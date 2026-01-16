@@ -125,7 +125,9 @@ const CompanyRegister = () => {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   // Phone auth fields
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -174,15 +176,35 @@ const CompanyRegister = () => {
       setEmailError(null);
     }
   }, [email]);
+  // Password match validation
+  useEffect(() => {
+    if (!confirmPassword) {
+      setPasswordError(null);
+      return;
+    }
+    if (password !== confirmPassword) {
+      setPasswordError('Passwords do not match');
+    } else {
+      setPasswordError(null);
+    }
+  }, [password, confirmPassword]);
 
 
   const handleEmailSignUp = async () => {
-    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password.trim()) {
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
       toast({ variant: 'destructive', title: 'Error', description: 'Please fill in all fields.' });
       return;
     }
     if (emailError) {
       toast({ variant: 'destructive', title: 'Invalid email', description: emailError });
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast({ variant: 'destructive', title: 'Password mismatch', description: 'Passwords do not match.' });
+      return;
+    }
+    if (password.length < 6) {
+      toast({ variant: 'destructive', title: 'Weak password', description: 'Password must be at least 6 characters.' });
       return;
     }
 
@@ -542,8 +564,29 @@ const CompanyRegister = () => {
                           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" minLength={6} />
                         </div>
+                        <p className="text-xs text-muted-foreground">Minimum 6 characters</p>
                       </div>
-                      <Button className="w-full" onClick={handleEmailSignUp} disabled={isLoading || !!emailError}>
+                      <div className="space-y-2">
+                        <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input 
+                            id="confirmPassword" 
+                            type="password" 
+                            placeholder="••••••••" 
+                            value={confirmPassword} 
+                            onChange={(e) => setConfirmPassword(e.target.value)} 
+                            className={`pl-10 ${passwordError ? 'border-destructive' : confirmPassword && !passwordError ? 'border-green-500' : ''}`} 
+                          />
+                          {confirmPassword && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              {passwordError ? <AlertCircle className="h-4 w-4 text-destructive" /> : <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                            </div>
+                          )}
+                        </div>
+                        {passwordError && <p className="text-xs text-destructive">{passwordError}</p>}
+                      </div>
+                      <Button className="w-full" onClick={handleEmailSignUp} disabled={isLoading || !!emailError || !!passwordError}>
                         {isLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating Account...</> : 'Continue with Email'}
                       </Button>
                     </TabsContent>
