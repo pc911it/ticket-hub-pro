@@ -71,6 +71,7 @@ import CostCalculatorPage from "./pages/admin/CostCalculatorPage";
 import MoodBoardsPage from "./pages/admin/MoodBoardsPage";
 import ProductLibraryPage from "./pages/admin/ProductLibraryPage";
 import FollowUpsPage from "./pages/admin/FollowUpsPage";
+import CompanyFeaturesPage from "./pages/admin/CompanyFeaturesPage";
 
 const queryClient = new QueryClient();
 
@@ -388,6 +389,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AdminLayout>
                     <SuperAdminBillingPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/company-features"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <CompanyFeaturesPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }

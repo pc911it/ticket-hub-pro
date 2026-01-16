@@ -1271,6 +1271,44 @@ export type Database = {
         }
         Relationships: []
       }
+      company_feature_overrides: {
+        Row: {
+          company_id: string
+          created_at: string
+          feature_key: string
+          id: string
+          is_enabled: boolean
+          limit_value: number | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          feature_key: string
+          id?: string
+          is_enabled?: boolean
+          limit_value?: number | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          feature_key?: string
+          id?: string
+          is_enabled?: boolean
+          limit_value?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_feature_overrides_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_members: {
         Row: {
           company_id: string
