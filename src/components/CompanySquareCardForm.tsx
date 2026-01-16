@@ -70,7 +70,6 @@ export function CompanySquareCardForm({
           .maybeSingle();
 
         if (fetchError) {
-          console.error('Error fetching payment settings:', fetchError);
           setError('Unable to load payment settings. Please try again later.');
           setIsInitializing(false);
           return;
@@ -83,8 +82,7 @@ export function CompanySquareCardForm({
         }
 
         setPaymentSettings(data);
-      } catch (err) {
-        console.error('Error fetching payment settings:', err);
+      } catch {
         setError('Failed to load payment settings.');
         setIsInitializing(false);
       }
@@ -128,8 +126,7 @@ export function CompanySquareCardForm({
         } else {
           await initializeCard();
         }
-      } catch (err) {
-        console.error('Error loading Square:', err);
+      } catch {
         setError('Failed to initialize payment form.');
         setIsInitializing(false);
         initializingRef.current = false;
@@ -148,8 +145,7 @@ export function CompanySquareCardForm({
         await cardInstance.attach('#company-card-container');
         setCard(cardInstance);
         setIsInitializing(false);
-      } catch (err) {
-        console.error('Error initializing card:', err);
+      } catch {
         setError('Failed to initialize payment form.');
         setIsInitializing(false);
         initializingRef.current = false;
@@ -180,8 +176,7 @@ export function CompanySquareCardForm({
       } else {
         setError('Failed to process card. Please try again.');
       }
-    } catch (err) {
-      console.error('Tokenization error:', err);
+    } catch {
       setError('Failed to process card. Please try again.');
     }
   };
