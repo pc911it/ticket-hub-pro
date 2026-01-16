@@ -121,17 +121,16 @@ const CompanyRegister = () => {
   const [planComplete, setPlanComplete] = useState(false);
 
   // Email auth fields
-  const [fullName, setFullName] = useState('');
-  const [username, setUsername] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [usernameError, setUsernameError] = useState<string | null>(null);
-  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   // Phone auth fields
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [phoneFullName, setPhoneFullName] = useState('');
-  const [phoneUsername, setPhoneUsername] = useState('');
+  const [phoneFirstName, setPhoneFirstName] = useState('');
+  const [phoneLastName, setPhoneLastName] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [verifyingOtp, setVerifyingOtp] = useState(false);
@@ -158,69 +157,42 @@ const CompanyRegister = () => {
     }
   }, [user]);
 
-  // Username validation for email
-  useEffect(() => {
-    const checkUsername = async () => {
-      if (!username || username.length < 3) {
-        setUsernameError(username.length > 0 ? 'Username must be at least 3 characters' : null);
-        return;
-      }
-      setCheckingUsername(true);
-      try {
-        const { data } = await supabase.from('profiles').select('username').eq('username', username.toLowerCase()).maybeSingle();
-        setUsernameError(data ? 'This username is already taken' : null);
-      } catch {
-        setUsernameError(null);
-      } finally {
-        setCheckingUsername(false);
-      }
-    };
-    const timer = setTimeout(checkUsername, 500);
-    return () => clearTimeout(timer);
-  }, [username]);
+  // Email validation
+  const validateEmail = (emailValue: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(emailValue);
+  };
 
-  // Username validation for phone
   useEffect(() => {
-    const checkPhoneUsername = async () => {
-      if (!phoneUsername || phoneUsername.length < 3) return;
-      try {
-        const { data } = await supabase.from('profiles').select('username').eq('username', phoneUsername.toLowerCase()).maybeSingle();
-        if (data) {
-          toast({ variant: 'destructive', title: 'Username taken', description: 'Please choose another.' });
-        }
-      } catch {}
-    };
-    const timer = setTimeout(checkPhoneUsername, 500);
-    return () => clearTimeout(timer);
-  }, [phoneUsername]);
+    if (!email) {
+      setEmailError(null);
+      return;
+    }
+    if (!validateEmail(email)) {
+      setEmailError('Please enter a valid email address');
+    } else {
+      setEmailError(null);
+    }
+  }, [email]);
+
 
   const handleEmailSignUp = async () => {
-    if (!fullName.trim() || !username.trim() || !email.trim() || !password.trim()) {
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password.trim()) {
       toast({ variant: 'destructive', title: 'Error', description: 'Please fill in all fields.' });
       return;
     }
-    if (usernameError) {
-      toast({ variant: 'destructive', title: 'Invalid username', description: usernameError });
+    if (emailError) {
+      toast({ variant: 'destructive', title: 'Invalid email', description: emailError });
       return;
     }
 
     setIsLoading(true);
     try {
-      const { data: existing } = await supabase.from('profiles').select('username').eq('username', username.toLowerCase()).maybeSingle();
-      if (existing) {
-        toast({ variant: 'destructive', title: 'Username taken', description: 'Please choose another username.' });
-        return;
-      }
-
+      const fullName = `${firstName.trim()} ${lastName.trim()}`;
       const { error } = await signUp(email, password, fullName);
       if (error) {
         toast({ variant: 'destructive', title: 'Sign up failed', description: error.message });
         return;
-      }
-
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (currentUser) {
-        await supabase.from('profiles').update({ username: username.toLowerCase() }).eq('user_id', currentUser.id);
       }
 
       setAccountComplete(true);
@@ -235,7 +207,7 @@ const CompanyRegister = () => {
   };
 
   const handleSendPhoneOTP = async () => {
-    if (!phoneNumber.trim() || !phoneFullName.trim() || !phoneUsername.trim()) {
+    if (!phoneNumber.trim() || !phoneFirstName.trim() || !phoneLastName.trim()) {
       toast({ variant: 'destructive', title: 'Error', description: 'Please fill in all fields.' });
       return;
     }
@@ -244,11 +216,12 @@ const CompanyRegister = () => {
     
     setIsLoading(true);
     try {
+      const fullName = `${phoneFirstName.trim()} ${phoneLastName.trim()}`;
       const { error } = await supabase.auth.signInWithOtp({
         phone: formattedPhone,
         options: {
           data: {
-            full_name: phoneFullName,
+            full_name: fullName,
           }
         }
       });
@@ -283,9 +256,9 @@ const CompanyRegister = () => {
       if (error) throw error;
 
       if (data.user) {
+        const fullName = `${phoneFirstName.trim()} ${phoneLastName.trim()}`;
         await supabase.from('profiles').update({ 
-          username: phoneUsername.toLowerCase(),
-          full_name: phoneFullName 
+          full_name: fullName 
         }).eq('user_id', data.user.id);
       }
 
@@ -523,38 +496,36 @@ const CompanyRegister = () => {
                     <TabsContent value="email" className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="fullName">Full Name *</Label>
+                          <Label htmlFor="firstName">First Name *</Label>
                           <div className="relative">
                             <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input id="fullName" placeholder="John Doe" value={fullName} onChange={(e) => setFullName(e.target.value)} className="pl-10" />
+                            <Input id="firstName" placeholder="John" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="pl-10" />
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="username">Username *</Label>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">@</span>
-                            <Input
-                              id="username"
-                              placeholder="johndoe"
-                              value={username}
-                              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, ''))}
-                              className={`pl-10 pr-10 ${usernameError ? 'border-destructive' : username.length >= 3 && !checkingUsername ? 'border-green-500' : ''}`}
-                            />
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                              {checkingUsername && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                              {!checkingUsername && usernameError && <AlertCircle className="h-4 w-4 text-destructive" />}
-                              {!checkingUsername && !usernameError && username.length >= 3 && <CheckCircle2 className="h-4 w-4 text-green-500" />}
-                            </div>
-                          </div>
-                          {usernameError && <p className="text-xs text-destructive">{usernameError}</p>}
+                          <Label htmlFor="lastName">Last Name *</Label>
+                          <Input id="lastName" placeholder="Doe" value={lastName} onChange={(e) => setLastName(e.target.value)} />
                         </div>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="email">Email *</Label>
                         <div className="relative">
                           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10" />
+                          <Input 
+                            id="email" 
+                            type="email" 
+                            placeholder="you@example.com" 
+                            value={email} 
+                            onChange={(e) => setEmail(e.target.value)} 
+                            className={`pl-10 ${emailError ? 'border-destructive' : email && !emailError ? 'border-green-500' : ''}`} 
+                          />
+                          {email && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              {emailError ? <AlertCircle className="h-4 w-4 text-destructive" /> : <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                            </div>
+                          )}
                         </div>
+                        {emailError && <p className="text-xs text-destructive">{emailError}</p>}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="password">Password *</Label>
@@ -563,7 +534,7 @@ const CompanyRegister = () => {
                           <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" minLength={6} />
                         </div>
                       </div>
-                      <Button className="w-full" onClick={handleEmailSignUp} disabled={isLoading}>
+                      <Button className="w-full" onClick={handleEmailSignUp} disabled={isLoading || !!emailError}>
                         {isLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating Account...</> : 'Continue with Email'}
                       </Button>
                     </TabsContent>
@@ -573,21 +544,12 @@ const CompanyRegister = () => {
                         <>
                           <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                              <Label htmlFor="phoneFullName">Full Name *</Label>
-                              <Input id="phoneFullName" placeholder="John Doe" value={phoneFullName} onChange={(e) => setPhoneFullName(e.target.value)} />
+                              <Label htmlFor="phoneFirstName">First Name *</Label>
+                              <Input id="phoneFirstName" placeholder="John" value={phoneFirstName} onChange={(e) => setPhoneFirstName(e.target.value)} />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="phoneUsername">Username *</Label>
-                              <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">@</span>
-                                <Input
-                                  id="phoneUsername"
-                                  placeholder="johndoe"
-                                  value={phoneUsername}
-                                  onChange={(e) => setPhoneUsername(e.target.value.toLowerCase().replace(/\s/g, ''))}
-                                  className="pl-10"
-                                />
-                              </div>
+                              <Label htmlFor="phoneLastName">Last Name *</Label>
+                              <Input id="phoneLastName" placeholder="Doe" value={phoneLastName} onChange={(e) => setPhoneLastName(e.target.value)} />
                             </div>
                           </div>
                           <div className="space-y-2">
