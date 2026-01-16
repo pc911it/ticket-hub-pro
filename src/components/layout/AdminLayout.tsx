@@ -57,7 +57,8 @@ import {
   HardHat,
   Shapes,
   Library,
-  BellRing
+  BellRing,
+  Gift
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -122,6 +123,7 @@ const baseNavigation: NavItem[] = [
   { name: 'Trash', href: '/admin/trash', icon: Trash2 },
   { name: 'Support', href: '/admin/support', icon: HeadphonesIcon },
   { name: 'Users', href: '/admin/users', icon: Shield },
+  { name: 'Promo Codes', href: '/admin/promo-codes', icon: Gift },
   { name: 'Billing', href: '/admin/billing', icon: CreditCard },
   { name: 'Payment Settings', href: '/admin/payment-settings', icon: DollarSign },
   { name: 'Settings', href: '/admin/settings', icon: Settings },

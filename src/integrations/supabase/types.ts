@@ -1403,6 +1403,48 @@ export type Database = {
           },
         ]
       }
+      company_promo_codes: {
+        Row: {
+          applied_at: string
+          company_id: string
+          discount_applied: number | null
+          id: string
+          promo_code_id: string
+          trial_extended_days: number | null
+        }
+        Insert: {
+          applied_at?: string
+          company_id: string
+          discount_applied?: number | null
+          id?: string
+          promo_code_id: string
+          trial_extended_days?: number | null
+        }
+        Update: {
+          applied_at?: string
+          company_id?: string
+          discount_applied?: number | null
+          id?: string
+          promo_code_id?: string
+          trial_extended_days?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_promo_codes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_promo_codes_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_service_types: {
         Row: {
           company_id: string
@@ -3857,6 +3899,113 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      promo_codes: {
+        Row: {
+          applicable_plans: string[] | null
+          code: string
+          created_at: string
+          current_uses: number
+          description: string | null
+          discount_type: string
+          discount_value: number
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          name: string
+          trial_extension_days: number | null
+          updated_at: string
+          valid_from: string
+          valid_until: string | null
+        }
+        Insert: {
+          applicable_plans?: string[] | null
+          code: string
+          created_at?: string
+          current_uses?: number
+          description?: string | null
+          discount_type: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          name: string
+          trial_extension_days?: number | null
+          updated_at?: string
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Update: {
+          applicable_plans?: string[] | null
+          code?: string
+          created_at?: string
+          current_uses?: number
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          name?: string
+          trial_extension_days?: number | null
+          updated_at?: string
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
+      promo_email_campaigns: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          name: string
+          promo_code_id: string
+          recipient_emails: string[] | null
+          scheduled_for: string | null
+          sent_at: string | null
+          sent_count: number
+          status: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          name: string
+          promo_code_id: string
+          recipient_emails?: string[] | null
+          scheduled_for?: string | null
+          sent_at?: string | null
+          sent_count?: number
+          status?: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          name?: string
+          promo_code_id?: string
+          recipient_emails?: string[] | null
+          scheduled_for?: string | null
+          sent_at?: string | null
+          sent_count?: number
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_email_campaigns_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
             referencedColumns: ["id"]
           },
         ]

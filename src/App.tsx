@@ -58,6 +58,7 @@ import FloorPlansPage from "./pages/admin/FloorPlansPage";
 import LeadsPage from "./pages/admin/LeadsPage";
 import ChangeOrdersPage from "./pages/admin/ChangeOrdersPage";
 import DailyLogsPage from "./pages/admin/DailyLogsPage";
+import PromoCodesPage from "./pages/admin/PromoCodesPage";
 import WorkOrdersPage from "./pages/admin/WorkOrdersPage";
 import PunchListsPage from "./pages/admin/PunchListsPage";
 import InspectionsPage from "./pages/admin/InspectionsPage";
@@ -524,6 +525,7 @@ const App = () => (
             <Route path="/admin/mood-boards" element={<ProtectedRoute><AdminLayout><MoodBoardsPage /></AdminLayout></ProtectedRoute>} />
             <Route path="/admin/product-library" element={<ProtectedRoute><AdminLayout><ProductLibraryPage /></AdminLayout></ProtectedRoute>} />
             <Route path="/admin/follow-ups" element={<ProtectedRoute><AdminLayout><FollowUpsPage /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/promo-codes" element={<ProtectedRoute><AdminLayout><PromoCodesPage /></AdminLayout></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           </SuperAdminCompanyProvider>
