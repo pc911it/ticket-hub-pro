@@ -66,6 +66,11 @@ import BudgetingPage from "./pages/admin/BudgetingPage";
 import WarrantiesPage from "./pages/admin/WarrantiesPage";
 import EquipmentPage from "./pages/admin/EquipmentPage";
 import SelectionsPage from "./pages/admin/SelectionsPage";
+import SubcontractorsPage from "./pages/admin/SubcontractorsPage";
+import CostCalculatorPage from "./pages/admin/CostCalculatorPage";
+import MoodBoardsPage from "./pages/admin/MoodBoardsPage";
+import ProductLibraryPage from "./pages/admin/ProductLibraryPage";
+import FollowUpsPage from "./pages/admin/FollowUpsPage";
 
 const queryClient = new QueryClient();
 
@@ -503,6 +508,11 @@ const App = () => (
             <Route path="/admin/warranties" element={<ProtectedRoute><AdminLayout><WarrantiesPage /></AdminLayout></ProtectedRoute>} />
             <Route path="/admin/equipment" element={<ProtectedRoute><AdminLayout><EquipmentPage /></AdminLayout></ProtectedRoute>} />
             <Route path="/admin/selections" element={<ProtectedRoute><AdminLayout><SelectionsPage /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/subcontractors" element={<ProtectedRoute><AdminLayout><SubcontractorsPage /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/cost-calculator" element={<ProtectedRoute><AdminLayout><CostCalculatorPage /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/mood-boards" element={<ProtectedRoute><AdminLayout><MoodBoardsPage /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/product-library" element={<ProtectedRoute><AdminLayout><ProductLibraryPage /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/follow-ups" element={<ProtectedRoute><AdminLayout><FollowUpsPage /></AdminLayout></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           </SuperAdminCompanyProvider>
