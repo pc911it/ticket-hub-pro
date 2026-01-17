@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,8 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { CreditCard, Settings, Save, Eye, EyeOff, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { CreditCard, Settings, Save, Eye, EyeOff, AlertTriangle, CheckCircle2, XCircle, Shield } from "lucide-react";
 import { toast } from "sonner";
 
 interface PaymentSetting {
@@ -120,84 +119,78 @@ export default function PaymentSettingsPage() {
     }
   }, [paymentSettings]);
 
-  // Save Stripe settings
+  // Save Stripe settings via secure edge function
   const saveStripeMutation = useMutation({
     mutationFn: async () => {
       if (!company?.id) throw new Error("No company found");
 
-      const existing = paymentSettings?.find(s => s.provider === "stripe");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Not authenticated");
+
+      const response = await supabase.functions.invoke("save-payment-settings", {
+        body: {
+          company_id: company.id,
+          provider: "stripe",
+          is_enabled: stripeForm.isEnabled,
+          stripe_publishable_key: stripeForm.publishableKey,
+          stripe_secret_key: stripeForm.secretKey,
+          stripe_webhook_secret: stripeForm.webhookSecret,
+        },
+      });
+
+      if (response.error) throw new Error(response.error.message);
+      if (!response.data?.success) throw new Error(response.data?.error || "Failed to save settings");
       
-      if (existing) {
-        const { error } = await supabase
-          .from("company_payment_settings")
-          .update({
-            is_enabled: stripeForm.isEnabled,
-            stripe_publishable_key: stripeForm.publishableKey,
-            stripe_secret_key_encrypted: stripeForm.secretKey,
-            stripe_webhook_secret_encrypted: stripeForm.webhookSecret,
-          })
-          .eq("id", existing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("company_payment_settings")
-          .insert({
-            company_id: company.id,
-            provider: "stripe",
-            is_enabled: stripeForm.isEnabled,
-            stripe_publishable_key: stripeForm.publishableKey,
-            stripe_secret_key_encrypted: stripeForm.secretKey,
-            stripe_webhook_secret_encrypted: stripeForm.webhookSecret,
-          });
-        if (error) throw error;
-      }
+      return response.data;
     },
     onSuccess: () => {
-      toast.success("Stripe settings saved");
+      toast.success("Stripe settings saved securely");
       queryClient.invalidateQueries({ queryKey: ["company-payment-settings"] });
+      // Clear sensitive fields from form after save
+      setStripeForm(prev => ({
+        ...prev,
+        secretKey: prev.secretKey ? "••••••••" : "",
+        webhookSecret: prev.webhookSecret ? "••••••••" : "",
+      }));
     },
     onError: (error: Error) => {
       toast.error(error.message);
     },
   });
 
-  // Save Square settings
+  // Save Square settings via secure edge function
   const saveSquareMutation = useMutation({
     mutationFn: async () => {
       if (!company?.id) throw new Error("No company found");
 
-      const existing = paymentSettings?.find(s => s.provider === "square");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Not authenticated");
+
+      const response = await supabase.functions.invoke("save-payment-settings", {
+        body: {
+          company_id: company.id,
+          provider: "square",
+          is_enabled: squareForm.isEnabled,
+          square_application_id: squareForm.applicationId,
+          square_access_token: squareForm.accessToken,
+          square_location_id: squareForm.locationId,
+          square_environment: squareForm.environment,
+        },
+      });
+
+      if (response.error) throw new Error(response.error.message);
+      if (!response.data?.success) throw new Error(response.data?.error || "Failed to save settings");
       
-      if (existing) {
-        const { error } = await supabase
-          .from("company_payment_settings")
-          .update({
-            is_enabled: squareForm.isEnabled,
-            square_application_id: squareForm.applicationId,
-            square_access_token_encrypted: squareForm.accessToken,
-            square_location_id: squareForm.locationId,
-            square_environment: squareForm.environment,
-          })
-          .eq("id", existing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("company_payment_settings")
-          .insert({
-            company_id: company.id,
-            provider: "square",
-            is_enabled: squareForm.isEnabled,
-            square_application_id: squareForm.applicationId,
-            square_access_token_encrypted: squareForm.accessToken,
-            square_location_id: squareForm.locationId,
-            square_environment: squareForm.environment,
-          });
-        if (error) throw error;
-      }
+      return response.data;
     },
     onSuccess: () => {
-      toast.success("Square settings saved");
+      toast.success("Square settings saved securely");
       queryClient.invalidateQueries({ queryKey: ["company-payment-settings"] });
+      // Clear sensitive fields from form after save
+      setSquareForm(prev => ({
+        ...prev,
+        accessToken: prev.accessToken ? "••••••••" : "",
+      }));
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -511,19 +504,22 @@ export default function PaymentSettingsPage() {
       </Card>
 
       {/* Security Notice */}
-      <Card className="border-amber-500/50 bg-amber-500/5">
+      <Card className="border-green-500/50 bg-green-500/5">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-amber-600">
-            <AlertTriangle className="h-5 w-5" />
-            Security Information
+          <CardTitle className="flex items-center gap-2 text-green-600">
+            <Shield className="h-5 w-5" />
+            Secure Storage
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-2">
           <p>
-            • Your API keys are encrypted and stored securely in our database.
+            • Your API keys are encrypted server-side before storage - they never touch the database in plaintext.
           </p>
           <p>
-            • Secret keys are never exposed in the browser or to other users.
+            • Secret keys are processed through a secure backend function with proper authentication.
+          </p>
+          <p>
+            • Sensitive values are masked after saving and cannot be retrieved in plaintext.
           </p>
           <p>
             • We recommend using restricted API keys with only the permissions needed for payment processing.
