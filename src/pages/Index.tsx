@@ -450,11 +450,11 @@ const Index = () => {
               </h2>
               <p className="text-lg text-primary-foreground/80 mb-8 max-w-2xl mx-auto">
                 Join thousands of construction professionals who have streamlined their operations with BuilderFlow. 
-                Start your free trial today—no credit card required.
+                Start your free trial today—credit card required.
               </p>
               
               <div className="flex flex-wrap items-center justify-center gap-4 mb-10">
-                {['No credit card required', '14-day free trial', 'Cancel anytime', 'Full feature access'].map((item) => (
+                {['Credit card required', '14-day free trial', 'Cancel anytime', 'Full feature access'].map((item) => (
                   <div key={item} className="flex items-center gap-2 text-primary-foreground/90">
                     <CheckCircle2 className="h-5 w-5 text-secondary" />
                     <span className="text-sm">{item}</span>
