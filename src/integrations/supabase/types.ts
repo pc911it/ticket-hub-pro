@@ -4635,6 +4635,39 @@ export type Database = {
           },
         ]
       }
+      signature_access_log: {
+        Row: {
+          accessed_at: string
+          accessed_by: string | null
+          id: string
+          ip_address: string | null
+          record_id: string
+          signature_type: string
+          table_name: string
+          user_agent: string | null
+        }
+        Insert: {
+          accessed_at?: string
+          accessed_by?: string | null
+          id?: string
+          ip_address?: string | null
+          record_id: string
+          signature_type: string
+          table_name: string
+          user_agent?: string | null
+        }
+        Update: {
+          accessed_at?: string
+          accessed_by?: string | null
+          id?: string
+          ip_address?: string | null
+          record_id?: string
+          signature_type?: string
+          table_name?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       site_locations: {
         Row: {
           address: string | null
