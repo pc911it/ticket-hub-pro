@@ -224,20 +224,17 @@ const Index = () => {
               Estimates, scheduling, financials, client portals, and more.
             </p>
             
-            <div className="flex flex-col items-center gap-2 mb-12 animate-slide-up" style={{ animationDelay: '200ms' }}>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Link to="/register-company">
-                  <Button variant="hero" size="xl" className="gap-2 shadow-xl">
-                    Start Your 14-Day Free Trial
-                    <ArrowRight className="h-5 w-5" />
-                  </Button>
-                </Link>
-                <Button variant="heroOutline" size="xl" className="gap-2">
-                  <Play className="h-5 w-5" />
-                  Watch Demo
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12 animate-slide-up" style={{ animationDelay: '200ms' }}>
+              <Link to="/register-company">
+                <Button variant="hero" size="xl" className="gap-2 shadow-xl">
+                  Start Your 14-Day Free Trial
+                  <ArrowRight className="h-5 w-5" />
                 </Button>
-              </div>
-              <p className="text-sm text-primary-foreground/70 mt-2">Credit card required</p>
+              </Link>
+              <Button variant="heroOutline" size="xl" className="gap-2">
+                <Play className="h-5 w-5" />
+                Watch Demo
+              </Button>
             </div>
 
             {/* Quick Feature Pills */}
