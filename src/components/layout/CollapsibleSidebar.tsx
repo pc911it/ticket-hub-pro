@@ -92,7 +92,8 @@ const createNavigationGroups = (hasFeature: (key: string) => boolean, isAdminLev
       icon: Radio,
       defaultOpen: true,
       items: [
-        { name: 'Dispatcher', href: '/admin', icon: Radio },
+        { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+        { name: 'Dispatcher', href: '/admin/dispatcher', icon: Radio },
         { name: 'New Call', href: '/admin/new-call', icon: Plus },
         { name: 'Calendar', href: '/admin/calendar', icon: Calendar },
         { name: 'Notifications', href: '/admin/notifications', icon: Bell },

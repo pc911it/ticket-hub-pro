@@ -14,6 +14,7 @@ import UpgradePage from "./pages/UpgradePage";
 import PendingApprovalPage from "./pages/PendingApprovalPage";
 import NotFound from "./pages/NotFound";
 import AdminLayout from "./components/layout/AdminLayout";
+import Dashboard from "./pages/admin/Dashboard";
 import DispatcherDashboard from "./pages/admin/DispatcherDashboard";
 import NewCallPage from "./pages/admin/NewCallPage";
 import NotificationsPage from "./pages/admin/NotificationsPage";
@@ -116,6 +117,16 @@ const App = () => (
             <Route path="/pending-approval" element={<PendingApprovalPage />} />
             <Route
               path="/admin"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <Dashboard />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/dispatcher"
               element={
                 <ProtectedRoute>
                   <AdminLayout>
