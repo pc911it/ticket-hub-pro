@@ -86,3 +86,27 @@ verify_jwt = false
 
 [functions.notify-new-registration]
 verify_jwt = false
+
+[functions.check-first-user]
+verify_jwt = false
+
+[functions.save-payment-settings]
+verify_jwt = false
+
+[functions.charge-client-invoice]
+verify_jwt = false
+
+[functions.charge-client-invoice-company]
+verify_jwt = false
+
+[functions.save-client-card-company]
+verify_jwt = false
+
+[functions.create-client-portal]
+verify_jwt = false
+
+[functions.change-subscription-plan]
+verify_jwt = false
+
+[functions.send-promo-email]
+verify_jwt = false

@@ -60,13 +60,12 @@ const Auth = () => {
   useEffect(() => {
     const checkFirstUser = async () => {
       try {
-        const { count, error } = await supabase
-          .from('user_roles')
-          .select('*', { count: 'exact', head: true })
-          .eq('role', 'super_admin');
+        // Use secure edge function to check first user status
+        // This avoids exposing user_roles table queries in client code
+        const { data, error } = await supabase.functions.invoke('check-first-user');
         
         if (error) throw error;
-        setIsFirstUser(count === 0);
+        setIsFirstUser(data?.isFirstUser === true);
       } catch (err) {
         console.error('Error checking first user:', err);
         setIsFirstUser(false);
