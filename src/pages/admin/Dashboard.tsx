@@ -255,12 +255,28 @@ const Dashboard = () => {
       });
       setProjectStatusData(Object.entries(statusCounts).map(([status, count]) => ({ status, count })));
 
-      // Monthly revenue (mock data for now - would need date grouping)
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-      setMonthlyRevenue(months.map(month => ({
-        month,
-        revenue: Math.floor(Math.random() * 50000) + 10000,
-      })));
+      // Calculate monthly revenue from real invoice data (last 6 months)
+      const monthlyRevenueData: { month: string; revenue: number }[] = [];
+      const now = new Date();
+      
+      for (let i = 5; i >= 0; i--) {
+        const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthName = format(monthDate, 'MMM');
+        const monthStart = format(monthDate, 'yyyy-MM-dd');
+        const monthEndDate = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+        const monthEndStr = format(monthEndDate, 'yyyy-MM-dd');
+        
+        // Calculate revenue for this month from paid invoices
+        const monthRevenue = invoices?.filter(inv => {
+          if (inv.status !== 'paid' || !inv.paid_at) return false;
+          const paidDate = inv.paid_at.split('T')[0];
+          return paidDate >= monthStart && paidDate <= monthEndStr;
+        }).reduce((sum, inv) => sum + (inv.amount || 0), 0) || 0;
+        
+        monthlyRevenueData.push({ month: monthName, revenue: monthRevenue });
+      }
+      
+      setMonthlyRevenue(monthlyRevenueData);
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
