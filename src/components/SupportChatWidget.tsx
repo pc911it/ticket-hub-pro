@@ -131,10 +131,11 @@ export function SupportChatWidget() {
   const [isLoading, setIsLoading] = useState(false);
   const [chatId, setChatId] = useState<string | null>(null);
   const [visitorId] = useState(() => {
-    const stored = localStorage.getItem('support_visitor_id');
+    const stored = localStorage.getItem('support_session_id');
     if (stored) return stored;
-    const newId = `visitor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    localStorage.setItem('support_visitor_id', newId);
+    // Generate cryptographically secure UUID v4 for session identification
+    const newId = crypto.randomUUID();
+    localStorage.setItem('support_session_id', newId);
     return newId;
   });
   const [requestedAgent, setRequestedAgent] = useState(false);
@@ -350,22 +351,24 @@ export function SupportChatWidget() {
     setShowTopicSelection(false);
     
     try {
-      const { data, error } = await supabase
-        .from('support_chats')
-        .insert({ 
-          visitor_id: visitorId,
+      // Use secure edge function for chat creation
+      const { data, error } = await supabase.functions.invoke('validate-chat-session', {
+        body: { 
+          session_id: visitorId,
+          action: 'create',
           visitor_name: visitorName.trim().substring(0, 100),
           visitor_email: visitorEmail.trim().substring(0, 255) || null,
           visitor_phone: visitorPhone.trim().substring(0, 20) || null,
           topic: selectedTopic,
           department: selectedDepartment || (selectedTopic === 'billing' ? 'billing' : selectedTopic === 'technical' ? 'support' : 'general'),
           order_reference: orderReference.substring(0, 50) || null,
-        })
-        .select()
-        .single();
+        }
+      });
 
       if (error) throw error;
-      setChatId(data.id);
+      if (!data?.valid) throw new Error(data?.error || 'Failed to create chat');
+      
+      setChatId(data.chat_id);
 
       const welcomeMsg: Message = {
         id: 'welcome',
@@ -406,36 +409,35 @@ export function SupportChatWidget() {
     try {
       let currentChatId = chatId;
       if (!currentChatId) {
-        const { data, error } = await supabase
-          .from('support_chats')
-          .insert({ 
-            visitor_id: visitorId,
+        // Use secure edge function for chat creation
+        const { data, error } = await supabase.functions.invoke('validate-chat-session', {
+          body: { 
+            session_id: visitorId,
+            action: 'create',
             topic: selectedTopic || 'general',
             department: selectedDepartment || 'general',
-          })
-          .select()
-          .single();
+          }
+        });
 
         if (error) throw error;
-        currentChatId = data.id;
+        if (!data?.valid) throw new Error(data?.error || 'Failed to create chat');
+        
+        currentChatId = data.chat_id;
         setChatId(currentChatId);
       }
 
       if (chatStatus === 'with_agent') {
-        const { error: messageError } = await supabase
-          .from('support_chat_messages')
-          .insert({
-            chat_id: currentChatId,
-            sender_type: 'visitor',
-            content: messageText,
-          });
+        // Use secure edge function for sending messages
+        const { data, error: messageError } = await supabase.functions.invoke('validate-chat-session', {
+          body: { 
+            session_id: visitorId,
+            action: 'send_message',
+            message: messageText,
+          }
+        });
 
         if (messageError) throw messageError;
-        
-        await supabase
-          .from('support_chats')
-          .update({ updated_at: new Date().toISOString() })
-          .eq('id', currentChatId);
+        if (!data?.valid) throw new Error(data?.error || 'Failed to send message');
           
       } else {
         const { data: functionData, error: functionError } = await supabase.functions.invoke('support-chat', {

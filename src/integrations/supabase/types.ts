@@ -2522,6 +2522,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "inventory_usage_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "inventory_usage_inventory_item_id_fkey"
             columns: ["inventory_item_id"]
             isOneToOne: false
@@ -2662,6 +2669,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents_safe"
             referencedColumns: ["id"]
           },
           {
@@ -3550,6 +3564,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_agents_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents_safe"
             referencedColumns: ["id"]
           },
           {
@@ -5543,6 +5564,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tickets_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tickets_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
@@ -5615,6 +5643,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "time_clock_entries_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "time_clock_entries_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -5672,6 +5707,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_report_submissions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents_safe"
             referencedColumns: ["id"]
           },
           {
@@ -6119,7 +6161,97 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      agents_safe: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          full_name: string | null
+          id: string | null
+          is_available: boolean | null
+          is_online: boolean | null
+          phone: string | null
+          updated_at: string | null
+          user_id: string | null
+          vehicle_info: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string | null
+          is_available?: boolean | null
+          is_online?: boolean | null
+          phone?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          vehicle_info?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string | null
+          is_available?: boolean | null
+          is_online?: boolean | null
+          phone?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          vehicle_info?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_payment_settings_safe: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          id: string | null
+          is_enabled: boolean | null
+          provider: string | null
+          square_application_id: string | null
+          square_environment: string | null
+          square_location_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_enabled?: boolean | null
+          provider?: string | null
+          square_application_id?: string | null
+          square_environment?: string | null
+          square_location_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_enabled?: boolean | null
+          provider?: string | null
+          square_application_id?: string | null
+          square_environment?: string | null
+          square_location_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_payment_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       approve_company: { Args: { _company_id: string }; Returns: boolean }
@@ -6128,6 +6260,18 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_verification_codes: { Args: never; Returns: undefined }
+      get_agent_locations: {
+        Args: { _company_id: string }
+        Returns: {
+          agent_id: string
+          current_location_lat: number
+          current_location_lng: number
+          full_name: string
+          is_available: boolean
+          is_online: boolean
+          last_location_update: string
+        }[]
+      }
       get_user_company_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_company_ids_direct: {
         Args: { _user_id: string }
