@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.168b26e7d538425a9dfee6b5eb454493',
+  appId: 'app.lovable.builderflow',
   appName: 'BuilderFlow',
   webDir: 'dist',
   server: {
