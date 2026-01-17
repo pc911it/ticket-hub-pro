@@ -1,156 +1,29 @@
-import { ReactNode, useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { ReactNode, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeAlerts } from '@/hooks/useRealtimeAlerts';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { useSupportTicketNotifications } from '@/hooks/useSupportTicketNotifications';
 import { useSuperAdminNotifications } from '@/hooks/useSuperAdminNotifications';
-import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { LiveAlertsBanner } from '@/components/LiveAlertsBanner';
 import { GlobalProjectChat } from '@/components/GlobalProjectChat';
 import { NotificationToggle, NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
 import { BillingAlertBanner } from '@/components/BillingAlertBanner';
 import { PasswordResetReminder } from '@/components/PasswordResetReminder';
 import { SuperAdminCompanySelector } from '@/components/SuperAdminCompanySelector';
+import { CollapsibleSidebar } from './CollapsibleSidebar';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-import { 
-  LayoutDashboard, 
-  Calendar, 
-  Users, 
-  Ticket, 
-  LogOut, 
-  Menu, 
-  X,
-  ChevronRight,
-  Bell,
-  Radio,
-  UserCircle,
-  Plus,
-  Shield,
-  CreditCard,
-  Settings,
-  Package,
-  Building2,
-  CheckSquare,
-  DollarSign,
-  Trash2,
-  FileText,
-  Briefcase,
-  Clock,
-  MessageSquare,
-  HeadphonesIcon,
-  Wrench,
-  Gavel,
-  FileQuestion,
-  ClipboardList,
-  Box,
-  FileCheck,
-  UserPlus,
-  FileSignature,
-  NotebookPen,
-  ClipboardCheck,
-  Hammer,
-  Calculator,
-  Truck,
-  Palette,
-  HardHat,
-  Shapes,
-  Library,
-  BellRing,
-  Gift
-} from 'lucide-react';
+import { Menu } from 'lucide-react';
 
 interface AdminLayoutProps {
   children: ReactNode;
 }
 
-interface NavItem {
-  name: string;
-  href: string;
-  icon: any;
-  badge?: number;
-  featureKey?: string; // Optional feature key for gating
-}
-
-// Pages restricted to admins only (owners, company admins)
-const restrictedPages = ['/admin/client-billing', '/admin/billing', '/admin/settings', '/admin/users', '/admin/payment-settings'];
-
-// Feature-gated pages mapping
-const featureGatedPages: Record<string, string> = {
-  '/admin/inventory': 'inventory_management',
-  '/admin/projects': 'project_management',
-};
-
-const baseNavigation: NavItem[] = [
-  { name: 'Dispatcher', href: '/admin', icon: Radio },
-  { name: 'New Call', href: '/admin/new-call', icon: Plus },
-  { name: 'Notifications', href: '/admin/notifications', icon: Bell },
-  { name: 'Employees', href: '/admin/employees', icon: UserCircle },
-  { name: 'Time Reports', href: '/admin/time-reports', icon: Clock },
-  { name: 'Updates', href: '/admin/updates', icon: LayoutDashboard },
-  { name: 'Calendar', href: '/admin/calendar', icon: Calendar },
-  { name: 'Leads', href: '/admin/leads', icon: UserPlus, featureKey: 'leads_management' },
-  { name: 'Clients', href: '/admin/clients', icon: Users },
-  { name: 'Client Billing', href: '/admin/client-billing', icon: DollarSign },
-  { name: 'Bids', href: '/admin/bids', icon: Gavel, featureKey: 'bid_management' },
-  { name: 'Change Orders', href: '/admin/change-orders', icon: FileSignature, featureKey: 'change_orders' },
-  { name: 'RFIs', href: '/admin/rfis', icon: FileQuestion, featureKey: 'rfi_management' },
-  { name: 'Submittals', href: '/admin/submittals', icon: ClipboardList, featureKey: 'submittal_management' },
-  { name: 'Permits', href: '/admin/permits', icon: FileCheck, featureKey: 'permit_tracking' },
-  { name: '3D Plans', href: '/admin/floor-plans', icon: Box, featureKey: 'floor_plans_3d' },
-  { name: 'Projects', href: '/admin/projects', icon: Building2, featureKey: 'project_management' },
-  { name: 'Daily Logs', href: '/admin/daily-logs', icon: NotebookPen, featureKey: 'daily_logs' },
-  { name: 'Work Orders', href: '/admin/work-orders', icon: Hammer, featureKey: 'work_orders' },
-  { name: 'Punch Lists', href: '/admin/punch-lists', icon: ClipboardCheck, featureKey: 'punch_lists' },
-  { name: 'Inspections', href: '/admin/inspections', icon: ClipboardCheck, featureKey: 'inspections' },
-  { name: 'Contracts', href: '/admin/contracts', icon: FileSignature, featureKey: 'contracts_esign' },
-  { name: 'Budgeting', href: '/admin/budgeting', icon: Calculator, featureKey: 'basic_budgeting' },
-  { name: 'Warranties', href: '/admin/warranties', icon: Shield, featureKey: 'warranties' },
-  { name: 'Equipment', href: '/admin/equipment', icon: Truck, featureKey: 'equipment_tracking' },
-  { name: 'Selections', href: '/admin/selections', icon: Palette, featureKey: 'selections_allowances' },
-  { name: 'Subcontractors', href: '/admin/subcontractors', icon: HardHat, featureKey: 'subcontractor_matching' },
-  { name: 'Cost Calculator', href: '/admin/cost-calculator', icon: Calculator, featureKey: 'cost_estimating' },
-  { name: 'Mood Boards', href: '/admin/mood-boards', icon: Shapes, featureKey: 'mood_boards' },
-  { name: 'Product Library', href: '/admin/product-library', icon: Library, featureKey: 'product_library' },
-  { name: 'Follow-Ups', href: '/admin/follow-ups', icon: BellRing, featureKey: 'follow_ups' },
-  { name: 'Plans', href: '/admin/plans', icon: FileText },
-  { name: 'Tickets', href: '/admin/tickets', icon: Ticket },
-  { name: 'Chat Tickets', href: '/admin/chat-tickets', icon: MessageSquare },
-  { name: 'Live Chats', href: '/admin/live-chats', icon: HeadphonesIcon },
-  { name: 'Inventory', href: '/admin/inventory', icon: Package, featureKey: 'inventory_management' },
-  { name: 'Service Types', href: '/admin/service-types', icon: Wrench },
-  { name: 'Trash', href: '/admin/trash', icon: Trash2 },
-  { name: 'Support', href: '/admin/support', icon: HeadphonesIcon },
-  { name: 'Users', href: '/admin/users', icon: Shield },
-  { name: 'Promo Codes', href: '/admin/promo-codes', icon: Gift },
-  { name: 'Billing', href: '/admin/billing', icon: CreditCard },
-  { name: 'Payment Settings', href: '/admin/payment-settings', icon: DollarSign },
-  { name: 'Settings', href: '/admin/settings', icon: Settings },
-];
-
-const staffNavigation: NavItem[] = [
-  { name: 'Employee Portal', href: '/employee', icon: Briefcase },
-];
-
-const baseSuperAdminNavigation: NavItem[] = [
-  { name: 'Platform Overview', href: '/admin/super-dashboard', icon: LayoutDashboard },
-  { name: 'Company Features', href: '/admin/company-features', icon: Settings },
-  { name: 'Live Chats', href: '/admin/live-chats', icon: HeadphonesIcon },
-  { name: 'Chat Tickets', href: '/admin/chat-tickets', icon: MessageSquare },
-  { name: 'Create Company', href: '/admin/create-company', icon: Plus },
-  { name: 'Company Approvals', href: '/admin/company-approvals', icon: CheckSquare },
-  { name: 'Support Tickets', href: '/admin/support-tickets', icon: Ticket },
-  { name: 'Platform Billing', href: '/admin/platform-billing', icon: DollarSign },
-];
-
 const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
-  const { signOut, user, isSuperAdmin, isCompanyOwner, userRole, isCompanyAdmin } = useAuth();
-  const { hasFeature } = useFeatureAccess();
+  const { user } = useAuth();
   
   // Enable real-time alerts
   useRealtimeAlerts();
@@ -171,74 +44,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     }
   }, [location.pathname, clearUnreadCount]);
 
-  // Determine if user is admin-level (can see billing/settings/users pages)
-  // Company owners and company admins (role=admin in company_members) should see these
-  const isAdminLevel = isSuperAdmin || isCompanyOwner || isCompanyAdmin || userRole === 'admin';
-
-  // Pages that super admins see in their dedicated section (avoid duplicates)
-  const superAdminOnlyPages = ['/admin/live-chats', '/admin/chat-tickets'];
-
-  // Build navigation with badges and filter based on role and features
-  const navigation: NavItem[] = baseNavigation
-    .filter(item => {
-      // Filter restricted pages for non-admin users
-      if (!isAdminLevel && restrictedPages.includes(item.href)) {
-        return false;
-      }
-      // Filter feature-gated pages based on plan
-      if (item.featureKey && !hasFeature(item.featureKey)) {
-        return false;
-      }
-      // Hide items that appear in super admin section for super admins
-      if (isSuperAdmin && superAdminOnlyPages.includes(item.href)) {
-        return false;
-      }
-      return true;
-    })
-    .map(item => {
-      if (item.href === '/admin/support' && supportUnreadCount > 0 && !isSuperAdmin) {
-        return { ...item, badge: supportUnreadCount };
-      }
-      return item;
-    });
-
-  const superAdminNavigation: NavItem[] = baseSuperAdminNavigation.map(item => {
-    if (item.href === '/admin/support-tickets' && supportUnreadCount > 0 && isSuperAdmin) {
-      return { ...item, badge: supportUnreadCount };
-    }
-    return item;
-  });
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
-  };
-
-  const renderNavItem = (item: NavItem, isActive: boolean) => (
-    <Link
-      key={item.name}
-      to={item.href}
-      onClick={() => setSidebarOpen(false)}
-      className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-        isActive 
-          ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md" 
-          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-      )}
-    >
-      <item.icon className="h-5 w-5" />
-      <span className="flex-1">{item.name}</span>
-      {item.badge && item.badge > 0 && (
-        <Badge 
-          variant="destructive" 
-          className="h-5 min-w-5 px-1.5 text-xs font-bold animate-pulse"
-        >
-          {item.badge > 99 ? '99+' : item.badge}
-        </Badge>
-      )}
-      {isActive && !item.badge && <ChevronRight className="ml-auto h-4 w-4" />}
-    </Link>
-  );
+  // Get sidebar collapsed state for main content margin
+  const sidebarCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
 
   return (
     <div className="min-h-screen bg-background">
@@ -251,110 +58,16 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       )}
 
       {/* Sidebar */}
-      <aside
-        className={cn(
-          "fixed top-0 left-0 z-50 h-full w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full",
-          "bg-sidebar text-sidebar-foreground"
-        )}
-      >
-        <div className="flex h-full flex-col">
-          {/* Logo */}
-          <div className="flex h-16 items-center justify-between px-6 border-b border-sidebar-border">
-            <Link to="/admin" className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
-                <Ticket className="h-4 w-4 text-sidebar-primary-foreground" />
-              </div>
-              <span className="font-display text-lg font-semibold">TicketPro</span>
-            </Link>
-            <button 
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-1 hover:bg-sidebar-accent rounded"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-            {/* Super Admin Section */}
-            {isSuperAdmin && (
-              <>
-                <div className="px-3 py-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
-                  Super Admin
-                </div>
-                {superAdminNavigation.map((item) => {
-                  const isActive = location.pathname === item.href;
-                  return renderNavItem(item, isActive);
-                })}
-                <div className="my-3 border-t border-sidebar-border" />
-              </>
-            )}
-
-            {/* Staff Quick Access */}
-            {(userRole === 'staff' || userRole === 'admin') && !isSuperAdmin && (
-              <>
-                <div className="px-3 py-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
-                  Quick Access
-                </div>
-                {staffNavigation.map((item) => {
-                  const isActive = location.pathname === item.href;
-                  return renderNavItem(item, isActive);
-                })}
-                <div className="my-3 border-t border-sidebar-border" />
-              </>
-            )}
-
-            {/* Regular Navigation */}
-            {navigation.map((item) => {
-              const isActive = location.pathname === item.href;
-              return renderNavItem(item, isActive);
-            })}
-          </nav>
-
-          {/* User section */}
-          <div className="p-4 border-t border-sidebar-border">
-            <div className="flex items-center gap-3 px-3 py-2 mb-3">
-              <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center text-sm font-medium">
-                {user?.email?.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{user?.email}</p>
-                <div className="flex gap-1 mt-1">
-                  {isSuperAdmin && (
-                    <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-primary/10 text-primary border-primary/30">
-                      Super Admin
-                    </Badge>
-                  )}
-                  {isCompanyOwner && !isSuperAdmin && (
-                    <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-success/10 text-success border-success/30">
-                      Owner
-                    </Badge>
-                  )}
-                  {!isSuperAdmin && !isCompanyOwner && userRole && (
-                    <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 capitalize">
-                      {userRole}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </div>
-            <Button 
-              variant="ghost" 
-              className="w-full justify-start text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-              onClick={handleSignOut}
-            >
-              <LogOut className="h-4 w-4 mr-3" />
-              Sign out
-            </Button>
-          </div>
-        </div>
-      </aside>
+      <CollapsibleSidebar 
+        isOpen={sidebarOpen} 
+        onClose={() => setSidebarOpen(false)}
+        supportUnreadCount={supportUnreadCount}
+      />
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div className={sidebarCollapsed ? "lg:pl-16" : "lg:pl-64"} style={{ transition: 'padding-left 0.3s ease-in-out' }}>
         {/* Top bar */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:px-6">
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden p-2 -ml-2 hover:bg-muted rounded-lg"
@@ -386,7 +99,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         </header>
 
         {/* Page content */}
-        <main className="p-6 space-y-6">
+        <main className="p-4 lg:p-6 space-y-4">
           {/* Billing Alert Banner */}
           <BillingAlertBanner />
           
