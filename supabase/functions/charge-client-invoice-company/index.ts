@@ -9,6 +9,42 @@ interface ChargeInvoiceRequest {
   invoiceId: string;
 }
 
+/**
+ * Decrypt sensitive data using AES-256-GCM
+ */
+async function decryptSecret(encryptedSecret: string, encryptionKey: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  
+  // Derive the same 256-bit key
+  const keyMaterial = await crypto.subtle.digest(
+    "SHA-256",
+    encoder.encode(encryptionKey)
+  );
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["decrypt"]
+  );
+  
+  // Decode base64 and extract IV + encrypted data
+  const combined = Uint8Array.from(atob(encryptedSecret), c => c.charCodeAt(0));
+  const iv = combined.slice(0, 12);
+  const encryptedData = combined.slice(12);
+  
+  // Decrypt
+  const decryptedData = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv },
+    cryptoKey,
+    encryptedData
+  );
+  
+  return decoder.decode(decryptedData);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -94,14 +130,27 @@ Deno.serve(async (req) => {
 
     if (squareSettings && client.square_card_id) {
       // Use company's Square credentials
-      const squareAccessToken = squareSettings.square_access_token_encrypted;
+      const squareAccessTokenEncrypted = squareSettings.square_access_token_encrypted;
       const squareLocationId = squareSettings.square_location_id;
       const squareEnvironment = squareSettings.square_environment || "sandbox";
 
-      if (!squareAccessToken || !squareLocationId) {
+      if (!squareAccessTokenEncrypted || !squareLocationId) {
         return new Response(
           JSON.stringify({ error: "Square is not fully configured. Please complete the setup in Payment Settings." }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Decrypt the access token using AES-256-GCM
+      const encryptionKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      let squareAccessToken: string;
+      try {
+        squareAccessToken = await decryptSecret(squareAccessTokenEncrypted, encryptionKey);
+      } catch (decryptError) {
+        console.error("Failed to decrypt Square access token:", decryptError);
+        return new Response(
+          JSON.stringify({ error: "Payment configuration error. Please contact support." }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 

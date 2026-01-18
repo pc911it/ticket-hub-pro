@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, Image, Trash2, Eye } from 'lucide-react';
+import { Upload, Image, Trash2, Eye, Loader2 } from 'lucide-react';
+import { getSecureFileUrl, extractPathFromUrl } from '@/lib/secureStorage';
 import {
   Dialog,
   DialogContent,
@@ -29,14 +30,37 @@ interface TicketAttachmentsProps {
 
 export const TicketAttachments = ({ ticketId, readOnly = false }: TicketAttachmentsProps) => {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [signedUrls, setSignedUrls] = useState<Map<string, string>>(new Map());
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewType, setPreviewType] = useState<string>('');
+  const [loadingUrls, setLoadingUrls] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchAttachments();
   }, [ticketId]);
+
+  // Generate signed URLs for all attachments
+  useEffect(() => {
+    const generateSignedUrls = async () => {
+      if (attachments.length === 0) return;
+      setLoadingUrls(true);
+      const urlMap = new Map<string, string>();
+      
+      for (const att of attachments) {
+        const signedUrl = await getSecureFileUrl('ticket-attachments', att.file_url);
+        if (signedUrl) {
+          urlMap.set(att.id, signedUrl);
+        }
+      }
+      
+      setSignedUrls(urlMap);
+      setLoadingUrls(false);
+    };
+    
+    generateSignedUrls();
+  }, [attachments]);
 
   const fetchAttachments = async () => {
     const { data, error } = await supabase
@@ -67,16 +91,11 @@ export const TicketAttachments = ({ ticketId, readOnly = false }: TicketAttachme
 
         if (uploadError) throw uploadError;
 
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from('ticket-attachments')
-          .getPublicUrl(fileName);
-
-        // Save to database
+        // Store file path (not public URL) for security
         const { error: dbError } = await supabase.from('ticket_attachments').insert({
           ticket_id: ticketId,
           file_name: file.name,
-          file_url: urlData.publicUrl,
+          file_url: fileName, // Store path, not URL
           file_type: file.type,
           file_size: file.size,
           category,
@@ -117,8 +136,9 @@ export const TicketAttachments = ({ ticketId, readOnly = false }: TicketAttachme
     }
   };
 
-  const openPreview = (attachment: Attachment) => {
-    setPreviewUrl(attachment.file_url);
+  const openPreview = async (attachment: Attachment) => {
+    const signedUrl = signedUrls.get(attachment.id) || await getSecureFileUrl('ticket-attachments', attachment.file_url);
+    setPreviewUrl(signedUrl);
     setPreviewType(attachment.file_type);
   };
 
@@ -168,9 +188,10 @@ export const TicketAttachments = ({ ticketId, readOnly = false }: TicketAttachme
                 className="relative group rounded-lg overflow-hidden border bg-card aspect-square"
               >
                 <img
-                  src={attachment.file_url}
+                  src={signedUrls.get(attachment.id) || ''}
                   alt={attachment.file_name}
                   className="w-full h-full object-cover"
+                  loading="lazy"
                 />
                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                   <Button variant="secondary" size="sm" onClick={() => openPreview(attachment)}>
