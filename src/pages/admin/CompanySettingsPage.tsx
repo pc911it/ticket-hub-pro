@@ -17,6 +17,7 @@ import { Building2, Upload, Save, UserPlus, Mail, Trash2, Shield, Briefcase, Use
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import type { Database } from "@/integrations/supabase/types";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 type CompanyType = Database["public"]["Enums"]["company_type"];
 type AppRole = Database["public"]["Enums"]["app_role"];
@@ -290,9 +291,12 @@ export default function CompanySettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Company Settings</h1>
-        <p className="text-muted-foreground">Manage your company profile and team</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Company Settings</h1>
+          <p className="text-muted-foreground">Manage your company profile and team</p>
+        </div>
+        <LanguageSwitcher variant="compact" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
