@@ -15,6 +15,7 @@ import { SuperAdminCompanySelector } from '@/components/SuperAdminCompanySelecto
 import { WelcomeTour } from '@/components/WelcomeTour';
 import { PaymentGate } from '@/components/PaymentGate';
 import { CollapsibleSidebar } from './CollapsibleSidebar';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
 
@@ -90,6 +91,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             
             {/* Security Settings */}
             {user && <PasswordResetReminder userId={user.id} />}
+            
+            {/* Language Switcher */}
+            <LanguageSwitcher variant="compact" />
             
             {/* Notification Toggle */}
             <div data-tour="header-notifications">
