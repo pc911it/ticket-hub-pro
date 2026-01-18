@@ -1354,6 +1354,59 @@ export type Database = {
           },
         ]
       }
+      company_integrations: {
+        Row: {
+          access_token_encrypted: string | null
+          company_id: string
+          created_at: string
+          id: string
+          is_connected: boolean | null
+          last_sync_at: string | null
+          provider: string
+          realm_id: string | null
+          refresh_token_encrypted: string | null
+          sync_settings: Json | null
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token_encrypted?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          is_connected?: boolean | null
+          last_sync_at?: string | null
+          provider: string
+          realm_id?: string | null
+          refresh_token_encrypted?: string | null
+          sync_settings?: Json | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token_encrypted?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_connected?: boolean | null
+          last_sync_at?: string | null
+          provider?: string
+          realm_id?: string | null
+          refresh_token_encrypted?: string | null
+          sync_settings?: Json | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_integrations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_members: {
         Row: {
           company_id: string
@@ -4325,6 +4378,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "purchase_orders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quickbooks_financial_cache: {
+        Row: {
+          company_id: string
+          created_at: string
+          data: Json
+          data_type: string
+          fetched_at: string
+          id: string
+          period_end: string | null
+          period_start: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          data?: Json
+          data_type: string
+          fetched_at?: string
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          data?: Json
+          data_type?: string
+          fetched_at?: string
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quickbooks_financial_cache_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
