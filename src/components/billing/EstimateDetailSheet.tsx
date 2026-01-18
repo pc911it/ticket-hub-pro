@@ -3,7 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { InvoicePDFPreview } from './InvoicePDFPreview';
 import { LineItem } from './InvoiceLineItems';
-import { Send, CheckCircle, Download, FileText, Loader2, ArrowRight, XCircle } from 'lucide-react';
+import { Send, CheckCircle, Download, FileText, Loader2, ArrowRight, XCircle, Mail } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 
 interface EstimateDetailSheetProps {

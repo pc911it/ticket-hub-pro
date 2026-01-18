@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, ExternalLink, Building2, Ticket as TicketIcon } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -12,10 +13,13 @@ interface Ticket {
   scheduled_date: string;
   scheduled_time: string;
   status: string;
+  project_id: string | null;
   clients: { full_name: string } | null;
+  projects: { name: string } | null;
 }
 
 const CalendarPage = () => {
+  const navigate = useNavigate();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -31,7 +35,7 @@ const CalendarPage = () => {
 
     const { data, error } = await supabase
       .from('tickets')
-      .select('*, clients(full_name)')
+      .select('*, clients(full_name), projects(name)')
       .gte('scheduled_date', start)
       .lte('scheduled_date', end)
       .order('scheduled_time', { ascending: true });
@@ -179,6 +183,34 @@ const CalendarPage = () => {
                       </div>
                       <p className="font-medium">{ticket.title}</p>
                       <p className="text-sm text-muted-foreground">{ticket.clients?.full_name}</p>
+                      {ticket.projects?.name && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                          <Building2 className="h-3 w-3" />
+                          {ticket.projects.name}
+                        </p>
+                      )}
+                      <div className="flex gap-2 mt-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-7 text-xs"
+                          onClick={() => navigate(`/admin/tickets`)}
+                        >
+                          <TicketIcon className="h-3 w-3 mr-1" />
+                          View Ticket
+                        </Button>
+                        {ticket.project_id && (
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-7 text-xs"
+                            onClick={() => navigate(`/admin/projects/${ticket.project_id}`)}
+                          >
+                            <Building2 className="h-3 w-3 mr-1" />
+                            View Project
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>

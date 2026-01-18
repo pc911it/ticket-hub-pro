@@ -3,6 +3,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { InvoicePDFPreview } from './InvoicePDFPreview';
 import { LineItem } from './InvoiceLineItems';
 import { 
@@ -15,7 +17,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Send, CheckCircle, Download, CreditCard, Loader2, FileText, XCircle, Ban, Trash2, MoreHorizontal } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Send, CheckCircle, Download, CreditCard, Loader2, FileText, XCircle, Ban, Trash2, MoreHorizontal, Mail } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +26,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 
 interface InvoiceDetailSheetProps {
@@ -36,6 +40,7 @@ interface InvoiceDetailSheetProps {
   onCancel?: () => void;
   onVoid?: () => void;
   onDelete?: () => void;
+  onSendToEmail?: (email: string) => void;
   isSending?: boolean;
   isCharging?: boolean;
 }
@@ -51,10 +56,14 @@ export const InvoiceDetailSheet = ({
   onCancel,
   onVoid,
   onDelete,
+  onSendToEmail,
   isSending,
   isCharging,
 }: InvoiceDetailSheetProps) => {
   const [confirmAction, setConfirmAction] = useState<'cancel' | 'void' | 'delete' | null>(null);
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [customEmail, setCustomEmail] = useState('');
+  const [sendingToEmail, setSendingToEmail] = useState(false);
 
   if (!invoice) return null;
 
@@ -217,10 +226,16 @@ export const InvoiceDetailSheet = ({
           {/* Action buttons */}
           <div className="flex flex-wrap gap-2">
             {invoice.status === 'draft' && (
-              <Button onClick={onSend} disabled={isSending}>
-                {isSending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-                Send to Client
-              </Button>
+              <>
+                <Button onClick={onSend} disabled={isSending}>
+                  {isSending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                  Send to Client
+                </Button>
+                <Button variant="outline" onClick={() => setShowEmailDialog(true)} disabled={isSending}>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send to Email
+                </Button>
+              </>
             )}
             {invoice.status === 'sent' && (
               <>
@@ -373,6 +388,48 @@ export const InvoiceDetailSheet = ({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Send to Email Dialog */}
+        <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Send Invoice to Email</DialogTitle>
+              <DialogDescription>
+                Enter an email address to send this invoice.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="invoice-email">Email Address</Label>
+                <Input
+                  id="invoice-email"
+                  type="email"
+                  placeholder="Enter email address..."
+                  value={customEmail}
+                  onChange={(e) => setCustomEmail(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowEmailDialog(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => {
+                  if (customEmail.trim()) {
+                    onSendToEmail?.(customEmail);
+                    toast.success(`Invoice will be sent to ${customEmail}`);
+                    setShowEmailDialog(false);
+                    setCustomEmail('');
+                  }
+                }} 
+                disabled={!customEmail.trim()}
+              >
+                Send to Email
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </SheetContent>
     </Sheet>
   );

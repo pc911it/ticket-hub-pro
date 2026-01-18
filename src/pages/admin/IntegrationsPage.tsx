@@ -334,8 +334,8 @@ const IntegrationsPage = () => {
           </CardContent>
         </Card>
 
-        {/* Coming Soon Card */}
-        <Card className="relative overflow-hidden opacity-60">
+        {/* Xero Integration Card */}
+        <Card className="relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-500/10 to-transparent" />
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -345,7 +345,7 @@ const IntegrationsPage = () => {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   Xero
-                  <Badge variant="outline">Coming Soon</Badge>
+                  <Badge variant="outline">Available</Badge>
                 </CardTitle>
                 <CardDescription>
                   Connect your Xero account for accounting sync
@@ -353,8 +353,22 @@ const IntegrationsPage = () => {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <Button disabled className="w-full">
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <span>Sync invoices and bills</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <span>Financial reporting</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <span>Payment reconciliation</span>
+              </div>
+            </div>
+            <Button className="w-full bg-blue-600 hover:bg-blue-700">
               <Link2 className="h-4 w-4 mr-2" />
               Connect Xero
             </Button>

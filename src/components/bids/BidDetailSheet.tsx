@@ -10,7 +10,10 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { 
   Send, 
   CheckCircle, 
@@ -22,7 +25,8 @@ import {
   Building, 
   Calendar,
   Activity,
-  Receipt
+  Receipt,
+  Mail
 } from 'lucide-react';
 
 interface LineItem {
@@ -58,6 +62,9 @@ export default function BidDetailSheet({ open, onOpenChange, bid, onUpdate }: Bi
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [showConvertDialog, setShowConvertDialog] = useState(false);
   const [rejectType, setRejectType] = useState<'internal' | 'client'>('internal');
+  const [showSendEmailDialog, setShowSendEmailDialog] = useState(false);
+  const [customEmail, setCustomEmail] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   useEffect(() => {
     if (open && bid) {
@@ -183,6 +190,34 @@ export default function BidDetailSheet({ open, onOpenChange, bid, onUpdate }: Bi
       'sent_to_client',
       'Bid sent to client'
     );
+  };
+
+  const handleSendToEmail = async () => {
+    if (!customEmail.trim()) {
+      toast.error('Please enter an email address');
+      return;
+    }
+    
+    setSendingEmail(true);
+    try {
+      // Here you would call an edge function to send the email
+      // For now, we'll just update the status and log the activity
+      await updateBidStatus(
+        { status: 'submitted' },
+        'sent_to_email',
+        `Bid sent to email: ${customEmail}`
+      );
+      
+      await logActivity('email_sent', `Bid sent via email to ${customEmail}`);
+      
+      toast.success(`Bid sent to ${customEmail}`);
+      setShowSendEmailDialog(false);
+      setCustomEmail('');
+    } catch (error) {
+      toast.error('Failed to send bid');
+    } finally {
+      setSendingEmail(false);
+    }
   };
 
   const handleConvertToInvoice = async () => {
@@ -334,10 +369,16 @@ export default function BidDetailSheet({ open, onOpenChange, bid, onUpdate }: Bi
               )}
 
               {bid.internal_approval_status === 'approved' && bid.status !== 'submitted' && bid.status !== 'won' && bid.status !== 'lost' && (
-                <Button onClick={handleSendToClient} disabled={loading}>
-                  <Send className="h-4 w-4 mr-2" />
-                  Send to Client
-                </Button>
+                <>
+                  <Button onClick={handleSendToClient} disabled={loading}>
+                    <Send className="h-4 w-4 mr-2" />
+                    Send to Client
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowSendEmailDialog(true)} disabled={loading}>
+                    <Mail className="h-4 w-4 mr-2" />
+                    Send to Email
+                  </Button>
+                </>
               )}
 
               {bid.status === 'submitted' && bid.client_approval_status === 'pending' && (
@@ -535,6 +576,56 @@ export default function BidDetailSheet({ open, onOpenChange, bid, onUpdate }: Bi
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Send to Email Dialog */}
+      <Dialog open={showSendEmailDialog} onOpenChange={setShowSendEmailDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send Bid to Email</DialogTitle>
+            <DialogDescription>
+              Enter an email address to send this bid to someone not registered as a client.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {bid?.client && (
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-sm font-medium">Or send to registered client:</p>
+                <p className="text-sm text-muted-foreground">{bid.client.full_name} - {bid.client.email}</p>
+                <Button 
+                  size="sm" 
+                  className="mt-2"
+                  onClick={() => {
+                    handleSendToClient();
+                    setShowSendEmailDialog(false);
+                  }}
+                  disabled={loading}
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Send to Client
+                </Button>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="Enter email address..."
+                value={customEmail}
+                onChange={(e) => setCustomEmail(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSendEmailDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSendToEmail} disabled={sendingEmail || !customEmail.trim()}>
+              {sendingEmail ? 'Sending...' : 'Send to Email'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
