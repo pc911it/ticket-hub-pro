@@ -176,12 +176,12 @@ export function CreateRFIDialog({ open, onOpenChange, onSuccess }: CreateRFIDial
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Project (Optional)</Label>
-              <Select value={formData.projectId} onValueChange={(v) => setFormData({ ...formData, projectId: v })}>
+              <Select value={formData.projectId || "none"} onValueChange={(v) => setFormData({ ...formData, projectId: v === "none" ? "" : v })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {projects.map((p) => (
                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}
@@ -191,12 +191,12 @@ export function CreateRFIDialog({ open, onOpenChange, onSuccess }: CreateRFIDial
 
             <div className="space-y-2">
               <Label>Ticket (Optional)</Label>
-              <Select value={formData.ticketId} onValueChange={(v) => setFormData({ ...formData, ticketId: v })}>
+              <Select value={formData.ticketId || "none"} onValueChange={(v) => setFormData({ ...formData, ticketId: v === "none" ? "" : v })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select ticket" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {tickets.map((t) => (
                     <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
                   ))}
