@@ -13,6 +13,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { validatePassword } from '@/lib/passwordValidation';
 import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 type AuthMethod = 'email' | 'phone' | 'google';
 
@@ -235,13 +236,16 @@ const Auth = () => {
       </div>
       
       <div className="relative w-full max-w-md">
-        <Link 
-          to="/" 
-          className="inline-flex items-center gap-2 text-primary-foreground/80 hover:text-primary-foreground mb-6 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to home
-        </Link>
+        <div className="flex items-center justify-between mb-6">
+          <Link 
+            to="/" 
+            className="inline-flex items-center gap-2 text-primary-foreground/80 hover:text-primary-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to home
+          </Link>
+          <LanguageSwitcher variant="compact" className="text-primary-foreground" />
+        </div>
 
         <Card className="animate-scale-in shadow-xl border-0">
           <CardHeader className="space-y-1 text-center">
