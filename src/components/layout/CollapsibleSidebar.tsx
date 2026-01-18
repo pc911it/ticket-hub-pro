@@ -334,9 +334,23 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
     return <div key={item.href}>{content}</div>;
   };
 
+  // Map group names to tour data attributes
+  const groupTourMap: Record<string, string> = {
+    'Operations': 'sidebar-operations',
+    'Team': 'sidebar-team',
+    'Sales & CRM': 'sidebar-sales',
+    'Projects': 'sidebar-projects',
+    'Financial': 'sidebar-financial',
+    'Resources': 'sidebar-resources',
+    'Design': 'sidebar-design',
+    'Support': 'sidebar-support',
+    'Settings': 'sidebar-settings',
+  };
+
   const renderGroup = (group: NavGroup) => {
     const isGroupOpen = openGroups[group.name] ?? false;
     const hasActiveItem = group.items.some(item => location.pathname === item.href);
+    const tourAttribute = groupTourMap[group.name];
 
     if (collapsed) {
       // In collapsed mode, show group icon with dropdown on hover
@@ -344,6 +358,7 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
         <Tooltip key={group.name} delayDuration={0}>
           <TooltipTrigger asChild>
             <div
+              data-tour={tourAttribute}
               className={cn(
                 "flex items-center justify-center p-2 rounded-lg cursor-pointer transition-all",
                 hasActiveItem 
@@ -396,7 +411,7 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
         open={isGroupOpen} 
         onOpenChange={() => toggleGroup(group.name)}
       >
-        <CollapsibleTrigger className="w-full">
+        <CollapsibleTrigger className="w-full" data-tour={tourAttribute}>
           <div
             className={cn(
               "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer",
@@ -440,7 +455,7 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
           <div className={cn(
             "flex h-14 items-center border-b border-sidebar-border",
             collapsed ? "justify-center px-2" : "justify-between px-4"
-          )}>
+          )} data-tour="sidebar-logo">
             {!collapsed && (
               <Link to="/admin" className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
@@ -466,7 +481,7 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
           <div className={cn(
             "hidden lg:flex items-center border-b border-sidebar-border",
             collapsed ? "justify-center py-2" : "justify-end px-2 py-2"
-          )}>
+          )} data-tour="sidebar-collapse">
             <button
               onClick={() => setCollapsed(!collapsed)}
               className="p-1.5 hover:bg-sidebar-accent rounded-lg text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"

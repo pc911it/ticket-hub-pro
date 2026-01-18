@@ -12,6 +12,7 @@ import { NotificationToggle, NotificationPermissionBanner } from '@/components/N
 import { BillingAlertBanner } from '@/components/BillingAlertBanner';
 import { PasswordResetReminder } from '@/components/PasswordResetReminder';
 import { SuperAdminCompanySelector } from '@/components/SuperAdminCompanySelector';
+import { WelcomeTour } from '@/components/WelcomeTour';
 import { CollapsibleSidebar } from './CollapsibleSidebar';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
@@ -89,9 +90,11 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           {user && <PasswordResetReminder userId={user.id} />}
           
           {/* Notification Toggle */}
-          <NotificationToggle />
+          <div data-tour="header-notifications">
+            <NotificationToggle />
+          </div>
           
-          <Link to="/">
+          <Link to="/" data-tour="header-view-site">
             <Button variant="outline" size="sm">
               View Site
             </Button>
@@ -115,6 +118,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       
       {/* Session Timeout Warning */}
       <SessionTimeoutDialog />
+      
+      {/* Welcome Tour for New Users */}
+      <WelcomeTour />
     </div>
   );
 };
