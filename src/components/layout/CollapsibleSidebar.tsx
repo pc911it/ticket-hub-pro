@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { Button } from '@/components/ui/button';
@@ -61,7 +62,7 @@ import {
 } from 'lucide-react';
 
 interface NavItem {
-  name: string;
+  nameKey: string;
   href: string;
   icon: any;
   badge?: number;
@@ -69,7 +70,7 @@ interface NavItem {
 }
 
 interface NavGroup {
-  name: string;
+  nameKey: string;
   icon: any;
   items: NavItem[];
   defaultOpen?: boolean;
@@ -84,109 +85,109 @@ interface CollapsibleSidebarProps {
 // Pages restricted to admins only
 const restrictedPages = ['/admin/client-billing', '/admin/billing', '/admin/settings', '/admin/users', '/admin/payment-settings'];
 
-// Navigation groups configuration
+// Navigation groups configuration with translation keys
 const createNavigationGroups = (hasFeature: (key: string) => boolean, isAdminLevel: boolean): NavGroup[] => {
   const groups: NavGroup[] = [
     {
-      name: 'Operations',
+      nameKey: 'sidebar.operations',
       icon: Radio,
       defaultOpen: true,
       items: [
-        { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-        { name: 'Dispatcher', href: '/admin/dispatcher', icon: Radio },
-        { name: 'New Call', href: '/admin/new-call', icon: Plus },
-        { name: 'Calendar', href: '/admin/calendar', icon: Calendar },
-        { name: 'Notifications', href: '/admin/notifications', icon: Bell },
-        { name: 'Updates', href: '/admin/updates', icon: LayoutDashboard },
+        { nameKey: 'sidebar.dashboard', href: '/admin', icon: LayoutDashboard },
+        { nameKey: 'sidebar.dispatcher', href: '/admin/dispatcher', icon: Radio },
+        { nameKey: 'sidebar.newCall', href: '/admin/new-call', icon: Plus },
+        { nameKey: 'sidebar.calendar', href: '/admin/calendar', icon: Calendar },
+        { nameKey: 'sidebar.notifications', href: '/admin/notifications', icon: Bell },
+        { nameKey: 'sidebar.updates', href: '/admin/updates', icon: LayoutDashboard },
       ]
     },
     {
-      name: 'Team',
+      nameKey: 'sidebar.team',
       icon: Users,
       items: [
-        { name: 'Employees', href: '/admin/employees', icon: UserCircle },
-        { name: 'Time Reports', href: '/admin/time-reports', icon: Clock },
+        { nameKey: 'sidebar.employees', href: '/admin/employees', icon: UserCircle },
+        { nameKey: 'sidebar.timeReports', href: '/admin/time-reports', icon: Clock },
       ]
     },
     {
-      name: 'Sales & CRM',
+      nameKey: 'sidebar.salesCrm',
       icon: TrendingUp,
       items: [
-        { name: 'Leads', href: '/admin/leads', icon: UserPlus, featureKey: 'leads_management' },
-        { name: 'Clients', href: '/admin/clients', icon: Users },
-        { name: 'Bids', href: '/admin/bids', icon: Gavel, featureKey: 'bid_management' },
-        { name: 'Contracts', href: '/admin/contracts', icon: FileSignature, featureKey: 'contracts_esign' },
-        { name: 'Follow-Ups', href: '/admin/follow-ups', icon: BellRing, featureKey: 'follow_ups' },
+        { nameKey: 'sidebar.leads', href: '/admin/leads', icon: UserPlus, featureKey: 'leads_management' },
+        { nameKey: 'sidebar.clients', href: '/admin/clients', icon: Users },
+        { nameKey: 'sidebar.bids', href: '/admin/bids', icon: Gavel, featureKey: 'bid_management' },
+        { nameKey: 'sidebar.contracts', href: '/admin/contracts', icon: FileSignature, featureKey: 'contracts_esign' },
+        { nameKey: 'sidebar.followUps', href: '/admin/follow-ups', icon: BellRing, featureKey: 'follow_ups' },
       ]
     },
     {
-      name: 'Projects',
+      nameKey: 'sidebar.projects',
       icon: Building2,
       items: [
-        { name: 'Projects', href: '/admin/projects', icon: Building2, featureKey: 'project_management' },
-        { name: 'Change Orders', href: '/admin/change-orders', icon: FileSignature, featureKey: 'change_orders' },
-        { name: 'RFIs', href: '/admin/rfis', icon: FileQuestion, featureKey: 'rfi_management' },
-        { name: 'Submittals', href: '/admin/submittals', icon: ClipboardList, featureKey: 'submittal_management' },
-        { name: 'Permits', href: '/admin/permits', icon: FileCheck, featureKey: 'permit_tracking' },
-        { name: 'Daily Logs', href: '/admin/daily-logs', icon: NotebookPen, featureKey: 'daily_logs' },
-        { name: 'Work Orders', href: '/admin/work-orders', icon: Hammer, featureKey: 'work_orders' },
-        { name: 'Punch Lists', href: '/admin/punch-lists', icon: ClipboardCheck, featureKey: 'punch_lists' },
-        { name: 'Inspections', href: '/admin/inspections', icon: ClipboardCheck, featureKey: 'inspections' },
-        { name: '3D Plans', href: '/admin/floor-plans', icon: Box, featureKey: 'floor_plans_3d' },
-        { name: 'Plans', href: '/admin/plans', icon: FileText },
+        { nameKey: 'sidebar.projects', href: '/admin/projects', icon: Building2, featureKey: 'project_management' },
+        { nameKey: 'sidebar.changeOrders', href: '/admin/change-orders', icon: FileSignature, featureKey: 'change_orders' },
+        { nameKey: 'sidebar.rfis', href: '/admin/rfis', icon: FileQuestion, featureKey: 'rfi_management' },
+        { nameKey: 'sidebar.submittals', href: '/admin/submittals', icon: ClipboardList, featureKey: 'submittal_management' },
+        { nameKey: 'sidebar.permits', href: '/admin/permits', icon: FileCheck, featureKey: 'permit_tracking' },
+        { nameKey: 'sidebar.dailyLogs', href: '/admin/daily-logs', icon: NotebookPen, featureKey: 'daily_logs' },
+        { nameKey: 'sidebar.workOrders', href: '/admin/work-orders', icon: Hammer, featureKey: 'work_orders' },
+        { nameKey: 'sidebar.punchLists', href: '/admin/punch-lists', icon: ClipboardCheck, featureKey: 'punch_lists' },
+        { nameKey: 'sidebar.inspections', href: '/admin/inspections', icon: ClipboardCheck, featureKey: 'inspections' },
+        { nameKey: 'sidebar.floorPlans3d', href: '/admin/floor-plans', icon: Box, featureKey: 'floor_plans_3d' },
+        { nameKey: 'sidebar.plans', href: '/admin/plans', icon: FileText },
       ]
     },
     {
-      name: 'Financial',
+      nameKey: 'sidebar.financial',
       icon: Wallet,
       items: [
-        ...(isAdminLevel ? [{ name: 'Client Billing', href: '/admin/client-billing', icon: DollarSign }] : []),
-        { name: 'Budgeting', href: '/admin/budgeting', icon: Calculator, featureKey: 'basic_budgeting' },
-        { name: 'Cost Calculator', href: '/admin/cost-calculator', icon: Calculator, featureKey: 'cost_estimating' },
+        ...(isAdminLevel ? [{ nameKey: 'sidebar.clientBilling', href: '/admin/client-billing', icon: DollarSign }] : []),
+        { nameKey: 'sidebar.budgeting', href: '/admin/budgeting', icon: Calculator, featureKey: 'basic_budgeting' },
+        { nameKey: 'sidebar.costCalculator', href: '/admin/cost-calculator', icon: Calculator, featureKey: 'cost_estimating' },
       ]
     },
     {
-      name: 'Resources',
+      nameKey: 'sidebar.resources',
       icon: Package,
       items: [
-        { name: 'Inventory', href: '/admin/inventory', icon: Package, featureKey: 'inventory_management' },
-        { name: 'Equipment', href: '/admin/equipment', icon: Truck, featureKey: 'equipment_tracking' },
-        { name: 'Subcontractors', href: '/admin/subcontractors', icon: HardHat, featureKey: 'subcontractor_matching' },
-        { name: 'Product Library', href: '/admin/product-library', icon: Library, featureKey: 'product_library' },
+        { nameKey: 'sidebar.inventory', href: '/admin/inventory', icon: Package, featureKey: 'inventory_management' },
+        { nameKey: 'sidebar.equipment', href: '/admin/equipment', icon: Truck, featureKey: 'equipment_tracking' },
+        { nameKey: 'sidebar.subcontractors', href: '/admin/subcontractors', icon: HardHat, featureKey: 'subcontractor_matching' },
+        { nameKey: 'sidebar.productLibrary', href: '/admin/product-library', icon: Library, featureKey: 'product_library' },
       ]
     },
     {
-      name: 'Design',
+      nameKey: 'sidebar.design',
       icon: Palette,
       items: [
-        { name: 'Selections', href: '/admin/selections', icon: Palette, featureKey: 'selections_allowances' },
-        { name: 'Mood Boards', href: '/admin/mood-boards', icon: Shapes, featureKey: 'mood_boards' },
+        { nameKey: 'sidebar.selections', href: '/admin/selections', icon: Palette, featureKey: 'selections_allowances' },
+        { nameKey: 'sidebar.moodBoards', href: '/admin/mood-boards', icon: Shapes, featureKey: 'mood_boards' },
       ]
     },
     {
-      name: 'Support',
+      nameKey: 'sidebar.support',
       icon: Headphones,
       items: [
-        { name: 'Tickets', href: '/admin/tickets', icon: Ticket },
-        { name: 'Chat Tickets', href: '/admin/chat-tickets', icon: MessageSquare },
-        { name: 'Live Chats', href: '/admin/live-chats', icon: HeadphonesIcon },
-        { name: 'Support', href: '/admin/support', icon: HeadphonesIcon },
-        { name: 'Warranties', href: '/admin/warranties', icon: Shield, featureKey: 'warranties' },
+        { nameKey: 'sidebar.tickets', href: '/admin/tickets', icon: Ticket },
+        { nameKey: 'sidebar.chatTickets', href: '/admin/chat-tickets', icon: MessageSquare },
+        { nameKey: 'sidebar.liveChats', href: '/admin/live-chats', icon: HeadphonesIcon },
+        { nameKey: 'sidebar.support', href: '/admin/support', icon: HeadphonesIcon },
+        { nameKey: 'sidebar.warranties', href: '/admin/warranties', icon: Shield, featureKey: 'warranties' },
       ]
     },
     {
-      name: 'Settings',
+      nameKey: 'sidebar.settings',
       icon: Cog,
       items: [
-        { name: 'Service Types', href: '/admin/service-types', icon: Wrench },
+        { nameKey: 'sidebar.serviceTypes', href: '/admin/service-types', icon: Wrench },
         ...(isAdminLevel ? [
-          { name: 'Users', href: '/admin/users', icon: Shield },
-          { name: 'Billing', href: '/admin/billing', icon: CreditCard },
-          { name: 'Payment Settings', href: '/admin/payment-settings', icon: DollarSign },
-          { name: 'Integrations', href: '/admin/integrations', icon: TrendingUp },
-          { name: 'Settings', href: '/admin/settings', icon: Settings },
+          { nameKey: 'sidebar.users', href: '/admin/users', icon: Shield },
+          { nameKey: 'sidebar.billing', href: '/admin/billing', icon: CreditCard },
+          { nameKey: 'sidebar.paymentSettings', href: '/admin/payment-settings', icon: DollarSign },
+          { nameKey: 'sidebar.integrations', href: '/admin/integrations', icon: TrendingUp },
+          { nameKey: 'sidebar.settings', href: '/admin/settings', icon: Settings },
         ] : []),
-        { name: 'Trash', href: '/admin/trash', icon: Trash2 },
+        { nameKey: 'sidebar.trash', href: '/admin/trash', icon: Trash2 },
       ]
     },
   ];
@@ -204,22 +205,23 @@ const createNavigationGroups = (hasFeature: (key: string) => boolean, isAdminLev
 };
 
 const superAdminNavigation: NavItem[] = [
-  { name: 'Platform Overview', href: '/admin/super-dashboard', icon: LayoutDashboard },
-  { name: 'Company Features', href: '/admin/company-features', icon: Settings },
-  { name: 'Live Chats', href: '/admin/live-chats', icon: HeadphonesIcon },
-  { name: 'Chat Tickets', href: '/admin/chat-tickets', icon: MessageSquare },
-  { name: 'Create Company', href: '/admin/create-company', icon: Plus },
-  { name: 'Company Approvals', href: '/admin/company-approvals', icon: CheckSquare },
-  { name: 'Support Tickets', href: '/admin/support-tickets', icon: Ticket },
-  { name: 'Platform Billing', href: '/admin/platform-billing', icon: DollarSign },
-  { name: 'Promo Codes', href: '/admin/promo-codes', icon: Gift },
+  { nameKey: 'sidebar.platformOverview', href: '/admin/super-dashboard', icon: LayoutDashboard },
+  { nameKey: 'sidebar.companyFeatures', href: '/admin/company-features', icon: Settings },
+  { nameKey: 'sidebar.liveChats', href: '/admin/live-chats', icon: HeadphonesIcon },
+  { nameKey: 'sidebar.chatTickets', href: '/admin/chat-tickets', icon: MessageSquare },
+  { nameKey: 'sidebar.createCompany', href: '/admin/create-company', icon: Plus },
+  { nameKey: 'sidebar.companyApprovals', href: '/admin/company-approvals', icon: CheckSquare },
+  { nameKey: 'sidebar.supportTickets', href: '/admin/support-tickets', icon: Ticket },
+  { nameKey: 'sidebar.platformBilling', href: '/admin/platform-billing', icon: DollarSign },
+  { nameKey: 'sidebar.promoCodes', href: '/admin/promo-codes', icon: Gift },
 ];
 
 const staffNavigation: NavItem[] = [
-  { name: 'Employee Portal', href: '/employee', icon: Briefcase },
+  { nameKey: 'sidebar.employeePortal', href: '/employee', icon: Briefcase },
 ];
 
 export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: CollapsibleSidebarProps) => {
+  const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebar-collapsed');
     return saved === 'true';
@@ -251,7 +253,7 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
     filteredGroups.forEach(group => {
       const hasActiveItem = group.items.some(item => location.pathname === item.href);
       if (hasActiveItem || group.defaultOpen) {
-        initialOpen[group.name] = true;
+        initialOpen[group.nameKey] = true;
       }
     });
     setOpenGroups(prev => ({ ...initialOpen, ...prev }));
@@ -297,7 +299,7 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
         <item.icon className={cn("h-4 w-4 shrink-0", collapsed ? "" : "")} />
         {!collapsed && (
           <>
-            <span className="flex-1 truncate">{item.name}</span>
+            <span className="flex-1 truncate">{t(item.nameKey)}</span>
             {itemWithBadge.badge && itemWithBadge.badge > 0 && (
               <Badge 
                 variant="destructive" 
@@ -321,7 +323,7 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
             <div className="relative">{content}</div>
           </TooltipTrigger>
           <TooltipContent side="right" className="flex items-center gap-2">
-            {item.name}
+            {t(item.nameKey)}
             {itemWithBadge.badge && itemWithBadge.badge > 0 && (
               <Badge variant="destructive" className="h-4 px-1 text-[10px]">
                 {itemWithBadge.badge}
@@ -335,28 +337,28 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
     return <div key={item.href}>{content}</div>;
   };
 
-  // Map group names to tour data attributes
+  // Map group nameKeys to tour data attributes
   const groupTourMap: Record<string, string> = {
-    'Operations': 'sidebar-operations',
-    'Team': 'sidebar-team',
-    'Sales & CRM': 'sidebar-sales',
-    'Projects': 'sidebar-projects',
-    'Financial': 'sidebar-financial',
-    'Resources': 'sidebar-resources',
-    'Design': 'sidebar-design',
-    'Support': 'sidebar-support',
-    'Settings': 'sidebar-settings',
+    'sidebar.operations': 'sidebar-operations',
+    'sidebar.team': 'sidebar-team',
+    'sidebar.salesCrm': 'sidebar-sales',
+    'sidebar.projects': 'sidebar-projects',
+    'sidebar.financial': 'sidebar-financial',
+    'sidebar.resources': 'sidebar-resources',
+    'sidebar.design': 'sidebar-design',
+    'sidebar.support': 'sidebar-support',
+    'sidebar.settings': 'sidebar-settings',
   };
 
   const renderGroup = (group: NavGroup) => {
-    const isGroupOpen = openGroups[group.name] ?? false;
+    const isGroupOpen = openGroups[group.nameKey] ?? false;
     const hasActiveItem = group.items.some(item => location.pathname === item.href);
-    const tourAttribute = groupTourMap[group.name];
+    const tourAttribute = groupTourMap[group.nameKey];
 
     if (collapsed) {
       // In collapsed mode, show group icon with dropdown on hover
       return (
-        <Tooltip key={group.name} delayDuration={0}>
+        <Tooltip key={group.nameKey} delayDuration={0}>
           <TooltipTrigger asChild>
             <div
               data-tour={tourAttribute}
@@ -373,7 +375,7 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
           <TooltipContent side="right" sideOffset={10} className="p-0 w-48">
             <div className="py-2">
               <div className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase">
-                {group.name}
+                {t(group.nameKey)}
               </div>
               {group.items.map(item => {
                 const isActive = location.pathname === item.href;
@@ -391,7 +393,7 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
                     )}
                   >
                     <item.icon className="h-4 w-4" />
-                    <span className="flex-1">{item.name}</span>
+                    <span className="flex-1">{t(item.nameKey)}</span>
                     {itemWithBadge.badge && itemWithBadge.badge > 0 && (
                       <Badge variant="destructive" className="h-4 px-1 text-[10px]">
                         {itemWithBadge.badge}
@@ -408,9 +410,9 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
 
     return (
       <Collapsible 
-        key={group.name} 
+        key={group.nameKey} 
         open={isGroupOpen} 
-        onOpenChange={() => toggleGroup(group.name)}
+        onOpenChange={() => toggleGroup(group.nameKey)}
       >
         <CollapsibleTrigger className="w-full" data-tour={tourAttribute}>
           <div
@@ -422,7 +424,7 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
             )}
           >
             <group.icon className="h-4 w-4" />
-            <span className="flex-1 text-left">{group.name}</span>
+            <span className="flex-1 text-left">{t(group.nameKey)}</span>
             <ChevronDown 
               className={cn(
                 "h-4 w-4 transition-transform duration-200",
@@ -501,7 +503,7 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
               <>
                 {!collapsed && (
                   <div className="px-3 py-2 text-[10px] font-semibold text-sidebar-foreground/40 uppercase tracking-wider">
-                    Super Admin
+                    {t('sidebar.superAdmin')}
                   </div>
                 )}
                 <div className={cn("space-y-0.5", collapsed ? "" : "mb-3")}>
@@ -581,7 +583,7 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
                     <LogOut className="h-4 w-4" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right">Sign out</TooltipContent>
+                <TooltipContent side="right">{t('sidebar.signOut')}</TooltipContent>
               </Tooltip>
             ) : (
               <Button 
@@ -591,7 +593,7 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
                 onClick={handleSignOut}
               >
                 <LogOut className="h-3.5 w-3.5 mr-2" />
-                Sign out
+                {t('sidebar.signOut')}
               </Button>
             )}
           </div>
