@@ -3960,16 +3960,26 @@ export type Database = {
       promo_codes: {
         Row: {
           applicable_plans: string[] | null
+          applies_to_renewals: boolean | null
           code: string
           created_at: string
+          created_by: string | null
           current_uses: number
           description: string | null
           discount_type: string
           discount_value: number
+          first_time_only: boolean | null
           id: string
           is_active: boolean
+          is_recurring: boolean | null
+          is_stackable: boolean | null
           max_uses: number | null
+          min_purchase_amount: number | null
           name: string
+          promo_category: string | null
+          recurring_interval: string | null
+          referral_bonus_type: string | null
+          referral_bonus_value: number | null
           trial_extension_days: number | null
           updated_at: string
           valid_from: string
@@ -3977,16 +3987,26 @@ export type Database = {
         }
         Insert: {
           applicable_plans?: string[] | null
+          applies_to_renewals?: boolean | null
           code: string
           created_at?: string
+          created_by?: string | null
           current_uses?: number
           description?: string | null
           discount_type: string
           discount_value?: number
+          first_time_only?: boolean | null
           id?: string
           is_active?: boolean
+          is_recurring?: boolean | null
+          is_stackable?: boolean | null
           max_uses?: number | null
+          min_purchase_amount?: number | null
           name: string
+          promo_category?: string | null
+          recurring_interval?: string | null
+          referral_bonus_type?: string | null
+          referral_bonus_value?: number | null
           trial_extension_days?: number | null
           updated_at?: string
           valid_from?: string
@@ -3994,16 +4014,26 @@ export type Database = {
         }
         Update: {
           applicable_plans?: string[] | null
+          applies_to_renewals?: boolean | null
           code?: string
           created_at?: string
+          created_by?: string | null
           current_uses?: number
           description?: string | null
           discount_type?: string
           discount_value?: number
+          first_time_only?: boolean | null
           id?: string
           is_active?: boolean
+          is_recurring?: boolean | null
+          is_stackable?: boolean | null
           max_uses?: number | null
+          min_purchase_amount?: number | null
           name?: string
+          promo_category?: string | null
+          recurring_interval?: string | null
+          referral_bonus_type?: string | null
+          referral_bonus_value?: number | null
           trial_extension_days?: number | null
           updated_at?: string
           valid_from?: string
@@ -4281,6 +4311,108 @@ export type Database = {
           {
             foreignKeyName: "purchase_orders_company_id_fkey"
             columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referral_codes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          owner_company_id: string | null
+          owner_user_id: string | null
+          promo_code_id: string | null
+          total_earnings: number | null
+          total_referrals: number | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          owner_company_id?: string | null
+          owner_user_id?: string | null
+          promo_code_id?: string | null
+          total_earnings?: number | null
+          total_referrals?: number | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          owner_company_id?: string | null
+          owner_user_id?: string | null
+          promo_code_id?: string | null
+          total_earnings?: number | null
+          total_referrals?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_codes_owner_company_id_fkey"
+            columns: ["owner_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_codes_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referral_uses: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          referral_code_id: string
+          referred_bonus_amount: number | null
+          referred_company_id: string
+          referrer_bonus_amount: number | null
+          status: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          referral_code_id: string
+          referred_bonus_amount?: number | null
+          referred_company_id: string
+          referrer_bonus_amount?: number | null
+          status?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          referral_code_id?: string
+          referred_bonus_amount?: number | null
+          referred_company_id?: string
+          referrer_bonus_amount?: number | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_uses_referral_code_id_fkey"
+            columns: ["referral_code_id"]
+            isOneToOne: false
+            referencedRelation: "referral_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_uses_referred_company_id_fkey"
+            columns: ["referred_company_id"]
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
