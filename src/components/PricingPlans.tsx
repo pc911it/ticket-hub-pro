@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,108 +19,6 @@ export interface PricingPlan {
   icon: 'professional' | 'advanced' | 'enterprise';
   isCustomPricing?: boolean;
 }
-
-export const defaultPlans: PricingPlan[] = [
-  {
-    id: 'professional',
-    name: 'Professional',
-    monthlyPrice: 349,
-    yearlyPrice: 2990,
-    description: 'Perfect for growing teams ready to scale operations',
-    icon: 'professional',
-    features: [
-      '1,000 tickets/month',
-      'Unlimited projects',
-      'Up to 10 staff members',
-      'Lead Management (100 leads)',
-      'Daily Logs & Work Orders',
-      'Basic Budgeting',
-      'Warranty Tracking',
-      'Follow-up Reminders',
-      'Full Inventory with barcode & supplier',
-      'Full Client Portal access',
-      'Geolocation Verification',
-      'Admin Approval Workflow',
-      'Project Chat',
-      'File Uploads (Tickets & Projects)',
-      'Billing Integration (Stripe/Square)',
-      'Standard Support',
-    ],
-    highlighted: ['Lead Management (100 leads)', 'Daily Logs & Work Orders', 'Basic Budgeting'],
-  },
-  {
-    id: 'advanced',
-    name: 'Advanced',
-    monthlyPrice: 899,
-    yearlyPrice: 7490,
-    description: 'Complete solution for high-volume organizations',
-    icon: 'advanced',
-    popular: true,
-    features: [
-      'Unlimited tickets',
-      'Unlimited projects',
-      'Unlimited staff members',
-      'Lead Management (500 leads)',
-      'Bid Management & AI Bidding',
-      'RFI & Submittal Management',
-      'Permit Tracking & Alerts',
-      'Change Orders & Contracts with eSign',
-      '3D Floor Plan Viewer',
-      'Daily Logs & Work Orders',
-      'Punch Lists & Inspections',
-      'Advanced Budgeting & Job Costing',
-      'Warranty & Equipment Tracking',
-      'Selections & Allowances',
-      'Subcontractor Matching',
-      'Cost Calculator & Estimating',
-      'Mood Boards & Product Library',
-      'AI Takeoffs from Blueprints',
-      'Offline Mode & Plan Markups',
-      'Site Mapping & Crew Dispatch',
-      'Follow-up Reminders (AI-driven)',
-      'Full Inventory + Advanced Reports',
-      'Branding / White-label',
-      'Priority Support',
-    ],
-    highlighted: [
-      'AI Bidding & AI Takeoffs',
-      'Change Orders & Contracts with eSign',
-      'Subcontractor Matching',
-      'Offline Mode & Plan Markups',
-      'Mood Boards & Product Library',
-    ],
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    monthlyPrice: 0,
-    yearlyPrice: 0,
-    description: 'Tailored solutions for large-scale operations',
-    icon: 'enterprise',
-    isCustomPricing: true,
-    features: [
-      'Unlimited tickets',
-      'Unlimited + Multi-company projects',
-      'Enterprise-level users',
-      'All Advanced features, plus:',
-      'Multi-location Inventory Tracking',
-      'Advanced AI Quantification',
-      'Real-time Team Collaboration',
-      'OCR for Scanned Drawings',
-      'Version Control & Studio Collaboration',
-      'Full Portal + SLA & Dedicated Onboarding',
-      'Custom Integrations & API Access',
-      'Dedicated Account Manager',
-      'Custom Training & Onboarding',
-      'Dedicated Support + SLA',
-    ],
-    highlighted: [
-      'Multi-company Projects',
-      'Advanced AI Quantification',
-      'Dedicated Support + SLA',
-    ],
-  },
-];
 
 const iconMap = {
   professional: Zap,
@@ -142,7 +41,115 @@ export function PricingPlans({
   variant = 'default',
   className,
 }: PricingPlansProps) {
+  const { t } = useTranslation();
   const [isYearly, setIsYearly] = useState(false);
+
+  // Define plans with translation keys
+  const plans: PricingPlan[] = [
+    {
+      id: 'professional',
+      name: t('pricing.professional.name'),
+      monthlyPrice: 349,
+      yearlyPrice: 2990,
+      description: t('pricing.professional.description'),
+      icon: 'professional',
+      features: [
+        t('pricing.professional.features.tickets'),
+        t('pricing.professional.features.unlimitedProjects'),
+        t('pricing.professional.features.staff'),
+        t('pricing.professional.features.leads'),
+        t('pricing.professional.features.dailyLogs'),
+        t('pricing.professional.features.budgeting'),
+        t('pricing.professional.features.warranty'),
+        t('pricing.professional.features.followUp'),
+        t('pricing.professional.features.inventory'),
+        t('pricing.professional.features.clientPortal'),
+        t('pricing.professional.features.geolocation'),
+        t('pricing.professional.features.approval'),
+        t('pricing.professional.features.chat'),
+        t('pricing.professional.features.uploads'),
+        t('pricing.professional.features.billing'),
+        t('pricing.professional.features.support'),
+      ],
+      highlighted: [
+        t('pricing.professional.features.leads'),
+        t('pricing.professional.features.dailyLogs'),
+        t('pricing.professional.features.budgeting'),
+      ],
+    },
+    {
+      id: 'advanced',
+      name: t('pricing.advanced.name'),
+      monthlyPrice: 899,
+      yearlyPrice: 7490,
+      description: t('pricing.advanced.description'),
+      icon: 'advanced',
+      popular: true,
+      features: [
+        t('pricing.advanced.features.unlimitedTickets'),
+        t('pricing.advanced.features.unlimitedProjects'),
+        t('pricing.advanced.features.unlimitedStaff'),
+        t('pricing.advanced.features.leads'),
+        t('pricing.advanced.features.bidding'),
+        t('pricing.advanced.features.rfi'),
+        t('pricing.advanced.features.permits'),
+        t('pricing.advanced.features.changeOrders'),
+        t('pricing.advanced.features.floorPlan'),
+        t('pricing.advanced.features.dailyLogs'),
+        t('pricing.advanced.features.punchLists'),
+        t('pricing.advanced.features.budgeting'),
+        t('pricing.advanced.features.warranty'),
+        t('pricing.advanced.features.selections'),
+        t('pricing.advanced.features.subcontractor'),
+        t('pricing.advanced.features.costCalculator'),
+        t('pricing.advanced.features.moodBoards'),
+        t('pricing.advanced.features.aiTakeoffs'),
+        t('pricing.advanced.features.offlineMode'),
+        t('pricing.advanced.features.siteMapping'),
+        t('pricing.advanced.features.aiFollowUp'),
+        t('pricing.advanced.features.advancedInventory'),
+        t('pricing.advanced.features.whiteLabel'),
+        t('pricing.advanced.features.prioritySupport'),
+      ],
+      highlighted: [
+        t('pricing.advanced.features.bidding'),
+        t('pricing.advanced.features.changeOrders'),
+        t('pricing.advanced.features.subcontractor'),
+        t('pricing.advanced.features.offlineMode'),
+        t('pricing.advanced.features.moodBoards'),
+      ],
+    },
+    {
+      id: 'enterprise',
+      name: t('pricing.enterprise.name'),
+      monthlyPrice: 0,
+      yearlyPrice: 0,
+      description: t('pricing.enterprise.description'),
+      icon: 'enterprise',
+      isCustomPricing: true,
+      features: [
+        t('pricing.enterprise.features.unlimitedTickets'),
+        t('pricing.enterprise.features.multiCompany'),
+        t('pricing.enterprise.features.enterpriseUsers'),
+        t('pricing.enterprise.features.allAdvanced'),
+        t('pricing.enterprise.features.multiLocation'),
+        t('pricing.enterprise.features.aiQuantification'),
+        t('pricing.enterprise.features.collaboration'),
+        t('pricing.enterprise.features.ocr'),
+        t('pricing.enterprise.features.versionControl'),
+        t('pricing.enterprise.features.portal'),
+        t('pricing.enterprise.features.customIntegrations'),
+        t('pricing.enterprise.features.accountManager'),
+        t('pricing.enterprise.features.training'),
+        t('pricing.enterprise.features.dedicatedSupport'),
+      ],
+      highlighted: [
+        t('pricing.enterprise.features.multiCompany'),
+        t('pricing.enterprise.features.aiQuantification'),
+        t('pricing.enterprise.features.dedicatedSupport'),
+      ],
+    },
+  ];
 
   const getPrice = (plan: PricingPlan) => {
     if (isYearly) {
@@ -164,7 +171,7 @@ export function PricingPlans({
           'text-sm font-medium transition-colors',
           !isYearly ? 'text-foreground' : 'text-muted-foreground'
         )}>
-          Monthly
+          {t('pricing.monthly')}
         </span>
         <Switch
           checked={isYearly}
@@ -175,12 +182,12 @@ export function PricingPlans({
           'text-sm font-medium transition-colors',
           isYearly ? 'text-foreground' : 'text-muted-foreground'
         )}>
-          Yearly
+          {t('pricing.yearly')}
         </span>
         {isYearly && (
           <Badge variant="secondary" className="ml-2 animate-scale-in">
             <Sparkles className="h-3 w-3 mr-1" />
-            Save up to 17%
+            {t('pricing.saveUpTo')}
           </Badge>
         )}
       </div>
@@ -190,7 +197,7 @@ export function PricingPlans({
         'grid gap-6',
         variant === 'compact' ? 'md:grid-cols-3' : 'lg:grid-cols-3 md:grid-cols-2'
       )}>
-        {defaultPlans.map((plan, index) => {
+        {plans.map((plan, index) => {
           const Icon = iconMap[plan.icon];
           const isCurrentPlan = plan.id === currentPlan;
           const price = getPrice(plan);
@@ -213,14 +220,14 @@ export function PricingPlans({
               {plan.popular && (
                 <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-secondary to-secondary/80 text-secondary-foreground text-center py-1.5 text-xs font-semibold">
                   <Sparkles className="h-3 w-3 inline mr-1" />
-                  MOST POPULAR
+                  {t('pricing.advanced.popular')}
                 </div>
               )}
 
               {/* Current Plan Badge */}
               {showCurrentBadge && isCurrentPlan && (
                 <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-medium px-3 py-1 rounded-bl-lg">
-                  Current Plan
+                  {t('pricing.currentPlan')}
                 </div>
               )}
 
@@ -243,27 +250,27 @@ export function PricingPlans({
                   {plan.isCustomPricing ? (
                     <>
                       <div className="flex items-baseline justify-center gap-1">
-                        <span className="text-3xl font-bold text-foreground">Contact Us</span>
+                        <span className="text-3xl font-bold text-foreground">{t('pricing.contactUs')}</span>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Custom pricing for your needs
+                        {t('pricing.customPricing')}
                       </p>
                     </>
                   ) : (
                     <>
                       <div className="flex items-baseline justify-center gap-1">
                         <span className="text-3xl font-bold text-foreground">${price}</span>
-                        <span className="text-muted-foreground">/mo</span>
+                        <span className="text-muted-foreground">{t('pricing.perMonth')}</span>
                       </div>
                       {isYearly && (
                         <p className="text-xs text-muted-foreground">
-                          Billed ${plan.yearlyPrice}/year
-                          <span className="text-green-600 ml-1">(Save ${savings})</span>
+                          {t('pricing.billed')} ${plan.yearlyPrice}/{t('pricing.year')}
+                          <span className="text-green-600 ml-1">({t('pricing.save')} ${savings})</span>
                         </p>
                       )}
                       {!isYearly && (
                         <p className="text-xs text-muted-foreground">
-                          Billed monthly
+                          {t('pricing.billedMonthly')}
                         </p>
                       )}
                     </>
@@ -304,7 +311,7 @@ export function PricingPlans({
                 {onSelectPlan ? (
                   isCurrentPlan ? (
                     <Button variant="outline" className="w-full" disabled>
-                      Current Plan
+                      {t('pricing.currentPlan')}
                     </Button>
                   ) : (
                     <Button
@@ -315,7 +322,7 @@ export function PricingPlans({
                       )}
                       onClick={() => onSelectPlan(plan.id, isYearly)}
                     >
-                      {plan.isCustomPricing ? 'Contact Sales' : (currentPlan ? 'Switch Plan' : 'Get Started')}
+                      {plan.isCustomPricing ? t('pricing.contactSales') : (currentPlan ? t('pricing.switchPlan') : t('pricing.getStarted'))}
                     </Button>
                   )
                 ) : (
@@ -328,7 +335,7 @@ export function PricingPlans({
                     asChild
                   >
                     <a href={plan.isCustomPricing ? 'mailto:sales@yourcompany.com' : '/register-company'}>
-                      {plan.isCustomPricing ? 'Contact Sales' : 'Start Free Trial'}
+                      {plan.isCustomPricing ? t('pricing.contactSales') : t('pricing.startFreeTrial')}
                     </a>
                   </Button>
                 )}
@@ -341,14 +348,50 @@ export function PricingPlans({
       {/* Bottom Note */}
       <div className="text-center mt-8 space-y-2">
         <p className="text-sm text-muted-foreground">
-          All plans include a 14-day free trial. No credit card required to start.
+          {t('pricing.allPlansInclude')}
         </p>
         <p className="text-xs text-muted-foreground/70">
-          Payment processing fees (2.9% + $0.30 per transaction) apply when billing your clients.
+          {t('pricing.paymentFees')}
         </p>
       </div>
     </div>
   );
 }
+
+// Export plans for use in other components (with English fallback)
+export const defaultPlans: PricingPlan[] = [
+  {
+    id: 'professional',
+    name: 'Professional',
+    monthlyPrice: 349,
+    yearlyPrice: 2990,
+    description: 'Perfect for growing teams ready to scale operations',
+    icon: 'professional',
+    features: [],
+    highlighted: [],
+  },
+  {
+    id: 'advanced',
+    name: 'Advanced',
+    monthlyPrice: 899,
+    yearlyPrice: 7490,
+    description: 'Complete solution for high-volume organizations',
+    icon: 'advanced',
+    popular: true,
+    features: [],
+    highlighted: [],
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise',
+    monthlyPrice: 0,
+    yearlyPrice: 0,
+    description: 'Tailored solutions for large-scale operations',
+    icon: 'enterprise',
+    isCustomPricing: true,
+    features: [],
+    highlighted: [],
+  },
+];
 
 export { defaultPlans as plans };
