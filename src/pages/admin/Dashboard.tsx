@@ -433,7 +433,7 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/admin/bids')}>
+        <Card className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/admin/change-orders')}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="w-10 h-10 rounded-lg bg-info/10 flex items-center justify-center">
