@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,6 +73,7 @@ const getStatusIndex = (status: string | null): number => {
 
 const TicketsPage = () => {
   const { user, isCompanyOwner, isSuperAdmin, isCompanyAdmin } = useAuth();
+  const { effectiveCompanyId } = useEffectiveCompanyId();
   const canDelete = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
   const canRollbackStatus = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -109,10 +111,10 @@ const TicketsPage = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [effectiveCompanyId]);
 
   const fetchData = async () => {
-    // Get user's company first
+    // Get user's company first (for regular users)
     const { data: memberData } = await supabase
       .from('company_members')
       .select('company_id')
@@ -123,13 +125,29 @@ const TicketsPage = () => {
       setUserCompanyId(memberData.company_id);
     }
 
-    const [{ data: ticketsData }, { data: clientsData }, { data: projectsData }, { data: agentsData }, { data: usageData }, { data: attachmentsData }] = await Promise.all([
-      supabase.from('tickets').select('*, clients(full_name), projects(name), agents(full_name)').is('deleted_at', null).order('scheduled_date', { ascending: false }),
-      supabase.from('clients').select('id, full_name').is('deleted_at', null).order('full_name'),
-      supabase.from('projects').select('id, name').eq('status', 'active').is('deleted_at', null).order('name'),
-      memberData?.company_id 
-        ? supabase.from('agents').select('id, full_name, is_online, is_available').eq('company_id', memberData.company_id).order('full_name')
-        : Promise.resolve({ data: [] }),
+    // Use effectiveCompanyId for filtering (respects Super Admin selection)
+    const companyIdToFilter = effectiveCompanyId || memberData?.company_id;
+
+    // Build queries with company filter
+    let ticketsQuery = supabase.from('tickets').select('*, clients(full_name), projects(name), agents(full_name)').is('deleted_at', null).order('scheduled_date', { ascending: false });
+    let clientsQuery = supabase.from('clients').select('id, full_name').is('deleted_at', null).order('full_name');
+    let projectsQuery = supabase.from('projects').select('id, name').eq('status', 'active').is('deleted_at', null).order('name');
+    let agentsQuery = companyIdToFilter 
+      ? supabase.from('agents').select('id, full_name, is_online, is_available').eq('company_id', companyIdToFilter).order('full_name')
+      : null;
+
+    // Apply company filter if we have one
+    if (companyIdToFilter) {
+      ticketsQuery = ticketsQuery.eq('company_id', companyIdToFilter);
+      clientsQuery = clientsQuery.eq('company_id', companyIdToFilter);
+      projectsQuery = projectsQuery.eq('company_id', companyIdToFilter);
+    }
+
+    const [{ data: ticketsData }, { data: clientsData }, { data: projectsData }, agentsResult, { data: usageData }, { data: attachmentsData }] = await Promise.all([
+      ticketsQuery,
+      clientsQuery,
+      projectsQuery,
+      agentsQuery ? agentsQuery : Promise.resolve({ data: [] }),
       supabase.from('inventory_usage').select('ticket_id'),
       supabase.from('ticket_attachments').select('ticket_id, category'),
     ]);
@@ -137,7 +155,7 @@ const TicketsPage = () => {
     if (ticketsData) setTickets(ticketsData);
     if (clientsData) setClients(clientsData);
     if (projectsData) setProjects(projectsData);
-    if (agentsData) setAgents(agentsData || []);
+    if (agentsResult?.data) setAgents(agentsResult.data || []);
     
     // Count materials per ticket
     if (usageData) {

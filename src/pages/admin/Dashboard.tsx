@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -59,6 +60,7 @@ const COLORS = ['hsl(var(--primary))', 'hsl(var(--success))', 'hsl(var(--warning
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { effectiveCompanyId, isPlatformView } = useEffectiveCompanyId();
   const [stats, setStats] = useState<DashboardStats>({
     totalRevenue: 0,
     paidInvoices: 0,
@@ -79,13 +81,45 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [effectiveCompanyId]);
 
   const fetchDashboardData = async () => {
     try {
       const today = new Date();
       const monthStart = format(startOfMonth(today), 'yyyy-MM-dd');
       const monthEnd = format(endOfMonth(today), 'yyyy-MM-dd');
+
+      // Build queries with optional company filter
+      const invoicesQuery = supabase.from('client_invoices').select('id, amount, status, due_date, paid_at');
+      const projectsQuery = supabase.from('projects').select('id, status, name').is('deleted_at', null);
+      const ticketCountQuery = supabase.from('tickets').select('*', { count: 'exact', head: true }).is('deleted_at', null);
+      const pendingTicketCountQuery = supabase.from('tickets').select('*', { count: 'exact', head: true }).is('deleted_at', null).eq('status', 'pending');
+      const clientCountQuery = supabase.from('clients').select('*', { count: 'exact', head: true }).is('deleted_at', null);
+      const bidsQuery = supabase.from('bids').select('id, internal_approval_status, client_approval_status');
+      const changeOrdersQuery = supabase.from('change_orders').select('id, status');
+      const permitsQuery = supabase.from('permits').select('id, expiration_date, status');
+      const equipmentQuery = supabase.from('equipment').select('id, next_service_date, status');
+      const recentProjectsQuery = supabase.from('projects').select('id, name, status, updated_at').is('deleted_at', null).order('updated_at', { ascending: false }).limit(5);
+      const recentInvoicesQuery = supabase.from('client_invoices').select('id, invoice_number, amount, status, created_at, clients(full_name)').order('created_at', { ascending: false }).limit(5);
+      const recentTicketsQuery = supabase.from('tickets').select('id, title, status, created_at, clients(full_name)').is('deleted_at', null).order('created_at', { ascending: false }).limit(5);
+      const employeeCountQuery = supabase.from('company_members').select('*', { count: 'exact', head: true });
+
+      // Apply company filter if not in platform view
+      if (effectiveCompanyId) {
+        invoicesQuery.eq('company_id', effectiveCompanyId);
+        projectsQuery.eq('company_id', effectiveCompanyId);
+        ticketCountQuery.eq('company_id', effectiveCompanyId);
+        pendingTicketCountQuery.eq('company_id', effectiveCompanyId);
+        clientCountQuery.eq('company_id', effectiveCompanyId);
+        bidsQuery.eq('company_id', effectiveCompanyId);
+        changeOrdersQuery.eq('company_id', effectiveCompanyId);
+        permitsQuery.eq('company_id', effectiveCompanyId);
+        equipmentQuery.eq('company_id', effectiveCompanyId);
+        recentProjectsQuery.eq('company_id', effectiveCompanyId);
+        recentInvoicesQuery.eq('company_id', effectiveCompanyId);
+        recentTicketsQuery.eq('company_id', effectiveCompanyId);
+        employeeCountQuery.eq('company_id', effectiveCompanyId);
+      }
 
       // Fetch all data in parallel
       const [
@@ -103,19 +137,19 @@ const Dashboard = () => {
         { data: recentTickets },
         { count: employeeCount },
       ] = await Promise.all([
-        supabase.from('client_invoices').select('id, amount, status, due_date, paid_at'),
-        supabase.from('projects').select('id, status, name'),
-        supabase.from('tickets').select('*', { count: 'exact', head: true }),
-        supabase.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-        supabase.from('clients').select('*', { count: 'exact', head: true }),
-        supabase.from('bids').select('id, internal_approval_status, client_approval_status'),
-        supabase.from('change_orders').select('id, status'),
-        supabase.from('permits').select('id, expiration_date, status'),
-        supabase.from('equipment').select('id, next_service_date, status'),
-        supabase.from('projects').select('id, name, status, updated_at').order('updated_at', { ascending: false }).limit(5),
-        supabase.from('client_invoices').select('id, invoice_number, amount, status, created_at, clients(full_name)').order('created_at', { ascending: false }).limit(5),
-        supabase.from('tickets').select('id, title, status, created_at, clients(full_name)').order('created_at', { ascending: false }).limit(5),
-        supabase.from('company_members').select('*', { count: 'exact', head: true }),
+        invoicesQuery,
+        projectsQuery,
+        ticketCountQuery,
+        pendingTicketCountQuery,
+        clientCountQuery,
+        bidsQuery,
+        changeOrdersQuery,
+        permitsQuery,
+        equipmentQuery,
+        recentProjectsQuery,
+        recentInvoicesQuery,
+        recentTicketsQuery,
+        employeeCountQuery,
       ]);
 
       // Calculate stats
