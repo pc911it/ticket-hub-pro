@@ -26,7 +26,8 @@ import {
   MessageCircle,
   Users,
   FileText,
-  GanttChart
+  GanttChart,
+  Plus
 } from 'lucide-react';
 import { format, differenceInDays, isAfter, isBefore } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -496,9 +497,17 @@ const ProjectDashboardPage = () => {
                   <Ticket className="h-5 w-5 text-primary" />
                   Project Tickets
                 </CardTitle>
-                <Button asChild variant="outline" size="sm">
-                  <Link to="/admin/tickets">View All Tickets</Link>
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button asChild size="sm">
+                    <Link to={`/admin/tickets?project=${projectId}`}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Create Ticket
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="sm">
+                    <Link to="/admin/tickets">View All Tickets</Link>
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
