@@ -87,7 +87,7 @@ const ProjectsPage = () => {
     if (userCompanyId || isSuperAdmin) {
       fetchData();
     }
-  }, [userCompanyId, isSuperAdmin]);
+  }, [userCompanyId, isSuperAdmin, effectiveCompanyId]);
 
   const fetchUserCompany = async () => {
     if (!user) return;
@@ -105,9 +105,21 @@ const ProjectsPage = () => {
   };
 
   const fetchData = async () => {
+    // Use effectiveCompanyId for filtering (respects Super Admin selection)
+    const companyIdToFilter = effectiveCompanyId || userCompanyId;
+
+    let projectsQuery = supabase.from('projects').select('*, clients(full_name)').is('deleted_at', null).order('created_at', { ascending: false });
+    let clientsQuery = supabase.from('clients').select('id, full_name').is('deleted_at', null).order('full_name');
+
+    // Apply company filter if we have one
+    if (companyIdToFilter) {
+      projectsQuery = projectsQuery.eq('company_id', companyIdToFilter);
+      clientsQuery = clientsQuery.eq('company_id', companyIdToFilter);
+    }
+
     const [{ data: projectsData }, { data: clientsData }] = await Promise.all([
-      supabase.from('projects').select('*, clients(full_name)').is('deleted_at', null).order('created_at', { ascending: false }),
-      supabase.from('clients').select('id, full_name').is('deleted_at', null).order('full_name'),
+      projectsQuery,
+      clientsQuery,
     ]);
 
     if (projectsData) setProjects(projectsData);
