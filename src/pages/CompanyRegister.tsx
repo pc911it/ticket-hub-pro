@@ -11,8 +11,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useToast } from '@/hooks/use-toast';
-import { PromoCodeInput } from '@/components/PromoCodeInput';
-import { PromoValidationResult } from '@/hooks/usePromoCodes';
 import { SquareCardForm } from '@/components/SquareCardForm';
 import { 
   Building2, ArrowLeft, Mail, Lock, User, Phone, MapPin, 
@@ -145,10 +143,9 @@ const CompanyRegister = () => {
   const [state, setState] = useState('');
   const [city, setCity] = useState('');
 
-  // Plan & promo
+  // Plan
   const [selectedPlan, setSelectedPlan] = useState('professional');
   const [isYearlyBilling, setIsYearlyBilling] = useState(false);
-  const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
 
   // Check if user is already logged in (e.g., from Google OAuth)
   useEffect(() => {
@@ -349,14 +346,7 @@ const CompanyRegister = () => {
     const plan = plans.find(p => p.id === selectedPlan);
     if (!plan || (plan.monthlyPrice === 0 && plan.yearlyPrice === 0)) return 0;
     
-    let price = isYearlyBilling ? Math.round(plan.yearlyPrice / 12) : plan.monthlyPrice;
-    if (appliedPromo?.valid && appliedPromo.promoCode) {
-      if (appliedPromo.promoCode.discount_type === 'percentage') {
-        price = price * (1 - appliedPromo.promoCode.discount_value / 100);
-      } else if (appliedPromo.promoCode.discount_type === 'fixed') {
-        price = Math.max(0, price - appliedPromo.promoCode.discount_value);
-      }
-    }
+    const price = isYearlyBilling ? Math.round(plan.yearlyPrice / 12) : plan.monthlyPrice;
     return Math.round(price * 100) / 100;
   };
 
@@ -367,11 +357,7 @@ const CompanyRegister = () => {
   };
 
   const getTrialDays = () => {
-    let days = 14;
-    if (appliedPromo?.valid && appliedPromo.promoCode?.discount_type === 'trial_extension') {
-      days += appliedPromo.promoCode.trial_extension_days;
-    }
-    return days;
+    return 14;
   };
 
   const handleCardNonce = async (cardNonce: string) => {
@@ -401,27 +387,6 @@ const CompanyRegister = () => {
         clientLabel: config.clientLabel,
         inventoryCategories: config.inventoryCategories,
       };
-      
-      // Store discount info if promo applied
-      if (appliedPromo?.valid && appliedPromo.promoCode) {
-        businessConfig.original_price = originalPrice;
-        businessConfig.discounted_price = finalPrice;
-        if (appliedPromo.promoCode.discount_type === 'percentage') {
-          businessConfig.discount = {
-            type: 'percentage',
-            value: appliedPromo.promoCode.discount_value,
-            applied_at: new Date().toISOString(),
-            promo_code: appliedPromo.promoCode.code,
-          };
-        } else if (appliedPromo.promoCode.discount_type === 'fixed') {
-          businessConfig.discount = {
-            type: 'fixed',
-            value: appliedPromo.promoCode.discount_value,
-            applied_at: new Date().toISOString(),
-            promo_code: appliedPromo.promoCode.code,
-          };
-        }
-      }
 
       const { data: company, error: companyError } = await supabase
         .from('companies')
@@ -437,10 +402,8 @@ const CompanyRegister = () => {
           subscription_status: 'trial',
           trial_ends_at: trialEndsAt.toISOString(),
           billing_cycle: isYearlyBilling ? 'yearly' : 'monthly',
-          discount_percentage: appliedPromo?.promoCode?.discount_type === 'percentage' 
-            ? appliedPromo.promoCode.discount_value : 0,
-          discount_fixed_amount: appliedPromo?.promoCode?.discount_type === 'fixed' 
-            ? appliedPromo.promoCode.discount_value : 0,
+          discount_percentage: 0,
+          discount_fixed_amount: 0,
           business_config: businessConfig,
         } as any)
         .select()
@@ -459,16 +422,6 @@ const CompanyRegister = () => {
         user_id: currentUser.id,
         role: 'admin',
       });
-
-      // Apply promo code if valid
-      if (appliedPromo?.valid && appliedPromo.promoCode) {
-        await supabase.from('company_promo_codes').insert({
-          company_id: company.id,
-          promo_code_id: appliedPromo.promoCode.id,
-          discount_applied: appliedPromo.discountAmount,
-          trial_extended_days: appliedPromo.trialExtensionDays,
-        });
-      }
 
       // Save card via Square
       const response = await supabase.functions.invoke('square-create-customer', {
@@ -948,16 +901,6 @@ const CompanyRegister = () => {
                     })}
                   </div>
 
-                  <PromoCodeInput plan={selectedPlan} onPromoApplied={setAppliedPromo} />
-
-                  {appliedPromo?.valid && (
-                    <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                      <p className="text-sm text-green-700 dark:text-green-300 font-medium">
-                        🎉 {appliedPromo.message}
-                      </p>
-                    </div>
-                  )}
-
                   <Button className="w-full" onClick={handlePlanComplete}>Continue to Payment</Button>
                 </div>
               </CollapsibleContent>
@@ -991,12 +934,6 @@ const CompanyRegister = () => {
                       <span>Free Trial:</span>
                       <span className="font-medium text-green-600">{getTrialDays()} days</span>
                     </div>
-                    {appliedPromo?.valid && appliedPromo.promoCode?.discount_type !== 'trial_extension' && (
-                      <div className="flex justify-between text-sm text-green-600">
-                        <span>Promo Discount:</span>
-                        <span className="font-medium">-{appliedPromo.promoCode?.discount_type === 'percentage' ? `${appliedPromo.promoCode.discount_value}%` : `$${appliedPromo.promoCode?.discount_value}`}</span>
-                      </div>
-                    )}
                     {isYearlyBilling && getYearlySavings() > 0 && (
                       <div className="flex justify-between text-sm text-green-600">
                         <span>Yearly Savings:</span>
