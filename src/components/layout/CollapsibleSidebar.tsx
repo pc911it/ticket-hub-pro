@@ -183,6 +183,7 @@ const createNavigationGroups = (hasFeature: (key: string) => boolean, isAdminLev
           { name: 'Users', href: '/admin/users', icon: Shield },
           { name: 'Billing', href: '/admin/billing', icon: CreditCard },
           { name: 'Payment Settings', href: '/admin/payment-settings', icon: DollarSign },
+          { name: 'Integrations', href: '/admin/integrations', icon: TrendingUp },
           { name: 'Settings', href: '/admin/settings', icon: Settings },
         ] : []),
         { name: 'Trash', href: '/admin/trash', icon: Trash2 },
