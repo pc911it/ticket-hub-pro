@@ -45,6 +45,7 @@ interface Agent {
   created_at: string;
   user_id: string;
   company_id: string;
+  email?: string | null;
 }
 
 interface CompanyUser {
@@ -120,7 +121,24 @@ const EmployeesPage = () => {
           .order('full_name');
 
         if (error) throw error;
-        setAgents(agentsData || []);
+        
+        // Fetch emails for agents from profiles
+        if (agentsData && agentsData.length > 0) {
+          const agentUserIds = agentsData.map(a => a.user_id);
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('user_id, email')
+            .in('user_id', agentUserIds);
+          
+          // Merge email into agents
+          const agentsWithEmail = agentsData.map(agent => ({
+            ...agent,
+            email: profilesData?.find(p => p.user_id === agent.user_id)?.email || null
+          }));
+          setAgents(agentsWithEmail);
+        } else {
+          setAgents([]);
+        }
 
         // Fetch company members who are not already agents
         const { data: membersData } = await supabase
@@ -735,6 +753,12 @@ const EmployeesPage = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-lg truncate">{agent.full_name}</h3>
+                    {agent.email && (
+                      <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                        <Mail className="h-3 w-3" />
+                        {agent.email}
+                      </p>
+                    )}
                     <div className="flex items-center gap-2 mt-1">
                       <Badge variant={agent.is_online ? (agent.is_available ? "default" : "secondary") : "outline"}>
                         {agent.is_online ? (agent.is_available ? 'Available' : 'Busy') : 'Offline'}

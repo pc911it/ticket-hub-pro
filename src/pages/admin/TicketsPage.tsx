@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
@@ -72,6 +73,7 @@ const getStatusIndex = (status: string | null): number => {
 };
 
 const TicketsPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, isCompanyOwner, isSuperAdmin, isCompanyAdmin } = useAuth();
   const { effectiveCompanyId } = useEffectiveCompanyId();
   const canDelete = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
@@ -112,6 +114,22 @@ const TicketsPage = () => {
   useEffect(() => {
     fetchData();
   }, [effectiveCompanyId]);
+
+  // Handle project query parameter to pre-open create dialog with project selected
+  useEffect(() => {
+    const projectIdFromUrl = searchParams.get('project');
+    if (projectIdFromUrl && projects.length > 0) {
+      // Pre-fill form with project and open dialog
+      setFormData(prev => ({
+        ...prev,
+        project_id: projectIdFromUrl,
+      }));
+      setIsDialogOpen(true);
+      // Clear the query param
+      searchParams.delete('project');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, projects]);
 
   const fetchData = async () => {
     // Get user's company first (for regular users)
