@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { PricingPlans } from '@/components/PricingPlans';
 import { SupportChatWidget } from '@/components/SupportChatWidget';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { 
   Building2,
   Calendar,
@@ -40,107 +42,108 @@ import {
 
 const Index = () => {
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const heroFeatures = [
-    'Project Management',
-    'Client Portal',
-    'Invoicing & Payments',
-    'Team Scheduling',
-    'Document Management',
-    'Real-time Communication'
+    t('features.projectManagement'),
+    t('features.clientPortal'),
+    t('features.invoicing'),
+    t('features.teamScheduling'),
+    t('features.documentManagement'),
+    t('features.realTimeCommunication')
   ];
 
   const featureCategories = [
     {
-      title: 'Sales & Estimating',
+      title: t('features.salesEstimating.title'),
       icon: TrendingUp,
       color: 'bg-blue-500/10 text-blue-600',
       features: [
-        { name: 'Digital Takeoffs', description: 'AI-powered measurement tools' },
-        { name: 'Cost Catalogs', description: 'Customizable pricing libraries' },
-        { name: 'Bid Management', description: 'Track and manage all bids' },
-        { name: 'Contracts & eSignatures', description: 'Legally binding digital signatures' },
-        { name: 'Proposals', description: 'Professional proposal generation' },
+        { name: t('features.salesEstimating.digitalTakeoffs'), description: t('features.salesEstimating.digitalTakeoffsDesc') },
+        { name: t('features.salesEstimating.costCatalogs'), description: t('features.salesEstimating.costCatalogsDesc') },
+        { name: t('features.salesEstimating.bidManagement'), description: t('features.salesEstimating.bidManagementDesc') },
+        { name: t('features.salesEstimating.contracts'), description: t('features.salesEstimating.contractsDesc') },
+        { name: t('features.salesEstimating.proposals'), description: t('features.salesEstimating.proposalsDesc') },
       ]
     },
     {
-      title: 'Project Management',
+      title: t('features.projectMgmt.title'),
       icon: ClipboardList,
       color: 'bg-green-500/10 text-green-600',
       features: [
-        { name: 'Gantt Scheduling', description: 'Visual timeline planning' },
-        { name: 'Daily Logs', description: 'Track progress & activities' },
-        { name: 'Time Tracking', description: 'Employee hours & reports' },
-        { name: 'Milestone Tracking', description: 'Monitor project phases' },
-        { name: 'Task Management', description: 'Assign and track tasks' },
+        { name: t('features.projectMgmt.gantt'), description: t('features.projectMgmt.ganttDesc') },
+        { name: t('features.projectMgmt.dailyLogs'), description: t('features.projectMgmt.dailyLogsDesc') },
+        { name: t('features.projectMgmt.timeTracking'), description: t('features.projectMgmt.timeTrackingDesc') },
+        { name: t('features.projectMgmt.milestones'), description: t('features.projectMgmt.milestonesDesc') },
+        { name: t('features.projectMgmt.tasks'), description: t('features.projectMgmt.tasksDesc') },
       ]
     },
     {
-      title: 'Financials',
+      title: t('features.financials.title'),
       icon: DollarSign,
       color: 'bg-amber-500/10 text-amber-600',
       features: [
-        { name: 'Real-time Job Costing', description: 'Track costs as they happen' },
-        { name: 'Budgeting', description: 'Comprehensive budget tools' },
-        { name: 'Change Orders', description: 'Manage scope changes' },
-        { name: 'Purchase Orders', description: 'Streamlined procurement' },
-        { name: 'Customer Invoicing', description: 'Online payments & billing' },
+        { name: t('features.financials.jobCosting'), description: t('features.financials.jobCostingDesc') },
+        { name: t('features.financials.budgeting'), description: t('features.financials.budgetingDesc') },
+        { name: t('features.financials.changeOrders'), description: t('features.financials.changeOrdersDesc') },
+        { name: t('features.financials.purchaseOrders'), description: t('features.financials.purchaseOrdersDesc') },
+        { name: t('features.financials.invoicing'), description: t('features.financials.invoicingDesc') },
       ]
     },
     {
-      title: 'Field Tools',
+      title: t('features.fieldTools.title'),
       icon: Wrench,
       color: 'bg-purple-500/10 text-purple-600',
       features: [
-        { name: 'Work Orders', description: 'Mobile work order management' },
-        { name: 'Inspections', description: 'Digital inspection checklists' },
-        { name: 'Punch Lists', description: 'Track completion items' },
-        { name: 'Permit Manager', description: 'Track all permits & approvals' },
-        { name: 'RFI Management', description: 'Request for information tracking' },
+        { name: t('features.fieldTools.workOrders'), description: t('features.fieldTools.workOrdersDesc') },
+        { name: t('features.fieldTools.inspections'), description: t('features.fieldTools.inspectionsDesc') },
+        { name: t('features.fieldTools.punchLists'), description: t('features.fieldTools.punchListsDesc') },
+        { name: t('features.fieldTools.permits'), description: t('features.fieldTools.permitsDesc') },
+        { name: t('features.fieldTools.rfi'), description: t('features.fieldTools.rfiDesc') },
       ]
     },
     {
-      title: 'Communication',
+      title: t('features.communication.title'),
       icon: MessageSquare,
       color: 'bg-pink-500/10 text-pink-600',
       features: [
-        { name: 'Team Messaging', description: 'Real-time team chat' },
-        { name: 'Client Portal', description: 'Dedicated customer access' },
-        { name: 'Progress Photos', description: 'Visual project updates' },
-        { name: 'Notifications', description: 'Smart alerts & reminders' },
-        { name: 'Change Order Approvals', description: 'Digital approval workflows' },
+        { name: t('features.communication.teamMessaging'), description: t('features.communication.teamMessagingDesc') },
+        { name: t('features.communication.clientPortal'), description: t('features.communication.clientPortalDesc') },
+        { name: t('features.communication.progressPhotos'), description: t('features.communication.progressPhotosDesc') },
+        { name: t('features.communication.notifications'), description: t('features.communication.notificationsDesc') },
+        { name: t('features.communication.approvals'), description: t('features.communication.approvalsDesc') },
       ]
     },
     {
-      title: 'Documentation',
+      title: t('features.documentation.title'),
       icon: FolderOpen,
       color: 'bg-cyan-500/10 text-cyan-600',
       features: [
-        { name: 'File Storage', description: 'Secure cloud storage' },
-        { name: 'Drawing Markups', description: 'Annotate plans digitally' },
-        { name: 'Submittals', description: 'Track document submissions' },
-        { name: 'Version Control', description: 'Document history tracking' },
-        { name: 'Photo Management', description: 'Organize project photos' },
+        { name: t('features.documentation.fileStorage'), description: t('features.documentation.fileStorageDesc') },
+        { name: t('features.documentation.drawingMarkups'), description: t('features.documentation.drawingMarkupsDesc') },
+        { name: t('features.documentation.submittals'), description: t('features.documentation.submittalsDesc') },
+        { name: t('features.documentation.versionControl'), description: t('features.documentation.versionControlDesc') },
+        { name: t('features.documentation.photoManagement'), description: t('features.documentation.photoManagementDesc') },
       ]
     },
   ];
 
   const additionalFeatures = [
-    { icon: HardHat, title: 'Subcontractor Portal', description: 'Dedicated vendor & sub access' },
-    { icon: Package, title: 'Inventory Management', description: 'Track materials & supplies' },
-    { icon: Truck, title: 'Equipment Tracking', description: 'Vehicle & equipment logs' },
-    { icon: Calculator, title: 'Cost Calculator', description: 'Instant cost estimates' },
-    { icon: Map, title: 'Live Agent Tracking', description: 'Real-time field team location' },
-    { icon: Shield, title: 'Warranty Tracking', description: 'Manage warranties & claims' },
-    { icon: BarChart3, title: 'Reports & Analytics', description: 'Comprehensive reporting' },
-    { icon: Settings, title: 'Custom Workflows', description: 'Approval chains & automation' },
+    { icon: HardHat, title: t('additionalFeatures.subcontractorPortal'), description: t('additionalFeatures.subcontractorPortalDesc') },
+    { icon: Package, title: t('additionalFeatures.inventoryManagement'), description: t('additionalFeatures.inventoryManagementDesc') },
+    { icon: Truck, title: t('additionalFeatures.equipmentTracking'), description: t('additionalFeatures.equipmentTrackingDesc') },
+    { icon: Calculator, title: t('additionalFeatures.costCalculator'), description: t('additionalFeatures.costCalculatorDesc') },
+    { icon: Map, title: t('additionalFeatures.liveAgentTracking'), description: t('additionalFeatures.liveAgentTrackingDesc') },
+    { icon: Shield, title: t('additionalFeatures.warrantyTracking'), description: t('additionalFeatures.warrantyTrackingDesc') },
+    { icon: BarChart3, title: t('additionalFeatures.reportsAnalytics'), description: t('additionalFeatures.reportsAnalyticsDesc') },
+    { icon: Settings, title: t('additionalFeatures.customWorkflows'), description: t('additionalFeatures.customWorkflowsDesc') },
   ];
 
   const stats = [
-    { value: '10k+', label: 'Active Companies' },
-    { value: '500k+', label: 'Projects Managed' },
-    { value: '99.9%', label: 'Uptime Guarantee' },
-    { value: '24/7', label: 'Support Available' },
+    { value: '10k+', label: t('stats.activeCompanies') },
+    { value: '500k+', label: t('stats.projectsManaged') },
+    { value: '99.9%', label: t('stats.uptimeGuarantee') },
+    { value: '24/7', label: t('stats.supportAvailable') },
   ];
 
   const testimonials = [
@@ -176,22 +179,23 @@ const Index = () => {
             <span className="font-display text-xl font-bold">BuilderFlow</span>
           </Link>
           <div className="hidden md:flex items-center gap-6">
-            <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Features</a>
-            <a href="#solutions" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Solutions</a>
-            <a href="#pricing" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
+            <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">{t('nav.features')}</a>
+            <a href="#solutions" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">{t('nav.solutions')}</a>
+            <a href="#pricing" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">{t('nav.pricing')}</a>
           </div>
           <div className="flex items-center gap-3">
+            <LanguageSwitcher variant="compact" />
             {user ? (
               <Link to="/admin">
-                <Button>Dashboard</Button>
+                <Button>{t('nav.dashboard')}</Button>
               </Link>
             ) : (
               <>
                 <Link to="/auth">
-                  <Button variant="ghost" size="sm">Sign In</Button>
+                  <Button variant="ghost" size="sm">{t('nav.signIn')}</Button>
                 </Link>
                 <Link to="/register-company">
-                  <Button size="sm">Start Free Trial</Button>
+                  <Button size="sm">{t('nav.startFreeTrial')}</Button>
                 </Link>
               </>
             )}
@@ -211,29 +215,28 @@ const Index = () => {
           <div className="max-w-4xl mx-auto text-center pt-12">
             <div className="inline-flex items-center gap-2 bg-secondary/20 text-secondary px-4 py-2 rounded-full text-sm font-medium mb-6 animate-fade-in">
               <Star className="h-4 w-4" />
-              <span>Trusted by 10,000+ Construction Professionals</span>
+              <span>{t('hero.badge')}</span>
             </div>
             
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-primary-foreground mb-6 animate-slide-up leading-tight">
-              The All-in-One Platform for
-              <span className="block gradient-text">Construction Management</span>
+              {t('hero.title')}
+              <span className="block gradient-text">{t('hero.titleHighlight')}</span>
             </h1>
             
             <p className="text-lg md:text-xl text-primary-foreground/80 mb-8 max-w-2xl mx-auto animate-slide-up" style={{ animationDelay: '100ms' }}>
-              From sales to project completion, manage your entire construction business with one powerful platform. 
-              Estimates, scheduling, financials, client portals, and more.
+              {t('hero.subtitle')}
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12 animate-slide-up" style={{ animationDelay: '200ms' }}>
               <Link to="/register-company">
                 <Button variant="hero" size="xl" className="gap-2 shadow-xl">
-                  Start Your 14-Day Free Trial
+                  {t('hero.cta')}
                   <ArrowRight className="h-5 w-5" />
                 </Button>
               </Link>
               <Button variant="heroOutline" size="xl" className="gap-2">
                 <Play className="h-5 w-5" />
-                Watch Demo
+                {t('hero.watchDemo')}
               </Button>
             </div>
 
@@ -263,7 +266,7 @@ const Index = () => {
       {/* Trusted By Section */}
       <section className="py-12 bg-muted/30 border-y">
         <div className="container mx-auto px-6">
-          <p className="text-center text-sm text-muted-foreground mb-6">TRUSTED BY LEADING CONSTRUCTION COMPANIES</p>
+          <p className="text-center text-sm text-muted-foreground mb-6">{t('trustedBy')}</p>
           <div className="flex flex-wrap items-center justify-center gap-8 md:gap-16 opacity-60">
             {['Premier Builders', 'Construct Pro', 'Elite Contractors', 'BuildRight Inc', 'HomeCraft'].map((company) => (
               <span key={company} className="text-lg font-display font-semibold text-muted-foreground">{company}</span>
@@ -277,11 +280,10 @@ const Index = () => {
         <div className="container mx-auto px-6">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
-              Everything You Need to Build Better
+              {t('features.title')}
             </h2>
             <p className="text-lg text-muted-foreground">
-              Comprehensive tools designed specifically for construction professionals. 
-              Manage every aspect of your business from a single dashboard.
+              {t('features.subtitle')}
             </p>
           </div>
 
@@ -319,10 +321,10 @@ const Index = () => {
         <div className="container mx-auto px-6">
           <div className="text-center max-w-3xl mx-auto mb-12">
             <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
-              Plus So Much More
+              {t('additionalFeatures.title')}
             </h2>
             <p className="text-lg text-muted-foreground">
-              Advanced features to streamline every aspect of your operations
+              {t('additionalFeatures.subtitle')}
             </p>
           </div>
 
@@ -348,19 +350,18 @@ const Index = () => {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
               <h2 className="text-3xl md:text-4xl font-display font-bold mb-6">
-                Built for Modern Construction Teams
+                {t('benefits.title')}
               </h2>
               <p className="text-lg text-muted-foreground mb-8">
-                Whether you're a small contractor or a large enterprise, BuilderFlow scales with your business. 
-                Our platform is designed by construction professionals, for construction professionals.
+                {t('benefits.subtitle')}
               </p>
               
               <div className="space-y-4">
                 {[
-                  { icon: Smartphone, title: 'Mobile-First Design', description: 'Access everything from the field with our powerful mobile app' },
-                  { icon: Lock, title: 'Enterprise Security', description: 'Bank-level encryption and compliance for your data' },
-                  { icon: Globe, title: 'Cloud-Based', description: 'Access your projects from anywhere, anytime' },
-                  { icon: HeadphonesIcon, title: '24/7 Support', description: 'Dedicated support team ready to help when you need it' },
+                  { icon: Smartphone, title: t('benefits.mobileFirst'), description: t('benefits.mobileFirstDesc') },
+                  { icon: Lock, title: t('benefits.security'), description: t('benefits.securityDesc') },
+                  { icon: Globe, title: t('benefits.cloudBased'), description: t('benefits.cloudBasedDesc') },
+                  { icon: HeadphonesIcon, title: t('benefits.support'), description: t('benefits.supportDesc') },
                 ].map((item) => (
                   <div key={item.title} className="flex items-start gap-4 p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors">
                     <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -393,29 +394,33 @@ const Index = () => {
       {/* Testimonials */}
       <section className="py-20 bg-muted/30">
         <div className="container mx-auto px-6">
-          <div className="text-center max-w-2xl mx-auto mb-12">
+          <div className="text-center max-w-3xl mx-auto mb-12">
             <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
-              Loved by Construction Professionals
+              {t('testimonials.title')}
             </h2>
             <p className="text-lg text-muted-foreground">
-              See what our customers have to say about BuilderFlow
+              {t('testimonials.subtitle')}
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
               <Card key={index} className="border-0 shadow-lg">
                 <CardContent className="p-6">
                   <div className="flex gap-1 mb-4">
                     {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="h-5 w-5 fill-secondary text-secondary" />
+                      <Star key={i} className="h-4 w-4 fill-secondary text-secondary" />
                     ))}
                   </div>
-                  <p className="text-muted-foreground mb-6 italic">"{testimonial.quote}"</p>
-                  <div>
-                    <p className="font-semibold">{testimonial.author}</p>
-                    <p className="text-sm text-muted-foreground">{testimonial.role}</p>
-                    <p className="text-sm text-primary">{testimonial.company}</p>
+                  <p className="text-sm text-muted-foreground mb-4 italic">"{testimonial.quote}"</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-sm font-bold text-primary">{testimonial.author.charAt(0)}</span>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm">{testimonial.author}</p>
+                      <p className="text-xs text-muted-foreground">{testimonial.role}, {testimonial.company}</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -427,12 +432,12 @@ const Index = () => {
       {/* Pricing Section */}
       <section id="pricing" className="py-20 bg-background">
         <div className="container mx-auto px-6">
-          <div className="text-center max-w-2xl mx-auto mb-12">
+          <div className="text-center max-w-3xl mx-auto mb-12">
             <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
-              Simple, Transparent Pricing
+              {t('pricing.title')}
             </h2>
             <p className="text-lg text-muted-foreground">
-              Choose the plan that fits your business. All plans include a 14-day free trial with no credit card required.
+              {t('pricing.subtitle')}
             </p>
           </div>
 
@@ -440,96 +445,85 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Final CTA Section */}
-      <section className="py-20 bg-background">
-        <div className="container mx-auto px-6">
-          <Card className="border-0 shadow-2xl overflow-hidden" style={{ background: 'var(--gradient-hero)' }}>
-            <CardContent className="p-12 md:p-16 text-center">
-              <h2 className="text-3xl md:text-4xl font-display font-bold text-primary-foreground mb-4">
-                Ready to Transform Your Business?
-              </h2>
-              <p className="text-lg text-primary-foreground/80 mb-8 max-w-2xl mx-auto">
-                Join thousands of construction professionals who have streamlined their operations with BuilderFlow. 
-                Start your free trial today—credit card required.
-              </p>
-              
-              <div className="flex flex-wrap items-center justify-center gap-4 mb-10">
-                {['Credit card required', '14-day free trial', 'Cancel anytime', 'Full feature access'].map((item) => (
-                  <div key={item} className="flex items-center gap-2 text-primary-foreground/90">
-                    <CheckCircle2 className="h-5 w-5 text-secondary" />
-                    <span className="text-sm">{item}</span>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Link to="/register-company">
-                  <Button variant="hero" size="xl" className="gap-2 shadow-xl">
-                    Start Your Free Trial
-                    <ArrowRight className="h-5 w-5" />
-                  </Button>
-                </Link>
-                <Link to="/auth">
-                  <Button variant="heroOutline" size="xl">
-                    Sign In
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
+      {/* CTA Section */}
+      <section className="py-20" style={{ background: 'var(--gradient-hero)' }}>
+        <div className="container mx-auto px-6 text-center">
+          <h2 className="text-3xl md:text-4xl font-display font-bold text-primary-foreground mb-4">
+            {t('cta.title')}
+          </h2>
+          <p className="text-lg text-primary-foreground/80 mb-8 max-w-2xl mx-auto">
+            {t('cta.subtitle')}
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link to="/register-company">
+              <Button variant="hero" size="xl" className="gap-2 shadow-xl">
+                {t('cta.getStarted')}
+                <ArrowRight className="h-5 w-5" />
+              </Button>
+            </Link>
+            <Button variant="heroOutline" size="xl">
+              {t('cta.scheduleDemo')}
+            </Button>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-16 bg-primary text-primary-foreground">
+      <footer className="py-16 bg-card border-t">
         <div className="container mx-auto px-6">
-          <div className="grid md:grid-cols-4 gap-8 mb-12">
+          <div className="grid md:grid-cols-5 gap-8">
             <div className="md:col-span-2">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
-                  <Building2 className="h-5 w-5 text-secondary-foreground" />
+              <Link to="/" className="flex items-center gap-2 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg">
+                  <Building2 className="h-5 w-5 text-primary-foreground" />
                 </div>
                 <span className="font-display text-xl font-bold">BuilderFlow</span>
-              </div>
-              <p className="text-primary-foreground/70 max-w-md">
-                The all-in-one construction management platform. From sales to project completion, 
-                manage your entire business with one powerful solution.
+              </Link>
+              <p className="text-sm text-muted-foreground mb-4">
+                {t('footer.description')}
               </p>
+              <LanguageSwitcher />
             </div>
-            
+
             <div>
-              <h4 className="font-semibold mb-4">Product</h4>
-              <ul className="space-y-2 text-primary-foreground/70">
-                <li><a href="#features" className="hover:text-secondary transition-colors">Features</a></li>
-                <li><a href="#pricing" className="hover:text-secondary transition-colors">Pricing</a></li>
-                <li><Link to="/auth" className="hover:text-secondary transition-colors">Sign In</Link></li>
-                <li><Link to="/register-company" className="hover:text-secondary transition-colors">Register</Link></li>
+              <h4 className="font-semibold mb-4">{t('footer.product')}</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><a href="#features" className="hover:text-foreground transition-colors">{t('footer.features')}</a></li>
+                <li><a href="#pricing" className="hover:text-foreground transition-colors">{t('footer.pricing')}</a></li>
+                <li><a href="#" className="hover:text-foreground transition-colors">{t('footer.integrations')}</a></li>
               </ul>
             </div>
-            
+
             <div>
-              <h4 className="font-semibold mb-4">Support</h4>
-              <ul className="space-y-2 text-primary-foreground/70">
-                <li><a href="#" className="hover:text-secondary transition-colors">Help Center</a></li>
-                <li><a href="#" className="hover:text-secondary transition-colors">Contact Us</a></li>
-                <li><a href="#" className="hover:text-secondary transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-secondary transition-colors">Terms of Service</a></li>
+              <h4 className="font-semibold mb-4">{t('footer.company')}</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><a href="#" className="hover:text-foreground transition-colors">{t('footer.about')}</a></li>
+                <li><a href="#" className="hover:text-foreground transition-colors">{t('footer.careers')}</a></li>
+                <li><a href="#" className="hover:text-foreground transition-colors">{t('footer.blog')}</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-4">{t('footer.support')}</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><a href="#" className="hover:text-foreground transition-colors">{t('footer.helpCenter')}</a></li>
+                <li><a href="#" className="hover:text-foreground transition-colors">{t('footer.contact')}</a></li>
+                <li><a href="#" className="hover:text-foreground transition-colors">{t('footer.status')}</a></li>
               </ul>
             </div>
           </div>
-          
-          <div className="border-t border-primary-foreground/20 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-primary-foreground/60">
-              © {new Date().getFullYear()} BuilderFlow. All rights reserved.
-            </p>
-            <div className="flex items-center gap-4 text-primary-foreground/60">
-              <span className="text-sm">Built with ❤️ for construction professionals</span>
+
+          <div className="border-t mt-12 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">© 2026 BuilderFlow. {t('footer.copyright')}</p>
+            <div className="flex gap-6 text-sm text-muted-foreground">
+              <a href="#" className="hover:text-foreground transition-colors">{t('footer.privacy')}</a>
+              <a href="#" className="hover:text-foreground transition-colors">{t('footer.terms')}</a>
+              <a href="#" className="hover:text-foreground transition-colors">{t('footer.cookies')}</a>
             </div>
           </div>
         </div>
       </footer>
 
-      {/* Support Chat Widget */}
       <SupportChatWidget />
     </div>
   );
