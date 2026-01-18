@@ -179,7 +179,6 @@ const createNavigationGroups = (hasFeature: (key: string) => boolean, isAdminLev
       icon: Cog,
       items: [
         { name: 'Service Types', href: '/admin/service-types', icon: Wrench },
-        { name: 'Promo Codes', href: '/admin/promo-codes', icon: Gift },
         ...(isAdminLevel ? [
           { name: 'Users', href: '/admin/users', icon: Shield },
           { name: 'Billing', href: '/admin/billing', icon: CreditCard },
@@ -212,6 +211,7 @@ const superAdminNavigation: NavItem[] = [
   { name: 'Company Approvals', href: '/admin/company-approvals', icon: CheckSquare },
   { name: 'Support Tickets', href: '/admin/support-tickets', icon: Ticket },
   { name: 'Platform Billing', href: '/admin/platform-billing', icon: DollarSign },
+  { name: 'Promo Codes', href: '/admin/promo-codes', icon: Gift },
 ];
 
 const staffNavigation: NavItem[] = [
