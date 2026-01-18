@@ -492,7 +492,7 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
                   </div>
                 )}
                 <span className="font-display text-base font-semibold truncate max-w-[160px]">
-                  {companyData?.name || 'TicketPro'}
+                  {companyData?.logo_url ? companyData.name : 'TicketPro'}
                 </span>
               </Link>
             )}
