@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -229,8 +232,25 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
   const location = useLocation();
   const { signOut, user, isSuperAdmin, isCompanyOwner, userRole, isCompanyAdmin } = useAuth();
   const { hasFeature } = useFeatureAccess();
+  const { effectiveCompanyId } = useEffectiveCompanyId();
 
   const isAdminLevel = isSuperAdmin || isCompanyOwner || isCompanyAdmin || userRole === 'admin';
+
+  // Fetch company logo
+  const { data: companyData } = useQuery({
+    queryKey: ['company-logo', effectiveCompanyId],
+    queryFn: async () => {
+      if (!effectiveCompanyId) return null;
+      const { data, error } = await supabase
+        .from('companies')
+        .select('name, logo_url')
+        .eq('id', effectiveCompanyId)
+        .single();
+      if (error) return null;
+      return data;
+    },
+    enabled: !!effectiveCompanyId,
+  });
 
   // Get navigation groups
   const navigationGroups = createNavigationGroups(hasFeature, isAdminLevel);
@@ -460,16 +480,34 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
           )} data-tour="sidebar-logo">
             {!collapsed && (
               <Link to="/admin" className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
-                  <Ticket className="h-4 w-4 text-sidebar-primary-foreground" />
-                </div>
-                <span className="font-display text-base font-semibold">TicketPro</span>
+                {companyData?.logo_url ? (
+                  <img 
+                    src={companyData.logo_url} 
+                    alt={companyData.name || 'Company logo'} 
+                    className="w-8 h-8 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
+                    <Ticket className="h-4 w-4 text-sidebar-primary-foreground" />
+                  </div>
+                )}
+                <span className="font-display text-base font-semibold truncate max-w-[160px]">
+                  {companyData?.name || 'TicketPro'}
+                </span>
               </Link>
             )}
             {collapsed && (
-              <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
-                <Ticket className="h-4 w-4 text-sidebar-primary-foreground" />
-              </div>
+              companyData?.logo_url ? (
+                <img 
+                  src={companyData.logo_url} 
+                  alt={companyData.name || 'Company logo'} 
+                  className="w-8 h-8 rounded-lg object-cover"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
+                  <Ticket className="h-4 w-4 text-sidebar-primary-foreground" />
+                </div>
+              )
             )}
             <button 
               onClick={() => onClose()}
