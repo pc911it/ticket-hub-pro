@@ -305,85 +305,90 @@ const LeadsPage = () => {
 
         {/* Pipeline View */}
         {viewMode === 'pipeline' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 overflow-x-auto pb-4">
-            {pipelineStages.map((stage) => {
-              const stageLeads = getLeadsByStatus(stage);
-              const config = statusConfig[stage];
-              return (
-                <div key={stage} className="min-w-[280px]">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Badge className={config.color}>{config.label}</Badge>
-                      <span className="text-sm text-muted-foreground">({stageLeads.length})</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      ${getTotalValue(stage).toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                    {stageLeads.map((lead) => (
-                      <Card 
-                        key={lead.id} 
-                        className="cursor-pointer hover:shadow-md transition-shadow"
-                        onClick={() => setSelectedLead(lead)}
-                      >
-                        <CardContent className="p-3">
-                          <div className="flex items-start justify-between mb-2">
-                            <h4 className="font-medium text-sm truncate">{lead.full_name}</h4>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                <Button variant="ghost" size="icon" className="h-6 w-6">
-                                  <MoreVertical className="h-3 w-3" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                {pipelineStages.filter(s => s !== stage).map((s) => (
-                                  <DropdownMenuItem 
-                                    key={s}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      updateStatusMutation.mutate({ id: lead.id, status: s });
-                                    }}
-                                  >
-                                    <ArrowRight className="h-4 w-4 mr-2" />
-                                    Move to {statusConfig[s].label}
-                                  </DropdownMenuItem>
-                                ))}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                          {lead.estimated_value && (
-                            <p className="text-sm font-semibold text-green-600 mb-1">
-                              ${lead.estimated_value.toLocaleString()}
-                            </p>
-                          )}
-                          {lead.email && (
-                            <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
-                              <Mail className="h-3 w-3" /> {lead.email}
-                            </p>
-                          )}
-                          {lead.phone && (
-                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Phone className="h-3 w-3" /> {lead.phone}
-                            </p>
-                          )}
-                          {lead.source && (
-                            <Badge variant="outline" className="mt-2 text-xs">
-                              {lead.source}
-                            </Badge>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
-                    {stageLeads.length === 0 && (
-                      <div className="text-center py-8 text-muted-foreground text-sm border-2 border-dashed rounded-lg">
-                        No leads
+          <div className="overflow-x-auto pb-4">
+            <div className="flex gap-4 min-w-max">
+              {pipelineStages.map((stage) => {
+                const stageLeads = getLeadsByStatus(stage);
+                const config = statusConfig[stage];
+                return (
+                  <div key={stage} className="w-[260px] flex-shrink-0">
+                    <div className="flex items-center justify-between mb-3 px-1">
+                      <div className="flex items-center gap-2">
+                        <Badge className={config.color}>{config.label}</Badge>
+                        <span className="text-sm text-muted-foreground">({stageLeads.length})</span>
                       </div>
-                    )}
+                      <span className="text-xs text-muted-foreground font-medium">
+                        ${getTotalValue(stage).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto pr-1">
+                      {stageLeads.map((lead) => (
+                        <Card 
+                          key={lead.id} 
+                          className="cursor-pointer hover:shadow-md transition-all hover:border-primary/50 border"
+                          onClick={() => setSelectedLead(lead)}
+                        >
+                          <CardContent className="p-3">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <h4 className="font-medium text-sm line-clamp-1">{lead.full_name}</h4>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0">
+                                    <MoreVertical className="h-3 w-3" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  {pipelineStages.filter(s => s !== stage).map((s) => (
+                                    <DropdownMenuItem 
+                                      key={s}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        updateStatusMutation.mutate({ id: lead.id, status: s });
+                                      }}
+                                    >
+                                      <ArrowRight className="h-4 w-4 mr-2" />
+                                      Move to {statusConfig[s].label}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                            {lead.estimated_value && (
+                              <p className="text-sm font-semibold text-success mb-1.5">
+                                ${lead.estimated_value.toLocaleString()}
+                              </p>
+                            )}
+                            <div className="space-y-1">
+                              {lead.email && (
+                                <p className="text-xs text-muted-foreground truncate flex items-center gap-1.5">
+                                  <Mail className="h-3 w-3 flex-shrink-0" /> 
+                                  <span className="truncate">{lead.email}</span>
+                                </p>
+                              )}
+                              {lead.phone && (
+                                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                  <Phone className="h-3 w-3 flex-shrink-0" /> {lead.phone}
+                                </p>
+                              )}
+                            </div>
+                            {lead.source && (
+                              <Badge variant="outline" className="mt-2 text-xs">
+                                {lead.source}
+                              </Badge>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                      {stageLeads.length === 0 && (
+                        <div className="text-center py-8 text-muted-foreground text-sm border-2 border-dashed rounded-lg bg-muted/30">
+                          No leads
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
 

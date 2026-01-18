@@ -467,13 +467,14 @@ const NewCallPage = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Details</Label>
+              <Label htmlFor="description">Details *</Label>
               <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Additional details about the call..."
                 rows={3}
+                required
               />
             </div>
 

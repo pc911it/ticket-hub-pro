@@ -170,7 +170,6 @@ const createNavigationGroups = (hasFeature: (key: string) => boolean, isAdminLev
       items: [
         { nameKey: 'sidebar.tickets', href: '/admin/tickets', icon: Ticket },
         { nameKey: 'sidebar.chatTickets', href: '/admin/chat-tickets', icon: MessageSquare },
-        { nameKey: 'sidebar.liveChats', href: '/admin/live-chats', icon: HeadphonesIcon },
         { nameKey: 'sidebar.support', href: '/admin/support', icon: HeadphonesIcon },
         { nameKey: 'sidebar.warranties', href: '/admin/warranties', icon: Shield, featureKey: 'warranties' },
       ]
