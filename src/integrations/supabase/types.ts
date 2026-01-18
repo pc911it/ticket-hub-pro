@@ -5458,6 +5458,13 @@ export type Database = {
             referencedRelation: "support_chats"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "support_chat_messages_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "support_chats_anonymized"
+            referencedColumns: ["id"]
+          },
         ]
       }
       support_chats: {
@@ -6492,6 +6499,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      support_chats_anonymized: {
+        Row: {
+          assigned_agent_id: string | null
+          channel: string | null
+          created_at: string | null
+          department: string | null
+          id: string | null
+          status: string | null
+          topic: string | null
+          updated_at: string | null
+          visitor_email_domain: string | null
+          visitor_name_masked: string | null
+          visitor_phone_masked: string | null
+        }
+        Insert: {
+          assigned_agent_id?: string | null
+          channel?: string | null
+          created_at?: string | null
+          department?: string | null
+          id?: string | null
+          status?: string | null
+          topic?: string | null
+          updated_at?: string | null
+          visitor_email_domain?: never
+          visitor_name_masked?: never
+          visitor_phone_masked?: never
+        }
+        Update: {
+          assigned_agent_id?: string | null
+          channel?: string | null
+          created_at?: string | null
+          department?: string | null
+          id?: string | null
+          status?: string | null
+          topic?: string | null
+          updated_at?: string | null
+          visitor_email_domain?: never
+          visitor_name_masked?: never
+          visitor_phone_masked?: never
+        }
+        Relationships: []
       }
     }
     Functions: {
