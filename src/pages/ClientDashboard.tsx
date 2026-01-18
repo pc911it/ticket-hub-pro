@@ -29,6 +29,7 @@ import { TicketProgressTracker } from "@/components/TicketProgressTracker";
 import { ClientNotificationPreferences } from "@/components/ClientNotificationPreferences";
 import { WorkOrderPDF } from "@/components/WorkOrderPDF";
 import { ClientInvoiceDetailSheet } from "@/components/ClientInvoiceDetailSheet";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { 
   FolderOpen, 
   Ticket, 
@@ -655,6 +656,7 @@ export default function ClientDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <LanguageSwitcher variant="compact" />
             {user && <PasswordResetReminder userId={user.id} />}
             <Dialog open={isRequestDialogOpen} onOpenChange={(open) => {
               setIsRequestDialogOpen(open);

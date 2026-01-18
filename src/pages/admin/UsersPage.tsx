@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import type { Database } from "@/integrations/supabase/types";
 import { validatePassword } from "@/lib/passwordValidation";
 import { PasswordStrengthIndicator } from "@/components/PasswordStrengthIndicator";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
@@ -337,109 +338,112 @@ export default function UsersPage() {
               : "Create and manage users for your company"}
           </p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <UserPlus className="mr-2 h-4 w-4" />
-              Create User
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New User</DialogTitle>
-            </DialogHeader>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                createUserMutation.mutate(newUser);
-              }}
-              className="space-y-4"
-            >
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
-                <Input
-                  id="fullName"
-                  value={newUser.fullName}
-                  onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
-                  placeholder="John Doe"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={newUser.email}
-                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                  placeholder="john@example.com"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={newUser.password}
-                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                  placeholder="••••••••"
-                  minLength={8}
-                  required
-                />
-                <PasswordStrengthIndicator password={newUser.password} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <Select
-                  value={newUser.role}
-                  onValueChange={(value: AppRole) => setNewUser({ ...newUser, role: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="user">
-                      <span className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        Basic User - Pending work access
-                      </span>
-                    </SelectItem>
-                    <SelectItem value="staff">
-                      <span className="flex items-center gap-2">
-                        <Briefcase className="h-4 w-4" />
-                        Staff - Dispatcher access
-                      </span>
-                    </SelectItem>
-                    <SelectItem value="client">
-                      <span className="flex items-center gap-2">
-                        <Users className="h-4 w-4" />
-                        Client - Ticket updates only
-                      </span>
-                    </SelectItem>
-                    {/* Only show admin option if no admin exists or super admin is creating */}
-                    {(isSuperAdmin || !hasExistingAdmin) && (
-                      <SelectItem value="admin" disabled={hasExistingAdmin && !isSuperAdmin}>
+        <div className="flex items-center gap-3">
+          <LanguageSwitcher variant="compact" />
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Create User
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create New User</DialogTitle>
+              </DialogHeader>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  createUserMutation.mutate(newUser);
+                }}
+                className="space-y-4"
+              >
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Full Name</Label>
+                  <Input
+                    id="fullName"
+                    value={newUser.fullName}
+                    onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
+                    placeholder="John Doe"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={newUser.email}
+                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                    placeholder="john@example.com"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={newUser.password}
+                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                    placeholder="••••••••"
+                    minLength={8}
+                    required
+                  />
+                  <PasswordStrengthIndicator password={newUser.password} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select
+                    value={newUser.role}
+                    onValueChange={(value: AppRole) => setNewUser({ ...newUser, role: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="user">
                         <span className="flex items-center gap-2">
-                          <Shield className="h-4 w-4" />
-                          Admin - Full access {hasExistingAdmin ? "(already exists)" : ""}
+                          <User className="h-4 w-4" />
+                          Basic User - Pending work access
                         </span>
                       </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                {hasExistingAdmin && !isSuperAdmin && (
-                  <p className="text-xs text-muted-foreground">
-                    Note: Only one admin is permitted per company
-                  </p>
-                )}
-              </div>
-              <Button type="submit" className="w-full" disabled={createUserMutation.isPending}>
-                {createUserMutation.isPending ? "Creating..." : "Create User"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+                      <SelectItem value="staff">
+                        <span className="flex items-center gap-2">
+                          <Briefcase className="h-4 w-4" />
+                          Staff - Dispatcher access
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="client">
+                        <span className="flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          Client - Ticket updates only
+                        </span>
+                      </SelectItem>
+                      {/* Only show admin option if no admin exists or super admin is creating */}
+                      {(isSuperAdmin || !hasExistingAdmin) && (
+                        <SelectItem value="admin" disabled={hasExistingAdmin && !isSuperAdmin}>
+                          <span className="flex items-center gap-2">
+                            <Shield className="h-4 w-4" />
+                            Admin - Full access {hasExistingAdmin ? "(already exists)" : ""}
+                          </span>
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {hasExistingAdmin && !isSuperAdmin && (
+                    <p className="text-xs text-muted-foreground">
+                      Note: Only one admin is permitted per company
+                    </p>
+                  )}
+                </div>
+                <Button type="submit" className="w-full" disabled={createUserMutation.isPending}>
+                  {createUserMutation.isPending ? "Creating..." : "Create User"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
