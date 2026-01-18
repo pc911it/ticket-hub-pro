@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Building2, Mail, Phone, MapPin, User, DollarSign, Percent, Calendar, Loader2, Gift, Shield, Sparkles } from "lucide-react";
+import { Building2, Mail, Phone, MapPin, User, DollarSign, Percent, Calendar, Loader2, Gift, Shield, Sparkles, CreditCard, Clock } from "lucide-react";
 
 interface CreateCompanyDialogProps {
   open: boolean;
@@ -57,10 +57,10 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
   const [isFreeAccount, setIsFreeAccount] = useState(false);
   const [subscriptionPlan, setSubscriptionPlan] = useState<string>("professional");
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
+  const [billingMode, setBillingMode] = useState<"trial" | "require_card">("trial");
   const [applyDiscount, setApplyDiscount] = useState(false);
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
   const [discountValue, setDiscountValue] = useState("");
-  const [extendedTrial, setExtendedTrial] = useState(false);
   const [trialDays, setTrialDays] = useState("14");
   const [skipApproval, setSkipApproval] = useState(true);
   
@@ -81,10 +81,10 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
     setIsFreeAccount(false);
     setSubscriptionPlan("professional");
     setBillingCycle("monthly");
+    setBillingMode("trial");
     setApplyDiscount(false);
     setDiscountType("percentage");
     setDiscountValue("");
-    setExtendedTrial(false);
     setTrialDays("14");
     setSkipApproval(true);
     setInternalNotes("");
@@ -163,17 +163,27 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
         businessConfig.is_free_account = true;
         businessConfig.free_account_granted_by = 'super_admin';
         businessConfig.free_account_granted_at = new Date().toISOString();
-      } else if (applyDiscount && discountValue) {
-        businessConfig.discount = {
-          type: discountType,
-          value: parseFloat(discountValue),
-          applied_by: 'super_admin',
-          applied_at: new Date().toISOString(),
-        };
-        const selectedPlanData = SUBSCRIPTION_PLANS.find(p => p.value === subscriptionPlan);
-        businessConfig.original_price = selectedPlanData ? getBasePrice(selectedPlanData) : 0;
-        businessConfig.discounted_price = calculateFinalPrice();
-        businessConfig.billing_cycle = billingCycle;
+      } else {
+        // Set billing mode
+        businessConfig.billing_mode = billingMode;
+        
+        if (billingMode === 'require_card') {
+          businessConfig.require_card_before_access = true;
+          businessConfig.card_required_at = new Date().toISOString();
+        }
+        
+        if (applyDiscount && discountValue) {
+          businessConfig.discount = {
+            type: discountType,
+            value: parseFloat(discountValue),
+            applied_by: 'super_admin',
+            applied_at: new Date().toISOString(),
+          };
+          const selectedPlanData = SUBSCRIPTION_PLANS.find(p => p.value === subscriptionPlan);
+          businessConfig.original_price = selectedPlanData ? getBasePrice(selectedPlanData) : 0;
+          businessConfig.discounted_price = calculateFinalPrice();
+          businessConfig.billing_cycle = billingCycle;
+        }
       }
       
       if (internalNotes) {
@@ -195,9 +205,9 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
           approval_status: skipApproval ? 'approved' : 'pending',
           approved_at: skipApproval ? new Date().toISOString() : null,
           subscription_plan: isFreeAccount ? 'free' : subscriptionPlan,
-          subscription_status: isFreeAccount ? 'active' : (extendedTrial ? 'trial' : 'active'),
+          subscription_status: isFreeAccount ? 'active' : (billingMode === 'trial' ? 'trial' : 'pending_payment'),
           billing_cycle: isFreeAccount ? null : billingCycle,
-          trial_ends_at: (isFreeAccount || !extendedTrial) ? null : trialEndsAt.toISOString(),
+          trial_ends_at: (isFreeAccount || billingMode !== 'trial') ? null : trialEndsAt.toISOString(),
           is_active: true,
           business_config: Object.keys(businessConfig).length > 0 ? businessConfig : null,
         })
@@ -589,22 +599,47 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
                     )}
                   </div>
 
-                  {/* Trial Section */}
+                  {/* Billing Mode Section */}
                   <div className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        <Label htmlFor="extended-trial" className="font-medium">Extended Trial Period</Label>
+                    <Label className="font-medium mb-3 block">Billing Mode</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div
+                        className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                          billingMode === 'trial'
+                            ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                            : 'hover:border-muted-foreground/50'
+                        }`}
+                        onClick={() => setBillingMode('trial')}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <Clock className="h-4 w-4 text-blue-600" />
+                          <p className="font-medium">Start with Trial</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          User gets full access during trial. Card is collected and charged when trial ends.
+                        </p>
                       </div>
-                      <Switch
-                        id="extended-trial"
-                        checked={extendedTrial}
-                        onCheckedChange={setExtendedTrial}
-                      />
+                      <div
+                        className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                          billingMode === 'require_card'
+                            ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                            : 'hover:border-muted-foreground/50'
+                        }`}
+                        onClick={() => setBillingMode('require_card')}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <CreditCard className="h-4 w-4 text-green-600" />
+                          <p className="font-medium">Require Card First</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          User must add payment card before accessing dashboard. Charged immediately after.
+                        </p>
+                      </div>
                     </div>
-                    {extendedTrial && (
-                      <div className="mt-3">
-                        <Label>Trial Duration (days)</Label>
+                    
+                    {billingMode === 'trial' && (
+                      <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <Label className="text-sm">Trial Duration</Label>
                         <Select value={trialDays} onValueChange={setTrialDays}>
                           <SelectTrigger className="mt-1">
                             <SelectValue />
@@ -616,6 +651,18 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
                             <SelectItem value="90">90 days</SelectItem>
                           </SelectContent>
                         </Select>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Trial ends on: {new Date(Date.now() + parseInt(trialDays) * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {billingMode === 'require_card' && (
+                      <div className="mt-4 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                        <p className="text-xs text-green-700 dark:text-green-300 flex items-center gap-2">
+                          <CreditCard className="h-3 w-3" />
+                          User will see a payment gate on first login. They cannot access the dashboard until they add a valid card and complete payment.
+                        </p>
                       </div>
                     )}
                   </div>
