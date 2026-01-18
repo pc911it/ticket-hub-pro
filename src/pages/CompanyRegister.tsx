@@ -26,8 +26,8 @@ type CompanyType = Database["public"]["Enums"]["company_type"];
 interface PricingPlan {
   id: string;
   name: string;
-  price: number;
-  period: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
   description: string;
   features: string[];
   popular?: boolean;
@@ -38,8 +38,8 @@ const plans: PricingPlan[] = [
   {
     id: 'professional',
     name: 'Professional',
-    price: 349,
-    period: '/month',
+    monthlyPrice: 349,
+    yearlyPrice: 2990,
     description: 'Complete business OS for growing teams',
     icon: <Shield className="h-5 w-5" />,
     features: ['Up to 10 dispatchers', 'Up to 25 field agents', 'Inventory Management', 'Project Management', 'Digital Invoicing', 'Live GPS Tracking'],
@@ -47,8 +47,8 @@ const plans: PricingPlan[] = [
   {
     id: 'advanced',
     name: 'Advanced',
-    price: 899,
-    period: '/month',
+    monthlyPrice: 899,
+    yearlyPrice: 7490,
     description: 'Advanced tools for scaling operations',
     icon: <Zap className="h-5 w-5" />,
     popular: true,
@@ -57,8 +57,8 @@ const plans: PricingPlan[] = [
   {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 0,
-    period: '',
+    monthlyPrice: 0,
+    yearlyPrice: 0,
     description: 'Custom solutions for large organizations',
     icon: <Users className="h-5 w-5" />,
     features: ['Unlimited dispatchers', 'Unlimited field agents', 'White-label Portal', 'Custom Integrations', 'Dedicated Account Manager'],
@@ -147,6 +147,7 @@ const CompanyRegister = () => {
 
   // Plan & promo
   const [selectedPlan, setSelectedPlan] = useState('professional');
+  const [isYearlyBilling, setIsYearlyBilling] = useState(false);
   const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
 
   // Check if user is already logged in (e.g., from Google OAuth)
@@ -346,9 +347,9 @@ const CompanyRegister = () => {
 
   const calculateFinalPrice = () => {
     const plan = plans.find(p => p.id === selectedPlan);
-    if (!plan || plan.price === 0) return 0;
+    if (!plan || (plan.monthlyPrice === 0 && plan.yearlyPrice === 0)) return 0;
     
-    let price = plan.price;
+    let price = isYearlyBilling ? Math.round(plan.yearlyPrice / 12) : plan.monthlyPrice;
     if (appliedPromo?.valid && appliedPromo.promoCode) {
       if (appliedPromo.promoCode.discount_type === 'percentage') {
         price = price * (1 - appliedPromo.promoCode.discount_value / 100);
@@ -357,6 +358,12 @@ const CompanyRegister = () => {
       }
     }
     return Math.round(price * 100) / 100;
+  };
+
+  const getYearlySavings = () => {
+    const plan = plans.find(p => p.id === selectedPlan);
+    if (!plan) return 0;
+    return (plan.monthlyPrice * 12) - plan.yearlyPrice;
   };
 
   const getTrialDays = () => {
@@ -382,7 +389,40 @@ const CompanyRegister = () => {
 
       const userEmail = currentUser.email || companyEmail || email;
 
-      // Create company
+      // Create company with billing cycle and discount info
+      const finalPrice = calculateFinalPrice();
+      const plan = plans.find(p => p.id === selectedPlan);
+      const originalPrice = isYearlyBilling 
+        ? Math.round((plan?.yearlyPrice || 0) / 12) 
+        : (plan?.monthlyPrice || 0);
+      
+      const businessConfig: Record<string, any> = {
+        ticketLabel: config.ticketLabel,
+        clientLabel: config.clientLabel,
+        inventoryCategories: config.inventoryCategories,
+      };
+      
+      // Store discount info if promo applied
+      if (appliedPromo?.valid && appliedPromo.promoCode) {
+        businessConfig.original_price = originalPrice;
+        businessConfig.discounted_price = finalPrice;
+        if (appliedPromo.promoCode.discount_type === 'percentage') {
+          businessConfig.discount = {
+            type: 'percentage',
+            value: appliedPromo.promoCode.discount_value,
+            applied_at: new Date().toISOString(),
+            promo_code: appliedPromo.promoCode.code,
+          };
+        } else if (appliedPromo.promoCode.discount_type === 'fixed') {
+          businessConfig.discount = {
+            type: 'fixed',
+            value: appliedPromo.promoCode.discount_value,
+            applied_at: new Date().toISOString(),
+            promo_code: appliedPromo.promoCode.code,
+          };
+        }
+      }
+
       const { data: company, error: companyError } = await supabase
         .from('companies')
         .insert({
@@ -396,11 +436,12 @@ const CompanyRegister = () => {
           subscription_plan: selectedPlan,
           subscription_status: 'trial',
           trial_ends_at: trialEndsAt.toISOString(),
-          business_config: {
-            ticketLabel: config.ticketLabel,
-            clientLabel: config.clientLabel,
-            inventoryCategories: config.inventoryCategories,
-          },
+          billing_cycle: isYearlyBilling ? 'yearly' : 'monthly',
+          discount_percentage: appliedPromo?.promoCode?.discount_type === 'percentage' 
+            ? appliedPromo.promoCode.discount_value : 0,
+          discount_fixed_amount: appliedPromo?.promoCode?.discount_type === 'fixed' 
+            ? appliedPromo.promoCode.discount_value : 0,
+          business_config: businessConfig,
         } as any)
         .select()
         .single();
@@ -830,41 +871,81 @@ const CompanyRegister = () => {
               />
               <CollapsibleContent>
                 <div className="px-4 pb-4 space-y-4">
-                  <div className="grid gap-3">
-                    {plans.map((plan) => (
-                      <div
-                        key={plan.id}
-                        onClick={() => setSelectedPlan(plan.id)}
-                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                          selectedPlan === plan.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+                  {/* Billing cycle toggle */}
+                  <div className="flex items-center justify-center gap-4 p-3 bg-muted/30 rounded-lg">
+                    <span className={`text-sm font-medium ${!isYearlyBilling ? 'text-foreground' : 'text-muted-foreground'}`}>
+                      Monthly
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsYearlyBilling(!isYearlyBilling)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        isYearlyBilling ? 'bg-primary' : 'bg-border'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          isYearlyBilling ? 'translate-x-6' : 'translate-x-1'
                         }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${selectedPlan === plan.id ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                              {plan.icon}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold">{plan.name}</span>
-                                {plan.popular && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Popular</span>}
+                      />
+                    </button>
+                    <span className={`text-sm font-medium ${isYearlyBilling ? 'text-foreground' : 'text-muted-foreground'}`}>
+                      Yearly
+                    </span>
+                    {isYearlyBilling && (
+                      <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">
+                        Save up to 30%
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid gap-3">
+                    {plans.map((plan) => {
+                      const displayPrice = isYearlyBilling 
+                        ? Math.round(plan.yearlyPrice / 12) 
+                        : plan.monthlyPrice;
+                      const isCustomPricing = plan.monthlyPrice === 0;
+
+                      return (
+                        <div
+                          key={plan.id}
+                          onClick={() => setSelectedPlan(plan.id)}
+                          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                            selectedPlan === plan.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className={`p-2 rounded-lg ${selectedPlan === plan.id ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                                {plan.icon}
                               </div>
-                              <p className="text-sm text-muted-foreground">{plan.description}</p>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold">{plan.name}</span>
+                                  {plan.popular && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Popular</span>}
+                                </div>
+                                <p className="text-sm text-muted-foreground">{plan.description}</p>
+                              </div>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            {plan.price > 0 ? (
-                              <>
-                                <span className="text-2xl font-bold">${plan.price}</span>
-                                <span className="text-muted-foreground">{plan.period}</span>
-                              </>
-                            ) : (
-                              <span className="text-lg font-medium">Contact Us</span>
-                            )}
+                            <div className="text-right">
+                              {!isCustomPricing ? (
+                                <div>
+                                  <span className="text-2xl font-bold">${displayPrice}</span>
+                                  <span className="text-muted-foreground">/mo</span>
+                                  {isYearlyBilling && (
+                                    <p className="text-xs text-muted-foreground">
+                                      billed ${plan.yearlyPrice}/year
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-lg font-medium">Contact Us</span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   <PromoCodeInput plan={selectedPlan} onPromoApplied={setAppliedPromo} />
@@ -903,6 +984,10 @@ const CompanyRegister = () => {
                       <span className="font-medium">{plans.find(p => p.id === selectedPlan)?.name}</span>
                     </div>
                     <div className="flex justify-between text-sm">
+                      <span>Billing:</span>
+                      <span className="font-medium">{isYearlyBilling ? 'Yearly' : 'Monthly'}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
                       <span>Free Trial:</span>
                       <span className="font-medium text-green-600">{getTrialDays()} days</span>
                     </div>
@@ -912,9 +997,18 @@ const CompanyRegister = () => {
                         <span className="font-medium">-{appliedPromo.promoCode?.discount_type === 'percentage' ? `${appliedPromo.promoCode.discount_value}%` : `$${appliedPromo.promoCode?.discount_value}`}</span>
                       </div>
                     )}
+                    {isYearlyBilling && getYearlySavings() > 0 && (
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>Yearly Savings:</span>
+                        <span className="font-medium">${getYearlySavings()}/year</span>
+                      </div>
+                    )}
                     <div className="border-t pt-2 flex justify-between">
                       <span className="font-medium">After trial:</span>
-                      <span className="font-bold text-lg">${calculateFinalPrice()}/month</span>
+                      <span className="font-bold text-lg">
+                        ${calculateFinalPrice()}/mo
+                        {isYearlyBilling && <span className="text-sm font-normal text-muted-foreground ml-1">(billed yearly)</span>}
+                      </span>
                     </div>
                   </div>
 
@@ -925,7 +1019,7 @@ const CompanyRegister = () => {
                   />
 
                   <p className="text-xs text-center text-muted-foreground">
-                    Your card will be charged ${calculateFinalPrice()}/month after your {getTrialDays()}-day trial ends. Cancel anytime.
+                    Your card will be charged ${isYearlyBilling ? plans.find(p => p.id === selectedPlan)?.yearlyPrice : calculateFinalPrice()} {isYearlyBilling ? 'yearly' : 'monthly'} after your {getTrialDays()}-day trial ends. Cancel anytime.
                   </p>
                 </div>
               </CollapsibleContent>

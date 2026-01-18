@@ -1223,17 +1223,21 @@ export type Database = {
           approval_status: string
           approved_at: string | null
           approved_by: string | null
+          billing_cycle: string | null
           business_config: Json | null
           cancellation_fee_charged: boolean | null
           cancellation_reason: string | null
           city: string | null
           created_at: string
           deleted_at: string | null
+          discount_fixed_amount: number | null
+          discount_percentage: number | null
           email: string
           id: string
           is_active: boolean
           logo_url: string | null
           name: string
+          next_billing_date: string | null
           owner_id: string | null
           payment_provider: string | null
           phone: string | null
@@ -1251,17 +1255,21 @@ export type Database = {
           approval_status?: string
           approved_at?: string | null
           approved_by?: string | null
+          billing_cycle?: string | null
           business_config?: Json | null
           cancellation_fee_charged?: boolean | null
           cancellation_reason?: string | null
           city?: string | null
           created_at?: string
           deleted_at?: string | null
+          discount_fixed_amount?: number | null
+          discount_percentage?: number | null
           email: string
           id?: string
           is_active?: boolean
           logo_url?: string | null
           name: string
+          next_billing_date?: string | null
           owner_id?: string | null
           payment_provider?: string | null
           phone?: string | null
@@ -1279,17 +1287,21 @@ export type Database = {
           approval_status?: string
           approved_at?: string | null
           approved_by?: string | null
+          billing_cycle?: string | null
           business_config?: Json | null
           cancellation_fee_charged?: boolean | null
           cancellation_reason?: string | null
           city?: string | null
           created_at?: string
           deleted_at?: string | null
+          discount_fixed_amount?: number | null
+          discount_percentage?: number | null
           email?: string
           id?: string
           is_active?: boolean
           logo_url?: string | null
           name?: string
+          next_billing_date?: string | null
           owner_id?: string | null
           payment_provider?: string | null
           phone?: string | null
@@ -1442,6 +1454,7 @@ export type Database = {
           company_id: string
           discount_applied: number | null
           id: string
+          is_recurring: boolean | null
           promo_code_id: string
           trial_extended_days: number | null
         }
@@ -1450,6 +1463,7 @@ export type Database = {
           company_id: string
           discount_applied?: number | null
           id?: string
+          is_recurring?: boolean | null
           promo_code_id: string
           trial_extended_days?: number | null
         }
@@ -1458,6 +1472,7 @@ export type Database = {
           company_id?: string
           discount_applied?: number | null
           id?: string
+          is_recurring?: boolean | null
           promo_code_id?: string
           trial_extended_days?: number | null
         }
