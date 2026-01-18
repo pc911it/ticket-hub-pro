@@ -205,22 +205,87 @@
     "currentPlan": "Plan Actual",
     "switchPlan": "Cambiar Plan",
     "getStarted": "Comenzar",
+    "startFreeTrial": "Comenzar Prueba Gratis",
     "contactUs": "Contáctanos",
+    "contactSales": "Contactar Ventas",
     "customPricing": "Precio personalizado para tus necesidades",
     "allPlansInclude": "Todos los planes incluyen una prueba gratis de 14 días. No se requiere tarjeta de crédito para comenzar.",
     "paymentFees": "Se aplican tarifas de procesamiento de pago (2.9% + $0.30 por transacción) al facturar a tus clientes.",
+    "save": "Ahorra",
+    "billed": "Facturado",
+    "year": "año",
     "professional": {
       "name": "Profesional",
-      "description": "Perfecto para equipos en crecimiento listos para escalar operaciones"
+      "description": "Perfecto para equipos en crecimiento listos para escalar operaciones",
+      "features": {
+        "tickets": "1,000 tickets/mes",
+        "unlimitedProjects": "Proyectos ilimitados",
+        "staff": "Hasta 10 miembros del personal",
+        "leads": "Gestión de Leads (100 leads)",
+        "dailyLogs": "Registros Diarios y Órdenes de Trabajo",
+        "budgeting": "Presupuestos Básicos",
+        "warranty": "Seguimiento de Garantías",
+        "followUp": "Recordatorios de Seguimiento",
+        "inventory": "Inventario Completo con código de barras y proveedor",
+        "clientPortal": "Acceso completo al Portal de Clientes",
+        "geolocation": "Verificación de Geolocalización",
+        "approval": "Flujo de Aprobación de Administrador",
+        "chat": "Chat de Proyecto",
+        "uploads": "Carga de Archivos (Tickets y Proyectos)",
+        "billing": "Integración de Facturación (Stripe/Square)",
+        "support": "Soporte Estándar"
+      }
     },
     "advanced": {
       "name": "Avanzado",
       "description": "Solución completa para organizaciones de alto volumen",
-      "popular": "MÁS POPULAR"
+      "popular": "MÁS POPULAR",
+      "features": {
+        "unlimitedTickets": "Tickets ilimitados",
+        "unlimitedProjects": "Proyectos ilimitados",
+        "unlimitedStaff": "Miembros del personal ilimitados",
+        "leads": "Gestión de Leads (500 leads)",
+        "bidding": "Gestión de Ofertas e IA para Licitaciones",
+        "rfi": "Gestión de RFI y Submittals",
+        "permits": "Seguimiento de Permisos y Alertas",
+        "changeOrders": "Órdenes de Cambio y Contratos con Firma Electrónica",
+        "floorPlan": "Visor de Planos 3D",
+        "dailyLogs": "Registros Diarios y Órdenes de Trabajo",
+        "punchLists": "Listas de Pendientes e Inspecciones",
+        "budgeting": "Presupuestos Avanzados y Costeo de Trabajos",
+        "warranty": "Seguimiento de Garantías y Equipos",
+        "selections": "Selecciones y Asignaciones",
+        "subcontractor": "Emparejamiento de Subcontratistas",
+        "costCalculator": "Calculadora de Costos y Estimaciones",
+        "moodBoards": "Tableros de Inspiración y Biblioteca de Productos",
+        "aiTakeoffs": "Mediciones con IA desde Planos",
+        "offlineMode": "Modo Sin Conexión y Anotaciones en Planos",
+        "siteMapping": "Mapeo de Sitio y Despacho de Cuadrillas",
+        "aiFollowUp": "Recordatorios de Seguimiento (con IA)",
+        "advancedInventory": "Inventario Completo + Reportes Avanzados",
+        "whiteLabel": "Marca Blanca / Personalización",
+        "prioritySupport": "Soporte Prioritario"
+      }
     },
     "enterprise": {
       "name": "Empresarial",
-      "description": "Soluciones a medida para operaciones a gran escala"
+      "description": "Soluciones a medida para operaciones a gran escala",
+      "features": {
+        "unlimitedTickets": "Tickets ilimitados",
+        "multiCompany": "Proyectos ilimitados + Multi-empresa",
+        "enterpriseUsers": "Usuarios de nivel empresarial",
+        "allAdvanced": "Todas las funciones Avanzadas, más:",
+        "multiLocation": "Seguimiento de Inventario Multi-ubicación",
+        "aiQuantification": "Cuantificación Avanzada con IA",
+        "collaboration": "Colaboración de Equipo en Tiempo Real",
+        "ocr": "OCR para Dibujos Escaneados",
+        "versionControl": "Control de Versiones y Colaboración en Estudio",
+        "portal": "Portal Completo + SLA e Incorporación Dedicada",
+        "customIntegrations": "Integraciones Personalizadas y Acceso API",
+        "accountManager": "Gerente de Cuenta Dedicado",
+        "training": "Capacitación e Incorporación Personalizada",
+        "dedicatedSupport": "Soporte Dedicado + SLA"
+      }
     }
   },
   "cta": {

@@ -205,22 +205,87 @@
     "currentPlan": "Current Plan",
     "switchPlan": "Switch Plan",
     "getStarted": "Get Started",
+    "startFreeTrial": "Start Free Trial",
     "contactUs": "Contact Us",
+    "contactSales": "Contact Sales",
     "customPricing": "Custom pricing for your needs",
     "allPlansInclude": "All plans include a 14-day free trial. No credit card required to start.",
     "paymentFees": "Payment processing fees (2.9% + $0.30 per transaction) apply when billing your clients.",
+    "save": "Save",
+    "billed": "Billed",
+    "year": "year",
     "professional": {
       "name": "Professional",
-      "description": "Perfect for growing teams ready to scale operations"
+      "description": "Perfect for growing teams ready to scale operations",
+      "features": {
+        "tickets": "1,000 tickets/month",
+        "unlimitedProjects": "Unlimited projects",
+        "staff": "Up to 10 staff members",
+        "leads": "Lead Management (100 leads)",
+        "dailyLogs": "Daily Logs & Work Orders",
+        "budgeting": "Basic Budgeting",
+        "warranty": "Warranty Tracking",
+        "followUp": "Follow-up Reminders",
+        "inventory": "Full Inventory with barcode & supplier",
+        "clientPortal": "Full Client Portal access",
+        "geolocation": "Geolocation Verification",
+        "approval": "Admin Approval Workflow",
+        "chat": "Project Chat",
+        "uploads": "File Uploads (Tickets & Projects)",
+        "billing": "Billing Integration (Stripe/Square)",
+        "support": "Standard Support"
+      }
     },
     "advanced": {
       "name": "Advanced",
       "description": "Complete solution for high-volume organizations",
-      "popular": "MOST POPULAR"
+      "popular": "MOST POPULAR",
+      "features": {
+        "unlimitedTickets": "Unlimited tickets",
+        "unlimitedProjects": "Unlimited projects",
+        "unlimitedStaff": "Unlimited staff members",
+        "leads": "Lead Management (500 leads)",
+        "bidding": "Bid Management & AI Bidding",
+        "rfi": "RFI & Submittal Management",
+        "permits": "Permit Tracking & Alerts",
+        "changeOrders": "Change Orders & Contracts with eSign",
+        "floorPlan": "3D Floor Plan Viewer",
+        "dailyLogs": "Daily Logs & Work Orders",
+        "punchLists": "Punch Lists & Inspections",
+        "budgeting": "Advanced Budgeting & Job Costing",
+        "warranty": "Warranty & Equipment Tracking",
+        "selections": "Selections & Allowances",
+        "subcontractor": "Subcontractor Matching",
+        "costCalculator": "Cost Calculator & Estimating",
+        "moodBoards": "Mood Boards & Product Library",
+        "aiTakeoffs": "AI Takeoffs from Blueprints",
+        "offlineMode": "Offline Mode & Plan Markups",
+        "siteMapping": "Site Mapping & Crew Dispatch",
+        "aiFollowUp": "Follow-up Reminders (AI-driven)",
+        "advancedInventory": "Full Inventory + Advanced Reports",
+        "whiteLabel": "Branding / White-label",
+        "prioritySupport": "Priority Support"
+      }
     },
     "enterprise": {
       "name": "Enterprise",
-      "description": "Tailored solutions for large-scale operations"
+      "description": "Tailored solutions for large-scale operations",
+      "features": {
+        "unlimitedTickets": "Unlimited tickets",
+        "multiCompany": "Unlimited + Multi-company projects",
+        "enterpriseUsers": "Enterprise-level users",
+        "allAdvanced": "All Advanced features, plus:",
+        "multiLocation": "Multi-location Inventory Tracking",
+        "aiQuantification": "Advanced AI Quantification",
+        "collaboration": "Real-time Team Collaboration",
+        "ocr": "OCR for Scanned Drawings",
+        "versionControl": "Version Control & Studio Collaboration",
+        "portal": "Full Portal + SLA & Dedicated Onboarding",
+        "customIntegrations": "Custom Integrations & API Access",
+        "accountManager": "Dedicated Account Manager",
+        "training": "Custom Training & Onboarding",
+        "dedicatedSupport": "Dedicated Support + SLA"
+      }
     }
   },
   "cta": {
