@@ -80,11 +80,14 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('[Dashboard] effectiveCompanyId changed:', effectiveCompanyId, 'isPlatformView:', isPlatformView);
     fetchDashboardData();
   }, [effectiveCompanyId]);
 
   const fetchDashboardData = async () => {
     try {
+      console.log('[Dashboard] Fetching data with effectiveCompanyId:', effectiveCompanyId);
+      setLoading(true);
       const today = new Date();
       const monthStart = format(startOfMonth(today), 'yyyy-MM-dd');
       const monthEnd = format(endOfMonth(today), 'yyyy-MM-dd');
