@@ -58,33 +58,55 @@ const ChartContainer = React.forwardRef<
 });
 ChartContainer.displayName = "Chart";
 
+/**
+ * ChartStyle component generates CSS custom properties for chart theming.
+ * 
+ * SECURITY NOTE: This component only uses static theme configuration from
+ * the ChartConfig prop. The config is NOT user-controllable and only accepts
+ * predefined color strings. Do NOT modify to accept user input without
+ * proper sanitization.
+ */
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(([_, config]) => config.theme || config.color);
 
-  if (!colorConfig.length) {
+  // Generate CSS content safely - only static theme data is used
+  // Colors are validated to only contain safe CSS color values
+  // useMemo must be called before any conditional returns (React hooks rules)
+  const generateThemeStyles = React.useMemo(() => {
+    if (!colorConfig.length) {
+      return '';
+    }
+    return Object.entries(THEMES)
+      .map(([theme, prefix]) => {
+        const cssVars = colorConfig
+          .map(([key, itemConfig]) => {
+            const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
+            // Validate color is a safe CSS value (hex, rgb, hsl, or named color)
+            if (color && /^(#[0-9A-Fa-f]{3,8}|rgba?\([^)]+\)|hsla?\([^)]+\)|[a-zA-Z]+)$/.test(color)) {
+              // Sanitize key to only allow alphanumeric and hyphens
+              const safeKey = key.replace(/[^a-zA-Z0-9-]/g, '');
+              return `  --color-${safeKey}: ${color};`;
+            }
+            return null;
+          })
+          .filter(Boolean)
+          .join("\n");
+        
+        // Sanitize id to prevent CSS injection
+        const safeId = id.replace(/[^a-zA-Z0-9-_]/g, '');
+        return `${prefix} [data-chart=${safeId}] {\n${cssVars}\n}`;
+      })
+      .join("\n");
+  }, [colorConfig, id]);
+
+  // Early return after hooks
+  if (!generateThemeStyles) {
     return null;
   }
 
-  return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
-    return color ? `  --color-${key}: ${color};` : null;
-  })
-  .join("\n")}
-}
-`,
-          )
-          .join("\n"),
-      }}
-    />
-  );
+  // Using a regular style element with text content instead of dangerouslySetInnerHTML
+  // This is safer as React will escape any unexpected content
+  return <style>{generateThemeStyles}</style>;
 };
 
 const ChartTooltip = RechartsPrimitive.Tooltip;

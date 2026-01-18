@@ -508,6 +508,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bids_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bids_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -812,6 +819,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "change_orders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "change_orders_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -939,6 +953,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "client_invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "client_invoices_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -1060,6 +1081,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "client_payments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "client_payments_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -1134,6 +1162,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_subscriptions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients_safe"
             referencedColumns: ["id"]
           },
           {
@@ -1678,6 +1713,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "contracts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "contracts_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -2153,6 +2195,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "estimates_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "estimates_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -2308,6 +2357,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follow_up_reminders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients_safe"
             referencedColumns: ["id"]
           },
           {
@@ -2875,6 +2931,13 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "leads_converted_to_client_id_fkey"
+            columns: ["converted_to_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       mood_board_items: {
@@ -2995,6 +3058,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mood_boards_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients_safe"
             referencedColumns: ["id"]
           },
           {
@@ -4017,6 +4087,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "projects_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -4882,6 +4959,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "selections_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "selections_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -5059,6 +5143,13 @@ export type Database = {
             columns: ["subcontractor_id"]
             isOneToOne: false
             referencedRelation: "subcontractors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subcontractor_assignments_subcontractor_id_fkey"
+            columns: ["subcontractor_id"]
+            isOneToOne: false
+            referencedRelation: "subcontractors_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -5826,6 +5917,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tickets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tickets_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -6152,6 +6250,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "vessels_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "vessels_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -6227,6 +6332,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranties_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients_safe"
             referencedColumns: ["id"]
           },
           {
@@ -6456,6 +6568,71 @@ export type Database = {
           },
         ]
       }
+      clients_safe: {
+        Row: {
+          address: string | null
+          company_id: string | null
+          created_at: string | null
+          deleted_at: string | null
+          email: string | null
+          full_name: string | null
+          has_payment_method: boolean | null
+          has_square_customer: boolean | null
+          id: string | null
+          must_change_password: boolean | null
+          notes: string | null
+          notification_preferences: Json | null
+          phone: string | null
+          portal_user_id: string | null
+          temp_password_created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          has_payment_method?: never
+          has_square_customer?: never
+          id?: string | null
+          must_change_password?: boolean | null
+          notes?: string | null
+          notification_preferences?: Json | null
+          phone?: string | null
+          portal_user_id?: string | null
+          temp_password_created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          has_payment_method?: never
+          has_square_customer?: never
+          id?: string | null
+          must_change_password?: boolean | null
+          notes?: string | null
+          notification_preferences?: Json | null
+          phone?: string | null
+          portal_user_id?: string | null
+          temp_password_created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_payment_settings_safe: {
         Row: {
           company_id: string | null
@@ -6493,6 +6670,89 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "company_payment_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subcontractors_safe: {
+        Row: {
+          address: string | null
+          business_name: string | null
+          city: string | null
+          coi_on_file: boolean | null
+          company_id: string | null
+          contact_name: string | null
+          created_at: string | null
+          email: string | null
+          id: string | null
+          insurance_expiry: string | null
+          license_expiry: string | null
+          license_number: string | null
+          notes: string | null
+          phone: string | null
+          rating: number | null
+          state: string | null
+          status: string | null
+          total_projects: number | null
+          trades: string[] | null
+          updated_at: string | null
+          w9_on_file: boolean | null
+          zip_code: string | null
+        }
+        Insert: {
+          address?: never
+          business_name?: string | null
+          city?: string | null
+          coi_on_file?: boolean | null
+          company_id?: string | null
+          contact_name?: never
+          created_at?: string | null
+          email?: never
+          id?: string | null
+          insurance_expiry?: string | null
+          license_expiry?: string | null
+          license_number?: string | null
+          notes?: string | null
+          phone?: never
+          rating?: number | null
+          state?: string | null
+          status?: string | null
+          total_projects?: number | null
+          trades?: string[] | null
+          updated_at?: string | null
+          w9_on_file?: boolean | null
+          zip_code?: string | null
+        }
+        Update: {
+          address?: never
+          business_name?: string | null
+          city?: string | null
+          coi_on_file?: boolean | null
+          company_id?: string | null
+          contact_name?: never
+          created_at?: string | null
+          email?: never
+          id?: string | null
+          insurance_expiry?: string | null
+          license_expiry?: string | null
+          license_number?: string | null
+          notes?: string | null
+          phone?: never
+          rating?: number | null
+          state?: string | null
+          status?: string | null
+          total_projects?: number | null
+          trades?: string[] | null
+          updated_at?: string | null
+          w9_on_file?: boolean | null
+          zip_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subcontractors_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
@@ -6550,6 +6810,10 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_verification_codes: { Args: never; Returns: undefined }
+      client_has_payment_method: {
+        Args: { client_uuid: string }
+        Returns: boolean
+      }
       get_agent_locations: {
         Args: { _company_id: string }
         Returns: {
