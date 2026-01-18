@@ -351,6 +351,7 @@
     "completedProjects": "Completed Projects",
     "openTickets": "Open Tickets",
     "pendingApprovals": "Pending Approvals",
+    "pendingChangeOrders": "Pending Change Orders",
     "actionRequired": "Action Required",
     "overdueInvoices": "Overdue Invoices",
     "expiringPermits": "Expiring Permits",
