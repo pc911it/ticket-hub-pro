@@ -328,12 +328,12 @@ export default function PaymentSettingsPage() {
                   <Label htmlFor="stripe-publishable">Publishable Key</Label>
                   <Input
                     id="stripe-publishable"
-                    placeholder="pk_live_..."
+                    placeholder="pk_live_51ABC123xyz789DEFghijklmnopqrstuvwxyz"
                     value={stripeForm.publishableKey}
                     onChange={(e) => setStripeForm({ ...stripeForm, publishableKey: e.target.value })}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Find this in your Stripe Dashboard → Developers → API Keys
+                    Example: pk_live_51ABC123... or pk_test_51ABC123... (Find in Stripe Dashboard → Developers → API Keys)
                   </p>
                 </div>
 
@@ -343,7 +343,7 @@ export default function PaymentSettingsPage() {
                     <Input
                       id="stripe-secret"
                       type={showStripeSecret ? "text" : "password"}
-                      placeholder="sk_live_..."
+                      placeholder="sk_live_51ABC123xyz789DEFghijklmnopqrstuvwxyz"
                       value={stripeForm.secretKey}
                       onChange={(e) => setStripeForm({ ...stripeForm, secretKey: e.target.value })}
                     />
@@ -358,7 +358,7 @@ export default function PaymentSettingsPage() {
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Your secret key is encrypted and stored securely
+                    Example: sk_live_51ABC123... or sk_test_51ABC123... (encrypted and stored securely)
                   </p>
                 </div>
 
@@ -368,7 +368,7 @@ export default function PaymentSettingsPage() {
                     <Input
                       id="stripe-webhook"
                       type={showWebhookSecret ? "text" : "password"}
-                      placeholder="whsec_..."
+                      placeholder="whsec_abc123xyz789DEFghijklmnopqrstuvwxyz1234567890"
                       value={stripeForm.webhookSecret}
                       onChange={(e) => setStripeForm({ ...stripeForm, webhookSecret: e.target.value })}
                     />
@@ -383,7 +383,7 @@ export default function PaymentSettingsPage() {
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Required for receiving payment status updates
+                    Example: whsec_abc123... (Required for receiving payment status updates)
                   </p>
                 </div>
               </div>
@@ -441,12 +441,12 @@ export default function PaymentSettingsPage() {
                   <Label htmlFor="square-app-id">Application ID</Label>
                   <Input
                     id="square-app-id"
-                    placeholder="sq0idp-..."
+                    placeholder="sq0idp-abc123XYZ789defGHI456jklMNO"
                     value={squareForm.applicationId}
                     onChange={(e) => setSquareForm({ ...squareForm, applicationId: e.target.value })}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Find this in your Square Developer Dashboard → Applications
+                    Example: sq0idp-abc123... or sandbox-sq0idp-abc123... (Find in Square Developer Dashboard → Applications)
                   </p>
                 </div>
 
@@ -456,7 +456,7 @@ export default function PaymentSettingsPage() {
                     <Input
                       id="square-token"
                       type={showSquareToken ? "text" : "password"}
-                      placeholder="EAAAl..."
+                      placeholder="EAAAlxyz123ABC456def789GHI012jklMNO345pqrSTU678vwxYZ"
                       value={squareForm.accessToken}
                       onChange={(e) => setSquareForm({ ...squareForm, accessToken: e.target.value })}
                     />
@@ -471,7 +471,7 @@ export default function PaymentSettingsPage() {
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Your access token is encrypted and stored securely
+                    Example: EAAAlxyz123... (encrypted and stored securely)
                   </p>
                 </div>
 
@@ -479,12 +479,12 @@ export default function PaymentSettingsPage() {
                   <Label htmlFor="square-location">Location ID</Label>
                   <Input
                     id="square-location"
-                    placeholder="L..."
+                    placeholder="LABC123XYZ789DEF456GHI"
                     value={squareForm.locationId}
                     onChange={(e) => setSquareForm({ ...squareForm, locationId: e.target.value })}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Find this in Square Dashboard → Locations
+                    Example: LABC123XYZ... (Find in Square Dashboard → Locations)
                   </p>
                 </div>
               </div>
