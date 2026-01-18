@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import AdminLayout from '@/components/layout/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -40,7 +39,7 @@ const ImportExportPage = () => {
   };
 
   return (
-    <AdminLayout>
+    <>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Import & Export</h1>
@@ -251,7 +250,7 @@ Jane Smith,jane@example.com,555-5678,456 Oak Ave`}
         onOpenChange={setExportOpen} 
         defaultDataType={selectedType}
       />
-    </AdminLayout>
+    </>
   );
 };
 
