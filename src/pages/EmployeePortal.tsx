@@ -144,13 +144,11 @@ export default function EmployeePortal() {
     enabled: !!agentRecord?.id,
   });
 
-  // Fetch tickets for assigned projects
+  // Fetch tickets assigned to this agent only
   const { data: myTickets, isLoading: ticketsLoading } = useQuery({
-    queryKey: ["employee-tickets", agentRecord?.id, assignedProjects],
+    queryKey: ["employee-tickets", agentRecord?.id],
     queryFn: async () => {
-      if (!agentRecord?.id || !assignedProjects?.length) return [];
-      
-      const projectIds = assignedProjects.map(p => p.id);
+      if (!agentRecord?.id) return [];
       
       const { data, error } = await supabase
         .from("tickets")
@@ -160,14 +158,14 @@ export default function EmployeePortal() {
           clients (full_name),
           agents (full_name)
         `)
-        .in("project_id", projectIds)
+        .eq("assigned_agent_id", agentRecord.id)
         .is("deleted_at", null)
         .order("scheduled_date", { ascending: true });
       
       if (error) throw error;
       return data;
     },
-    enabled: !!agentRecord?.id && !!assignedProjects?.length,
+    enabled: !!agentRecord?.id,
   });
 
   // Fetch job updates (time tracking history) for this agent
