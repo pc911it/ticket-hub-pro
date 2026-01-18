@@ -38,7 +38,7 @@ interface RFI {
 
 export default function RFIsPage() {
   const { user } = useAuth();
-  const { effectiveCompanyId } = useEffectiveCompanyId();
+  const { effectiveCompanyId, isPlatformView, isLoading: companyLoading } = useEffectiveCompanyId();
   const [rfis, setRFIs] = useState<RFI[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,7 +47,13 @@ export default function RFIsPage() {
   const [selectedRFI, setSelectedRFI] = useState<RFI | null>(null);
 
   const fetchRFIs = async () => {
-    if (!effectiveCompanyId) {
+    // Wait for company loading to complete
+    if (companyLoading) {
+      return;
+    }
+
+    // For non-platform views, we need a company ID
+    if (!isPlatformView && !effectiveCompanyId) {
       setRFIs([]);
       setLoading(false);
       return;
@@ -61,8 +67,12 @@ export default function RFIsPage() {
           projects:project_id(name),
           tickets:ticket_id(title)
         `)
-        .or(`company_id.eq.${effectiveCompanyId},partner_company_id.eq.${effectiveCompanyId}`)
         .order('created_at', { ascending: false });
+
+      // Only filter by company if not in platform view
+      if (!isPlatformView && effectiveCompanyId) {
+        query = query.or(`company_id.eq.${effectiveCompanyId},partner_company_id.eq.${effectiveCompanyId}`);
+      }
 
       if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter);
@@ -85,8 +95,11 @@ export default function RFIsPage() {
   };
 
   useEffect(() => {
-    fetchRFIs();
-  }, [effectiveCompanyId, statusFilter, searchQuery]);
+    if (!companyLoading) {
+      setLoading(true);
+      fetchRFIs();
+    }
+  }, [effectiveCompanyId, isPlatformView, companyLoading, statusFilter, searchQuery]);
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ReactNode }> = {
