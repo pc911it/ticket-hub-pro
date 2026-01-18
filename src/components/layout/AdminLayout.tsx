@@ -6,6 +6,7 @@ import { useRealtimeAlerts } from '@/hooks/useRealtimeAlerts';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { useSupportTicketNotifications } from '@/hooks/useSupportTicketNotifications';
 import { useSuperAdminNotifications } from '@/hooks/useSuperAdminNotifications';
+import { useLiveChatNotifications } from '@/hooks/useLiveChatNotifications';
 import { LiveAlertsBanner } from '@/components/LiveAlertsBanner';
 import { GlobalProjectChat } from '@/components/GlobalProjectChat';
 import { NotificationToggle, NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
@@ -37,6 +38,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   // Support ticket notifications
   const { unreadCount: supportUnreadCount, clearUnreadCount } = useSupportTicketNotifications();
   
+  // Live chat notifications (for super admins)
+  const { activeChatCount: liveChatCount } = useLiveChatNotifications();
+  
   // Session timeout warning
   const { SessionTimeoutDialog } = useSessionTimeout();
 
@@ -66,6 +70,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           isOpen={sidebarOpen} 
           onClose={() => setSidebarOpen(false)}
           supportUnreadCount={supportUnreadCount}
+          liveChatCount={liveChatCount}
         />
 
         {/* Main content */}
