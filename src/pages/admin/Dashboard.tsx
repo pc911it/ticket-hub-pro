@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,6 +60,7 @@ interface ProjectStatus {
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--success))', 'hsl(var(--warning))', 'hsl(var(--info))', 'hsl(var(--muted))'];
 
 const Dashboard = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { effectiveCompanyId, isPlatformView } = useEffectiveCompanyId();
   const [stats, setStats] = useState<DashboardStats>({
@@ -357,15 +359,15 @@ const Dashboard = () => {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-display font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Welcome back! Here's your business overview.</p>
+          <h1 className="text-3xl font-display font-bold text-foreground">{t('dashboard.title')}</h1>
+          <p className="text-muted-foreground mt-1">{t('dashboard.welcome')}! {t('dashboard.overview')}.</p>
         </div>
         <div className="flex gap-2">
           <Button onClick={() => navigate('/admin/projects')} size="sm">
-            <Plus className="h-4 w-4 mr-1" /> New Project
+            <Plus className="h-4 w-4 mr-1" /> {t('dashboard.newProject')}
           </Button>
           <Button onClick={() => navigate('/admin/billing')} variant="outline" size="sm">
-            <Receipt className="h-4 w-4 mr-1" /> New Invoice
+            <Receipt className="h-4 w-4 mr-1" /> {t('invoices.newInvoice')}
           </Button>
         </div>
       </div>
@@ -384,15 +386,15 @@ const Dashboard = () => {
                 <DollarSign className="h-5 w-5 text-success" />
               </div>
               <Badge variant="outline" className="bg-success/10 text-success border-success/20">
-                Revenue
+                {t('dashboard.totalRevenue')}
               </Badge>
             </div>
             <p className="text-2xl font-bold mt-3">${stats.totalRevenue.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">Total Paid</p>
+            <p className="text-xs text-muted-foreground">{t('dashboard.paidRevenue')}</p>
             <div className="flex gap-4 mt-2 text-xs">
-              <span className="text-warning">${stats.pendingInvoices.toLocaleString()} pending</span>
+              <span className="text-warning">${stats.pendingInvoices.toLocaleString()} {t('common.pending').toLowerCase()}</span>
               {stats.overdueInvoices > 0 && (
-                <span className="text-destructive">${stats.overdueInvoices.toLocaleString()} overdue</span>
+                <span className="text-destructive">${stats.overdueInvoices.toLocaleString()} {t('invoices.overdue').toLowerCase()}</span>
               )}
             </div>
           </CardContent>
@@ -405,13 +407,13 @@ const Dashboard = () => {
                 <FolderOpen className="h-5 w-5 text-primary" />
               </div>
               <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                Projects
+                {t('projects.title')}
               </Badge>
             </div>
             <p className="text-2xl font-bold mt-3">{stats.activeProjects}</p>
-            <p className="text-xs text-muted-foreground">Active Projects</p>
+            <p className="text-xs text-muted-foreground">{t('dashboard.activeProjects')}</p>
             <div className="flex gap-4 mt-2 text-xs">
-              <span className="text-success">{stats.completedProjects} completed</span>
+              <span className="text-success">{stats.completedProjects} {t('common.completed').toLowerCase()}</span>
             </div>
           </CardContent>
         </Card>
@@ -423,11 +425,11 @@ const Dashboard = () => {
                 <Ticket className="h-5 w-5 text-warning" />
               </div>
               <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20">
-                Tickets
+                {t('tickets.title')}
               </Badge>
             </div>
             <p className="text-2xl font-bold mt-3">{stats.openTickets}</p>
-            <p className="text-xs text-muted-foreground">Open Tickets</p>
+            <p className="text-xs text-muted-foreground">{t('dashboard.openTickets')}</p>
           </CardContent>
         </Card>
 
@@ -438,11 +440,11 @@ const Dashboard = () => {
                 <ClipboardList className="h-5 w-5 text-info" />
               </div>
               <Badge variant="outline" className="bg-info/10 text-info border-info/20">
-                Approvals
+                {t('dashboard.pendingApprovals')}
               </Badge>
             </div>
             <p className="text-2xl font-bold mt-3">{stats.pendingApprovals}</p>
-            <p className="text-xs text-muted-foreground">Pending Approvals</p>
+            <p className="text-xs text-muted-foreground">{t('dashboard.pendingApprovals')}</p>
           </CardContent>
         </Card>
       </div>
@@ -456,7 +458,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-lg font-semibold">{stats.totalClients}</p>
-              <p className="text-xs text-muted-foreground">Clients</p>
+              <p className="text-xs text-muted-foreground">{t('clients.title')}</p>
             </div>
           </CardContent>
         </Card>
@@ -467,7 +469,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-lg font-semibold">{stats.totalEmployees}</p>
-              <p className="text-xs text-muted-foreground">Team Members</p>
+              <p className="text-xs text-muted-foreground">{t('employees.title')}</p>
             </div>
           </CardContent>
         </Card>
@@ -478,7 +480,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-lg font-semibold">{stats.paidInvoices}</p>
-              <p className="text-xs text-muted-foreground">Paid Invoices</p>
+              <p className="text-xs text-muted-foreground">{t('invoices.paid')}</p>
             </div>
           </CardContent>
         </Card>
@@ -489,7 +491,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-lg font-semibold">{stats.completedProjects}</p>
-              <p className="text-xs text-muted-foreground">Completed</p>
+              <p className="text-xs text-muted-foreground">{t('common.completed')}</p>
             </div>
           </CardContent>
         </Card>
@@ -501,9 +503,9 @@ const Dashboard = () => {
           <CardHeader className="pb-3">
             <CardTitle className="font-display flex items-center gap-2 text-lg">
               <AlertTriangle className="h-5 w-5 text-warning" />
-              Action Required
+              {t('dashboard.actionRequired')}
             </CardTitle>
-            <CardDescription>Items that need your attention</CardDescription>
+            <CardDescription>{t('dashboard.actionRequired')}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -538,8 +540,8 @@ const Dashboard = () => {
         {/* Revenue Chart */}
         <Card className="border-0 shadow-md lg:col-span-2">
           <CardHeader>
-            <CardTitle className="font-display">Revenue Trend</CardTitle>
-            <CardDescription>Monthly revenue overview</CardDescription>
+            <CardTitle className="font-display">{t('dashboard.revenueTrend')}</CardTitle>
+            <CardDescription>{t('dashboard.revenueTrend')}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[250px]">
@@ -566,8 +568,8 @@ const Dashboard = () => {
         {/* Project Status Pie Chart */}
         <Card className="border-0 shadow-md">
           <CardHeader>
-            <CardTitle className="font-display">Project Status</CardTitle>
-            <CardDescription>Distribution by status</CardDescription>
+            <CardTitle className="font-display">{t('dashboard.projectStatus')}</CardTitle>
+            <CardDescription>{t('dashboard.projectStatus')}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[200px]">
@@ -610,11 +612,11 @@ const Dashboard = () => {
       <Card className="border-0 shadow-md">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="font-display">Recent Activity</CardTitle>
-            <CardDescription>Latest updates across your business</CardDescription>
+            <CardTitle className="font-display">{t('dashboard.recentActivity')}</CardTitle>
+            <CardDescription>{t('dashboard.recentActivity')}</CardDescription>
           </div>
           <Button variant="ghost" size="sm" className="text-muted-foreground">
-            View All <ChevronRight className="h-4 w-4 ml-1" />
+            {t('common.viewAll')} <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </CardHeader>
         <CardContent>
