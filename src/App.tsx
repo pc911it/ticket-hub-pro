@@ -74,6 +74,7 @@ import MoodBoardsPage from "./pages/admin/MoodBoardsPage";
 import ProductLibraryPage from "./pages/admin/ProductLibraryPage";
 import FollowUpsPage from "./pages/admin/FollowUpsPage";
 import CompanyFeaturesPage from "./pages/admin/CompanyFeaturesPage";
+import IntegrationsPage from "./pages/admin/IntegrationsPage";
 
 const queryClient = new QueryClient();
 
@@ -537,6 +538,7 @@ const App = () => (
             <Route path="/admin/product-library" element={<ProtectedRoute><AdminLayout><ProductLibraryPage /></AdminLayout></ProtectedRoute>} />
             <Route path="/admin/follow-ups" element={<ProtectedRoute><AdminLayout><FollowUpsPage /></AdminLayout></ProtectedRoute>} />
             <Route path="/admin/promo-codes" element={<ProtectedRoute><AdminLayout><PromoCodesPage /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/integrations" element={<ProtectedRoute><AdminLayout><IntegrationsPage /></AdminLayout></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           </SuperAdminCompanyProvider>
