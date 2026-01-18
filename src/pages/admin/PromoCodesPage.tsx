@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Mail, Gift, Percent, DollarSign, Clock, Edit, Trash2, Send, Copy, Users, Repeat, Zap, Calendar, Tag, Layers, Star, TrendingUp } from 'lucide-react';
+import { Plus, Mail, Gift, Percent, DollarSign, Clock, Edit, Trash2, Send, Copy, Users, Repeat, Zap, Calendar, Tag, Layers, Star, TrendingUp, ShieldAlert } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface PromoCode {
@@ -75,6 +76,7 @@ const PRESET_FIXED_AMOUNTS = [10, 25, 50, 100, 150, 200, 250, 500];
 const PRESET_TRIAL_DAYS = [7, 14, 21, 30, 60, 90];
 
 export default function PromoCodesPage() {
+  const { isSuperAdmin } = useAuth();
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [referralCodes, setReferralCodes] = useState<ReferralCode[]>([]);
   const [campaigns, setCampaigns] = useState<EmailCampaign[]>([]);
@@ -85,6 +87,19 @@ export default function PromoCodesPage() {
   const [editingPromo, setEditingPromo] = useState<PromoCode | null>(null);
   const [selectedPromoForCampaign, setSelectedPromoForCampaign] = useState<string>('');
   const { toast } = useToast();
+
+  // Redirect non-super-admins
+  if (!isSuperAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <ShieldAlert className="h-12 w-12 text-destructive" />
+        <h2 className="text-xl font-semibold">Access Denied</h2>
+        <p className="text-muted-foreground text-center max-w-md">
+          Promo Codes management is only available to Super Administrators.
+        </p>
+      </div>
+    );
+  }
 
   // Form state
   const [formData, setFormData] = useState({
