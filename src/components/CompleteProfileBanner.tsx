@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +10,7 @@ import { Building2, ArrowRight, X } from 'lucide-react';
 export const CompleteProfileBanner = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [showBanner, setShowBanner] = useState(false);
   const [loading, setLoading] = useState(true);
   const [dismissed, setDismissed] = useState(false);
@@ -68,9 +70,9 @@ export const CompleteProfileBanner = () => {
               <Building2 className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold text-foreground">Complete Your Company Setup</h3>
+              <h3 className="font-semibold text-foreground">{t('profile.completeSetup')}</h3>
               <p className="text-sm text-muted-foreground">
-                Set up your company to unlock all features like invoicing, team management, and more.
+                {t('profile.completeSetupDesc')}
               </p>
             </div>
           </div>
@@ -84,7 +86,7 @@ export const CompleteProfileBanner = () => {
               <X className="h-4 w-4" />
             </Button>
             <Button onClick={() => navigate('/register-company')} className="gap-2">
-              Complete Setup
+              {t('profile.completeSetupBtn')}
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
