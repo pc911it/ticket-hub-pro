@@ -9,6 +9,7 @@ interface AuthContextType {
   userRole: string | null;
   isCompanyOwner: boolean;
   isSuperAdmin: boolean;
+  isSupportAdmin: boolean;
   isCompanyAdmin: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
@@ -24,6 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isCompanyOwner, setIsCompanyOwner] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isSupportAdmin, setIsSupportAdmin] = useState(false);
   const [isCompanyAdmin, setIsCompanyAdmin] = useState(false);
 
   useEffect(() => {
@@ -42,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUserRole(null);
           setIsCompanyOwner(false);
           setIsSuperAdmin(false);
+          setIsSupportAdmin(false);
           setIsCompanyAdmin(false);
         }
       }
@@ -71,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!error && data) {
       setUserRole(data.role);
       setIsSuperAdmin(data.role === 'super_admin');
+      setIsSupportAdmin(data.role === 'support_admin');
     }
   };
 
@@ -128,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, userRole, isCompanyOwner, isSuperAdmin, isCompanyAdmin, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, userRole, isCompanyOwner, isSuperAdmin, isSupportAdmin, isCompanyAdmin, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );

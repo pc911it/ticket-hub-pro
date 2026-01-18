@@ -6545,11 +6545,18 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_support_admin: { Args: { _user_id: string }; Returns: boolean }
       purge_old_deleted_items: { Args: never; Returns: undefined }
       reject_company: { Args: { _company_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "staff" | "user" | "client" | "super_admin"
+      app_role:
+        | "admin"
+        | "staff"
+        | "user"
+        | "client"
+        | "super_admin"
+        | "support_admin"
       company_type:
         | "alarm_company"
         | "tow_company"
@@ -6694,7 +6701,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "staff", "user", "client", "super_admin"],
+      app_role: [
+        "admin",
+        "staff",
+        "user",
+        "client",
+        "super_admin",
+        "support_admin",
+      ],
       company_type: [
         "alarm_company",
         "tow_company",

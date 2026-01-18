@@ -83,6 +83,7 @@ interface CollapsibleSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   supportUnreadCount: number;
+  liveChatCount?: number;
 }
 
 // Pages restricted to admins only
@@ -219,11 +220,18 @@ const superAdminNavigation: NavItem[] = [
   { nameKey: 'sidebar.promoCodes', href: '/admin/promo-codes', icon: Gift },
 ];
 
+// Support admin navigation - only support-related items
+const supportAdminNavigation: NavItem[] = [
+  { nameKey: 'sidebar.liveChats', href: '/admin/live-chats', icon: HeadphonesIcon },
+  { nameKey: 'sidebar.chatTickets', href: '/admin/chat-tickets', icon: MessageSquare },
+  { nameKey: 'sidebar.supportTickets', href: '/admin/support-tickets', icon: Ticket },
+];
+
 const staffNavigation: NavItem[] = [
   { nameKey: 'sidebar.employeePortal', href: '/employee', icon: Briefcase },
 ];
 
-export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: CollapsibleSidebarProps) => {
+export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount, liveChatCount = 0 }: CollapsibleSidebarProps) => {
   const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebar-collapsed');
@@ -231,7 +239,7 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
   });
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const location = useLocation();
-  const { signOut, user, isSuperAdmin, isCompanyOwner, userRole, isCompanyAdmin } = useAuth();
+  const { signOut, user, isSuperAdmin, isSupportAdmin, isCompanyOwner, userRole, isCompanyAdmin } = useAuth();
   const { hasFeature } = useFeatureAccess();
   const { effectiveCompanyId } = useEffectiveCompanyId();
 
@@ -292,11 +300,14 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
     await signOut();
   };
 
-  // Add badge to support items
+  // Add badge to support items and live chat items
   const addBadgeToItem = (item: NavItem): NavItem => {
     if ((item.href === '/admin/support' && !isSuperAdmin) || 
         (item.href === '/admin/support-tickets' && isSuperAdmin)) {
       return { ...item, badge: supportUnreadCount };
+    }
+    if (item.href === '/admin/live-chats' && isSuperAdmin) {
+      return { ...item, badge: liveChatCount };
     }
     return item;
   };
@@ -546,6 +557,24 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount }: Coll
                 )}
                 <div className={cn("space-y-0.5", collapsed ? "" : "mb-3")}>
                   {superAdminNavigation.map((item) => {
+                    const isActive = location.pathname === item.href;
+                    return renderNavItem(addBadgeToItem(item), isActive);
+                  })}
+                </div>
+                <div className={cn("border-t border-sidebar-border", collapsed ? "my-2" : "my-3")} />
+              </>
+            )}
+
+            {/* Support Admin Section */}
+            {isSupportAdmin && !isSuperAdmin && (
+              <>
+                {!collapsed && (
+                  <div className="px-3 py-2 text-[10px] font-semibold text-sidebar-foreground/40 uppercase tracking-wider">
+                    Support Admin
+                  </div>
+                )}
+                <div className={cn("space-y-0.5", collapsed ? "" : "mb-3")}>
+                  {supportAdminNavigation.map((item) => {
                     const isActive = location.pathname === item.href;
                     return renderNavItem(addBadgeToItem(item), isActive);
                   })}
