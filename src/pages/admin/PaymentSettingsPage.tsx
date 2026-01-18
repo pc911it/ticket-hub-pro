@@ -12,6 +12,46 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CreditCard, Settings, Save, Eye, EyeOff, AlertTriangle, CheckCircle2, XCircle, Shield } from "lucide-react";
 import { toast } from "sonner";
+import { OnboardingTour, TourStep } from "@/components/OnboardingTour";
+
+const paymentSettingsTourSteps: TourStep[] = [
+  {
+    target: "#status-overview",
+    title: "Payment Status Overview",
+    content: "Here you can see at a glance which payment providers are currently enabled for your company.",
+    position: "bottom",
+  },
+  {
+    target: "#provider-tabs",
+    title: "Choose Your Provider",
+    content: "Switch between Stripe and Square tabs to configure each payment provider separately.",
+    position: "bottom",
+  },
+  {
+    target: "#stripe-enabled",
+    title: "Enable/Disable Payments",
+    content: "Toggle this switch to enable or disable the payment provider. When disabled, clients won't be able to pay using this method.",
+    position: "right",
+  },
+  {
+    target: "#stripe-publishable",
+    title: "Publishable Key",
+    content: "Enter your Stripe publishable key here. This key is safe to use in client-side code and starts with 'pk_live_' or 'pk_test_'.",
+    position: "bottom",
+  },
+  {
+    target: "#stripe-secret",
+    title: "Secret Key",
+    content: "Your secret key is used for server-side operations. It starts with 'sk_live_' or 'sk_test_'. This is encrypted before storage.",
+    position: "bottom",
+  },
+  {
+    target: "#security-notice",
+    title: "Security Information",
+    content: "Review our security practices here. All sensitive keys are encrypted and stored securely.",
+    position: "top",
+  },
+];
 
 interface PaymentSetting {
   id: string;
@@ -229,6 +269,13 @@ export default function PaymentSettingsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Onboarding Tour */}
+      <OnboardingTour
+        steps={paymentSettingsTourSteps}
+        tourId="payment-settings"
+        onComplete={() => toast.success("You're all set! Start configuring your payment providers.")}
+      />
+
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Payment Settings</h1>
         <p className="text-muted-foreground">
@@ -237,7 +284,7 @@ export default function PaymentSettingsPage() {
       </div>
 
       {/* Status Overview */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div id="status-overview" className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Stripe</CardTitle>
@@ -296,7 +343,7 @@ export default function PaymentSettingsPage() {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList id="provider-tabs" className="grid w-full grid-cols-2">
               <TabsTrigger value="stripe" className="flex items-center gap-2">
                 <CreditCard className="h-4 w-4" />
                 Stripe
@@ -504,7 +551,7 @@ export default function PaymentSettingsPage() {
       </Card>
 
       {/* Security Notice */}
-      <Card className="border-green-500/50 bg-green-500/5">
+      <Card id="security-notice" className="border-green-500/50 bg-green-500/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-green-600">
             <Shield className="h-5 w-5" />
