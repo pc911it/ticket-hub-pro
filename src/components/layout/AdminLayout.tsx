@@ -13,6 +13,7 @@ import { BillingAlertBanner } from '@/components/BillingAlertBanner';
 import { PasswordResetReminder } from '@/components/PasswordResetReminder';
 import { SuperAdminCompanySelector } from '@/components/SuperAdminCompanySelector';
 import { WelcomeTour } from '@/components/WelcomeTour';
+import { PaymentGate } from '@/components/PaymentGate';
 import { CollapsibleSidebar } from './CollapsibleSidebar';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
@@ -49,79 +50,81 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const sidebarCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Mobile sidebar backdrop */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden"
-          onClick={() => setSidebarOpen(false)}
+    <PaymentGate>
+      <div className="min-h-screen bg-background">
+        {/* Mobile sidebar backdrop */}
+        {sidebarOpen && (
+          <div 
+            className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {/* Sidebar */}
+        <CollapsibleSidebar 
+          isOpen={sidebarOpen} 
+          onClose={() => setSidebarOpen(false)}
+          supportUnreadCount={supportUnreadCount}
         />
-      )}
 
-      {/* Sidebar */}
-      <CollapsibleSidebar 
-        isOpen={sidebarOpen} 
-        onClose={() => setSidebarOpen(false)}
-        supportUnreadCount={supportUnreadCount}
-      />
+        {/* Main content */}
+        <div className={sidebarCollapsed ? "lg:pl-16" : "lg:pl-64"} style={{ transition: 'padding-left 0.3s ease-in-out' }}>
+          {/* Top bar */}
+          <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:px-6">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 -ml-2 hover:bg-muted rounded-lg"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            
+            {/* Live Alerts Indicator */}
+            <div className="hidden md:block">
+              <LiveAlertsBanner />
+            </div>
+            
+            {/* Super Admin Company Selector */}
+            <SuperAdminCompanySelector />
+            
+            <div className="flex-1" />
+            
+            {/* Security Settings */}
+            {user && <PasswordResetReminder userId={user.id} />}
+            
+            {/* Notification Toggle */}
+            <div data-tour="header-notifications">
+              <NotificationToggle />
+            </div>
+            
+            <Link to="/" data-tour="header-view-site">
+              <Button variant="outline" size="sm">
+                View Site
+              </Button>
+            </Link>
+          </header>
 
-      {/* Main content */}
-      <div className={sidebarCollapsed ? "lg:pl-16" : "lg:pl-64"} style={{ transition: 'padding-left 0.3s ease-in-out' }}>
-        {/* Top bar */}
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:px-6">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-2 -ml-2 hover:bg-muted rounded-lg"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          
-          {/* Live Alerts Indicator */}
-          <div className="hidden md:block">
-            <LiveAlertsBanner />
-          </div>
-          
-          {/* Super Admin Company Selector */}
-          <SuperAdminCompanySelector />
-          
-          <div className="flex-1" />
-          
-          {/* Security Settings */}
-          {user && <PasswordResetReminder userId={user.id} />}
-          
-          {/* Notification Toggle */}
-          <div data-tour="header-notifications">
-            <NotificationToggle />
-          </div>
-          
-          <Link to="/" data-tour="header-view-site">
-            <Button variant="outline" size="sm">
-              View Site
-            </Button>
-          </Link>
-        </header>
+          {/* Page content */}
+          <main className="p-4 lg:p-6 space-y-4">
+            {/* Billing Alert Banner */}
+            <BillingAlertBanner />
+            
+            {/* Notification Permission Banner */}
+            <NotificationPermissionBanner />
+            
+            {children}
+          </main>
 
-        {/* Page content */}
-        <main className="p-4 lg:p-6 space-y-4">
-          {/* Billing Alert Banner */}
-          <BillingAlertBanner />
-          
-          {/* Notification Permission Banner */}
-          <NotificationPermissionBanner />
-          
-          {children}
-        </main>
-
-        {/* Global Chat Button */}
-        <GlobalProjectChat />
+          {/* Global Chat Button */}
+          <GlobalProjectChat />
+        </div>
+        
+        {/* Session Timeout Warning */}
+        <SessionTimeoutDialog />
+        
+        {/* Welcome Tour for New Users */}
+        <WelcomeTour />
       </div>
-      
-      {/* Session Timeout Warning */}
-      <SessionTimeoutDialog />
-      
-      {/* Welcome Tour for New Users */}
-      <WelcomeTour />
-    </div>
+    </PaymentGate>
   );
 };
 
