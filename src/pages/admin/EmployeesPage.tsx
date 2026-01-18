@@ -29,6 +29,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { DeleteConfirmationDialog } from '@/components/DeleteConfirmationDialog';
+import { EmployeeDetailSheet } from '@/components/EmployeeDetailSheet';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -69,6 +70,8 @@ const EmployeesPage = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [deletingAgent, setDeletingAgent] = useState<Agent | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [resetPasswordAgent, setResetPasswordAgent] = useState<Agent | null>(null);
@@ -729,8 +732,12 @@ const EmployeesPage = () => {
           {filteredAgents.map((agent, index) => (
             <Card
               key={agent.id}
-              className="border-0 shadow-md hover:shadow-lg transition-shadow animate-slide-up"
+              className="border-0 shadow-md hover:shadow-lg transition-shadow animate-slide-up cursor-pointer"
               style={{ animationDelay: `${index * 30}ms` }}
+              onClick={() => {
+                setSelectedAgent(agent);
+                setIsDetailSheetOpen(true);
+              }}
             >
               <CardContent className="p-5">
                 <div className="flex items-start gap-4">
@@ -765,11 +772,14 @@ const EmployeesPage = () => {
                       </Badge>
                     </div>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      onClick={() => openResetPasswordDialog(agent)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openResetPasswordDialog(agent);
+                      }}
                       title="Reset Password"
                     >
                       <Key className="h-4 w-4" />
@@ -778,11 +788,14 @@ const EmployeesPage = () => {
                       if (!open) setIsDialogOpen(false);
                     }}>
                       <DialogTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(agent)}>
+                        <Button variant="ghost" size="icon" onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenDialog(agent);
+                        }}>
                           <Edit2 className="h-4 w-4" />
                         </Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent onClick={(e) => e.stopPropagation()}>
                         <DialogHeader>
                           <DialogTitle className="font-display">Edit Agent</DialogTitle>
                           <DialogDescription>Update agent information.</DialogDescription>
@@ -826,7 +839,10 @@ const EmployeesPage = () => {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      onClick={() => openDeleteDialog(agent)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDeleteDialog(agent);
+                      }}
                       title="Delete Employee"
                       className="text-destructive hover:text-destructive"
                     >
@@ -939,6 +955,13 @@ const EmployeesPage = () => {
         itemType="item"
         description="This will remove the employee from your field agents. Their user account will remain active."
         loading={deleting}
+      />
+
+      {/* Employee Detail Sheet */}
+      <EmployeeDetailSheet
+        agent={selectedAgent}
+        open={isDetailSheetOpen}
+        onOpenChange={setIsDetailSheetOpen}
       />
     </div>
   );
