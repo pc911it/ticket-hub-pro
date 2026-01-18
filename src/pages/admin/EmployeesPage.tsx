@@ -766,10 +766,22 @@ const EmployeesPage = () => {
                         {agent.email}
                       </p>
                     )}
-                    <div className="flex items-center gap-2 mt-1">
+                    {agent.phone && (
+                      <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+                        <Phone className="h-3 w-3" />
+                        {agent.phone}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-2 mt-1.5">
                       <Badge variant={agent.is_online ? (agent.is_available ? "default" : "secondary") : "outline"}>
                         {agent.is_online ? (agent.is_available ? 'Available' : 'Busy') : 'Offline'}
                       </Badge>
+                      {agent.vehicle_info && (
+                        <Badge variant="outline" className="text-xs">
+                          <Truck className="h-3 w-3 mr-1" />
+                          {agent.vehicle_info}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
@@ -877,24 +889,16 @@ const EmployeesPage = () => {
 
                   {/* Agent Info */}
                   <div className="space-y-2 text-sm text-muted-foreground pt-2 border-t">
-                    {agent.phone && (
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4" />
-                        {agent.phone}
-                      </div>
-                    )}
-                    {agent.vehicle_info && (
-                      <div className="flex items-center gap-2">
-                        <Truck className="h-4 w-4" />
-                        {agent.vehicle_info}
-                      </div>
-                    )}
                     {agent.last_location_update && (
                       <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4" />
                         Last seen {formatDistanceToNow(new Date(agent.last_location_update), { addSuffix: true })}
                       </div>
                     )}
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Joined {formatDistanceToNow(new Date(agent.created_at), { addSuffix: true })}
+                    </div>
                   </div>
                 </div>
               </CardContent>
