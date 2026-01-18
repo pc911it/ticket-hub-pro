@@ -440,11 +440,11 @@ const Dashboard = () => {
                 <ClipboardList className="h-5 w-5 text-info" />
               </div>
               <Badge variant="outline" className="bg-info/10 text-info border-info/20">
-                {t('dashboard.pendingApprovals')}
+                {t('sidebar.changeOrders')}
               </Badge>
             </div>
             <p className="text-2xl font-bold mt-3">{stats.pendingApprovals}</p>
-            <p className="text-xs text-muted-foreground">{t('dashboard.pendingApprovals')}</p>
+            <p className="text-xs text-muted-foreground">{t('dashboard.pendingChangeOrders')}</p>
           </CardContent>
         </Card>
       </div>
