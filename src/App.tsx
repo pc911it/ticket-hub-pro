@@ -431,7 +431,9 @@ const App = () => (
               path="/admin/support"
               element={
                 <ProtectedRoute>
-                  <CompanySupportPage />
+                  <AdminLayout>
+                    <CompanySupportPage />
+                  </AdminLayout>
                 </ProtectedRoute>
               }
             />
