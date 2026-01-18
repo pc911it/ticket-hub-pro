@@ -187,6 +187,7 @@ const createNavigationGroups = (hasFeature: (key: string) => boolean, isAdminLev
           { nameKey: 'sidebar.billing', href: '/admin/billing', icon: CreditCard },
           { nameKey: 'sidebar.paymentSettings', href: '/admin/payment-settings', icon: DollarSign },
           { nameKey: 'sidebar.integrations', href: '/admin/integrations', icon: TrendingUp },
+          { nameKey: 'sidebar.importExport', href: '/admin/import-export', icon: Package },
           { nameKey: 'sidebar.settings', href: '/admin/settings', icon: Settings },
         ] : []),
         { nameKey: 'sidebar.trash', href: '/admin/trash', icon: Trash2 },
