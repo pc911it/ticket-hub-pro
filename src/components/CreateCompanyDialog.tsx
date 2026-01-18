@@ -31,9 +31,9 @@ const COMPANY_TYPES = [
 ];
 
 const SUBSCRIPTION_PLANS = [
-  { value: 'basic', label: 'Basic', price: 79 },
-  { value: 'professional', label: 'Professional', price: 249 },
-  { value: 'enterprise', label: 'Enterprise', price: 599 },
+  { value: 'professional', label: 'Professional', monthlyPrice: 349, yearlyPrice: 2990, description: 'Growing teams ready to scale' },
+  { value: 'advanced', label: 'Advanced', monthlyPrice: 899, yearlyPrice: 7490, description: 'High-volume organizations', popular: true },
+  { value: 'enterprise', label: 'Enterprise', monthlyPrice: 0, yearlyPrice: 0, description: 'Custom pricing for large operations', isCustom: true },
 ];
 
 export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCompanyDialogProps) {
@@ -55,7 +55,8 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
   
   // Subscription & Billing
   const [isFreeAccount, setIsFreeAccount] = useState(false);
-  const [subscriptionPlan, setSubscriptionPlan] = useState<string>("basic");
+  const [subscriptionPlan, setSubscriptionPlan] = useState<string>("professional");
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [applyDiscount, setApplyDiscount] = useState(false);
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
   const [discountValue, setDiscountValue] = useState("");
@@ -78,7 +79,8 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
     setOwnerEmail("");
     setTempPassword("");
     setIsFreeAccount(false);
-    setSubscriptionPlan("basic");
+    setSubscriptionPlan("professional");
+    setBillingCycle("monthly");
     setApplyDiscount(false);
     setDiscountType("percentage");
     setDiscountValue("");
@@ -97,23 +99,33 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
     setTempPassword(password);
   };
 
+  const getBasePrice = (plan: typeof SUBSCRIPTION_PLANS[0]) => {
+    if (plan.isCustom) return 0;
+    return billingCycle === "yearly" ? Math.round(plan.yearlyPrice / 12) : plan.monthlyPrice;
+  };
+
   const calculateFinalPrice = () => {
     if (isFreeAccount) return 0;
     
     const plan = SUBSCRIPTION_PLANS.find(p => p.value === subscriptionPlan);
-    if (!plan) return 0;
+    if (!plan || plan.isCustom) return 0;
     
-    let finalPrice = plan.price;
+    let basePrice = getBasePrice(plan);
     
     if (applyDiscount && discountValue) {
       if (discountType === "percentage") {
-        finalPrice = plan.price * (1 - parseFloat(discountValue) / 100);
+        basePrice = basePrice * (1 - parseFloat(discountValue) / 100);
       } else {
-        finalPrice = plan.price - parseFloat(discountValue);
+        basePrice = basePrice - parseFloat(discountValue);
       }
     }
     
-    return Math.max(0, finalPrice);
+    return Math.max(0, basePrice);
+  };
+
+  const calculateYearlySavings = (plan: typeof SUBSCRIPTION_PLANS[0]) => {
+    if (plan.isCustom) return 0;
+    return (plan.monthlyPrice * 12) - plan.yearlyPrice;
   };
 
   const handleSubmit = async () => {
@@ -158,8 +170,10 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
           applied_by: 'super_admin',
           applied_at: new Date().toISOString(),
         };
-        businessConfig.original_price = SUBSCRIPTION_PLANS.find(p => p.value === subscriptionPlan)?.price;
+        const selectedPlanData = SUBSCRIPTION_PLANS.find(p => p.value === subscriptionPlan);
+        businessConfig.original_price = selectedPlanData ? getBasePrice(selectedPlanData) : 0;
         businessConfig.discounted_price = calculateFinalPrice();
+        businessConfig.billing_cycle = billingCycle;
       }
       
       if (internalNotes) {
@@ -182,6 +196,7 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
           approved_at: skipApproval ? new Date().toISOString() : null,
           subscription_plan: isFreeAccount ? 'free' : subscriptionPlan,
           subscription_status: isFreeAccount ? 'active' : (extendedTrial ? 'trial' : 'active'),
+          billing_cycle: isFreeAccount ? null : billingCycle,
           trial_ends_at: (isFreeAccount || !extendedTrial) ? null : trialEndsAt.toISOString(),
           is_active: true,
           business_config: Object.keys(businessConfig).length > 0 ? businessConfig : null,
@@ -440,21 +455,61 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
 
               {!isFreeAccount && (
                 <>
+                  {/* Billing Cycle Toggle */}
+                  <div className="flex items-center justify-center gap-4 p-3 bg-muted/30 rounded-lg">
+                    <span className={`text-sm font-medium transition-colors ${billingCycle === 'monthly' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                      Monthly
+                    </span>
+                    <Switch
+                      checked={billingCycle === "yearly"}
+                      onCheckedChange={(checked) => setBillingCycle(checked ? "yearly" : "monthly")}
+                    />
+                    <span className={`text-sm font-medium transition-colors ${billingCycle === 'yearly' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                      Yearly
+                    </span>
+                    {billingCycle === "yearly" && (
+                      <Badge variant="secondary" className="ml-2">
+                        <Sparkles className="h-3 w-3 mr-1" />
+                        Save up to 29%
+                      </Badge>
+                    )}
+                  </div>
+
                   <div>
                     <Label>Subscription Plan</Label>
                     <div className="grid grid-cols-3 gap-3 mt-2">
                       {SUBSCRIPTION_PLANS.map((plan) => (
                         <div
                           key={plan.value}
-                          className={`p-3 border rounded-lg cursor-pointer transition-all ${
+                          className={`relative p-3 border rounded-lg cursor-pointer transition-all ${
                             subscriptionPlan === plan.value
                               ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
                               : 'hover:border-muted-foreground/50'
-                          }`}
+                          } ${plan.popular ? 'border-secondary' : ''}`}
                           onClick={() => setSubscriptionPlan(plan.value)}
                         >
+                          {plan.popular && (
+                            <div className="absolute -top-2 left-1/2 -translate-x-1/2">
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Popular</Badge>
+                            </div>
+                          )}
                           <p className="font-medium">{plan.label}</p>
-                          <p className="text-lg font-bold">${plan.price}<span className="text-xs font-normal text-muted-foreground">/mo</span></p>
+                          {plan.isCustom ? (
+                            <p className="text-sm font-medium text-muted-foreground">Custom Pricing</p>
+                          ) : (
+                            <>
+                              <p className="text-lg font-bold">
+                                ${getBasePrice(plan)}
+                                <span className="text-xs font-normal text-muted-foreground">/mo</span>
+                              </p>
+                              {billingCycle === "yearly" && (
+                                <p className="text-[10px] text-green-600">
+                                  Save ${calculateYearlySavings(plan)}/yr
+                                </p>
+                              )}
+                            </>
+                          )}
+                          <p className="text-[10px] text-muted-foreground mt-1">{plan.description}</p>
                         </div>
                       ))}
                     </div>
@@ -507,16 +562,21 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
                             placeholder={discountType === "percentage" ? "20" : "50"}
                           />
                         </div>
-                        {discountValue && (
+                        {discountValue && selectedPlan && !selectedPlan.isCustom && (
                           <div className="col-span-2 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
                             <div className="flex items-center justify-between">
                               <span className="text-sm text-muted-foreground">Original Price:</span>
-                              <span className="line-through">${selectedPlan?.price}/mo</span>
+                              <span className="line-through">${getBasePrice(selectedPlan)}/mo</span>
                             </div>
                             <div className="flex items-center justify-between mt-1">
                               <span className="text-sm font-medium">Final Price:</span>
                               <span className="text-lg font-bold text-green-600">${calculateFinalPrice().toFixed(2)}/mo</span>
                             </div>
+                            {billingCycle === "yearly" && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Billed annually: ${(calculateFinalPrice() * 12).toFixed(0)}/year
+                              </p>
+                            )}
                             <Badge className="mt-2 bg-green-100 text-green-700 hover:bg-green-100">
                               {discountType === "percentage" 
                                 ? `${discountValue}% OFF`
