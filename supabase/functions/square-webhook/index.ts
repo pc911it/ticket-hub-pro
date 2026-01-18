@@ -67,30 +67,37 @@ const handler = async (req: Request): Promise<Response> => {
     const webhookSignatureKey = Deno.env.get('SQUARE_WEBHOOK_SIGNATURE_KEY');
     const webhookNotificationUrl = Deno.env.get('SQUARE_WEBHOOK_NOTIFICATION_URL');
 
+    // SECURITY: Webhook signature verification is MANDATORY
+    // If keys are not configured, reject all requests (fail-closed)
+    if (!webhookSignatureKey || !webhookNotificationUrl) {
+      console.error("SECURITY ERROR: Square webhook signature verification is not configured");
+      return new Response(
+        JSON.stringify({ error: "Webhook verification not configured" }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Read the raw body for signature verification
     const rawBody = await req.text();
     const signature = req.headers.get('x-square-hmacsha256-signature');
 
-    // Verify webhook signature if configured
-    if (webhookSignatureKey && webhookNotificationUrl) {
-      const isValid = await verifySquareSignature(
-        rawBody,
-        signature,
-        webhookSignatureKey,
-        webhookNotificationUrl
-      );
+    // Verify webhook signature - REQUIRED
+    const isValid = await verifySquareSignature(
+      rawBody,
+      signature,
+      webhookSignatureKey,
+      webhookNotificationUrl
+    );
 
-      if (!isValid) {
-        console.error("Invalid Square webhook signature");
-        return new Response(
-          JSON.stringify({ error: "Invalid signature" }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      console.log("Square webhook signature verified successfully");
-    } else {
-      console.warn("Square webhook signature verification is not configured - processing without verification");
+    if (!isValid) {
+      console.error("SECURITY ERROR: Invalid Square webhook signature - possible spoofing attempt");
+      return new Response(
+        JSON.stringify({ error: "Invalid signature" }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+    
+    console.log("Square webhook signature verified successfully");
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 

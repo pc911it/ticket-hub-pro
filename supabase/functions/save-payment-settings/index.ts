@@ -6,10 +6,79 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Simple encryption using base64 encoding with a salt (production should use proper encryption)
-function encryptSecret(secret: string, salt: string): string {
-  const combined = `${salt}:${secret}:${salt}`;
-  return btoa(combined);
+/**
+ * Encrypt sensitive data using AES-256-GCM
+ * This is a proper encryption method suitable for production use
+ */
+async function encryptSecret(secret: string, encryptionKey: string): Promise<string> {
+  const encoder = new TextEncoder();
+  
+  // Derive a proper 256-bit key from the encryption key using SHA-256
+  const keyMaterial = await crypto.subtle.digest(
+    "SHA-256",
+    encoder.encode(encryptionKey)
+  );
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt"]
+  );
+  
+  // Generate a random 12-byte IV (recommended for AES-GCM)
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  
+  // Encrypt the secret
+  const encryptedData = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    cryptoKey,
+    encoder.encode(secret)
+  );
+  
+  // Combine IV + encrypted data and encode as base64
+  const combined = new Uint8Array(iv.length + encryptedData.byteLength);
+  combined.set(iv);
+  combined.set(new Uint8Array(encryptedData), iv.length);
+  
+  return btoa(String.fromCharCode(...combined));
+}
+
+/**
+ * Decrypt sensitive data using AES-256-GCM
+ */
+async function decryptSecret(encryptedSecret: string, encryptionKey: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  
+  // Derive the same 256-bit key
+  const keyMaterial = await crypto.subtle.digest(
+    "SHA-256",
+    encoder.encode(encryptionKey)
+  );
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["decrypt"]
+  );
+  
+  // Decode base64 and extract IV + encrypted data
+  const combined = Uint8Array.from(atob(encryptedSecret), c => c.charCodeAt(0));
+  const iv = combined.slice(0, 12);
+  const encryptedData = combined.slice(12);
+  
+  // Decrypt
+  const decryptedData = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv },
+    cryptoKey,
+    encryptedData
+  );
+  
+  return decoder.decode(decryptedData);
 }
 
 serve(async (req) => {
