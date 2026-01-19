@@ -26,36 +26,29 @@ const handler = async (req: Request): Promise<Response> => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     if (type === 'email') {
-      // Check the verification code in the database
-      const { data: verificationRecord, error: fetchError } = await supabase
-        .from('verification_codes')
-        .select('*')
-        .eq('identifier', identifier.toLowerCase())
-        .eq('type', 'email')
-        .eq('code', code)
-        .eq('verified', false)
-        .single();
+      // Use secure RPC function instead of direct table access
+      const { data: result, error: verifyError } = await supabase.rpc('verify_code_internal', {
+        _identifier: identifier,
+        _code: code,
+        _type: 'email'
+      });
 
-      if (fetchError || !verificationRecord) {
+      if (verifyError) {
+        console.error('Verification error:', verifyError);
         return new Response(
-          JSON.stringify({ success: false, error: 'Invalid or expired verification code' }),
+          JSON.stringify({ success: false, error: 'Verification failed' }),
           { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
 
-      // Check if code is expired
-      if (new Date(verificationRecord.expires_at) < new Date()) {
+      const verificationResult = Array.isArray(result) ? result[0] : result;
+      
+      if (!verificationResult?.success) {
         return new Response(
-          JSON.stringify({ success: false, error: 'Verification code has expired' }),
+          JSON.stringify({ success: false, error: verificationResult?.error_message || 'Invalid verification code' }),
           { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
-
-      // Mark as verified
-      await supabase
-        .from('verification_codes')
-        .update({ verified: true })
-        .eq('id', verificationRecord.id);
 
       return new Response(
         JSON.stringify({ success: true, message: 'Email verified successfully' }),

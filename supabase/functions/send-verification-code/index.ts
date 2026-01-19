@@ -36,23 +36,20 @@ const handler = async (req: Request): Promise<Response> => {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     if (type === 'email' && email) {
-      // Store the verification code in the database
-      const { error: insertError } = await supabase
-        .from('verification_codes')
-        .upsert({
-          identifier: email.toLowerCase(),
-          code,
-          type: 'email',
-          expires_at: expiresAt.toISOString(),
-          verified: false,
-        }, {
-          onConflict: 'identifier,type'
-        });
+      // Use secure RPC function to store verification code
+      const { data: codeId, error: insertError } = await supabase.rpc('create_verification_code', {
+        _identifier: email.toLowerCase(),
+        _type: 'email',
+        _code: code,
+        _expires_at: expiresAt.toISOString()
+      });
 
       if (insertError) {
         console.error('Error storing verification code:', insertError);
         throw new Error('Failed to generate verification code');
       }
+      
+      console.log('Verification code created with ID:', codeId);
 
       // Send email via Resend API
       const emailResponse = await fetch("https://api.resend.com/emails", {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { isRateLimited } from '@/lib/securityUtils';
 
 export interface PromoCode {
   id: string;
@@ -16,21 +16,23 @@ export interface PromoCode {
   valid_until: string | null;
   is_active: boolean;
   applicable_plans: string[];
-  created_at: string;
-  updated_at: string;
 }
 
 export interface PromoValidationResult {
   valid: boolean;
-  promoCode?: PromoCode;
   message: string;
+  promoCode?: PromoCode;
   discountAmount?: number;
   trialExtensionDays?: number;
 }
 
+// Rate limit key prefix for promo validation
+const PROMO_RATE_LIMIT_KEY = 'promo_validation';
+const MAX_ATTEMPTS = 5; // Max 5 attempts per minute
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+
 export function usePromoCodes() {
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
 
   const validatePromoCode = async (
     code: string,
@@ -39,38 +41,53 @@ export function usePromoCodes() {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
-        .from('promo_codes')
-        .select('*')
-        .eq('code', code.toUpperCase().trim())
-        .eq('is_active', true)
-        .single();
+      // Client-side rate limiting to prevent brute force
+      const rateLimitKey = `${PROMO_RATE_LIMIT_KEY}_${code.toUpperCase().trim()}`;
+      if (isRateLimited(rateLimitKey, MAX_ATTEMPTS, RATE_LIMIT_WINDOW)) {
+        return { 
+          valid: false, 
+          message: 'Too many attempts. Please wait a minute before trying again.' 
+        };
+      }
+      
+      // Use secure RPC function instead of direct table query
+      const { data, error } = await supabase.rpc('validate_promo_code', {
+        _code: code.toUpperCase().trim(),
+        _plan: plan || null
+      });
 
-      if (error || !data) {
-        return { valid: false, message: 'Invalid promo code' };
+      if (error) {
+        console.error('Promo validation error:', error);
+        return { valid: false, message: 'Unable to validate promo code' };
       }
 
-      const promoCode = data as PromoCode;
-
-      // Check validity period
-      const now = new Date();
-      if (new Date(promoCode.valid_from) > now) {
-        return { valid: false, message: 'This promo code is not yet active' };
+      // RPC returns array with single result
+      const result = Array.isArray(data) ? data[0] : data;
+      
+      if (!result || !result.is_valid) {
+        return { 
+          valid: false, 
+          message: result?.error_message || 'Invalid promo code' 
+        };
       }
 
-      if (promoCode.valid_until && new Date(promoCode.valid_until) < now) {
-        return { valid: false, message: 'This promo code has expired' };
-      }
-
-      // Check usage limit
-      if (promoCode.max_uses && promoCode.current_uses >= promoCode.max_uses) {
-        return { valid: false, message: 'This promo code has reached its usage limit' };
-      }
-
-      // Check plan applicability
-      if (plan && !promoCode.applicable_plans.includes(plan)) {
-        return { valid: false, message: 'This promo code is not valid for the selected plan' };
-      }
+      // Build the promo code object from validated result
+      const discountType = result.discount_type as 'percentage' | 'fixed' | 'trial_extension';
+      const promoCode: PromoCode = {
+        id: result.promo_code_id,
+        code: code.toUpperCase().trim(),
+        name: '', // Not exposed for security
+        description: null,
+        discount_type: discountType,
+        discount_value: result.discount_value || 0,
+        trial_extension_days: result.trial_extension_days || 0,
+        max_uses: null,
+        current_uses: 0,
+        valid_from: new Date().toISOString(),
+        valid_until: null,
+        is_active: true,
+        applicable_plans: plan ? [plan] : [],
+      };
 
       return {
         valid: true,
@@ -87,6 +104,19 @@ export function usePromoCodes() {
     }
   };
 
+  const getPromoMessage = (promo: PromoCode): string => {
+    switch (promo.discount_type) {
+      case 'percentage':
+        return `${promo.discount_value}% discount applied!`;
+      case 'fixed':
+        return `$${(promo.discount_value / 100).toFixed(2)} discount applied!`;
+      case 'trial_extension':
+        return `${promo.trial_extension_days} extra trial days added!`;
+      default:
+        return 'Promo code applied!';
+    }
+  };
+
   const applyPromoCode = async (
     companyId: string,
     promoCodeId: string,
@@ -96,7 +126,7 @@ export function usePromoCodes() {
     try {
       setLoading(true);
 
-      // Insert usage record
+      // Record the promo code usage
       const { error: insertError } = await supabase
         .from('company_promo_codes')
         .insert({
@@ -107,53 +137,31 @@ export function usePromoCodes() {
         });
 
       if (insertError) {
+        // Check if already used
         if (insertError.code === '23505') {
-          toast({
-            title: 'Already Applied',
-            description: 'This promo code has already been applied to your account.',
-            variant: 'destructive',
-          });
-        } else {
-          throw insertError;
+          console.warn('Promo code already applied to this company');
+          return false;
         }
-        return false;
+        throw insertError;
       }
 
-      // Increment usage count
-      await supabase
-        .from('promo_codes')
-        .update({ current_uses: (await supabase.from('promo_codes').select('current_uses').eq('id', promoCodeId).single()).data?.current_uses + 1 || 1 })
-        .eq('id', promoCodeId);
-
-      toast({
-        title: 'Promo Code Applied!',
-        description: 'Your discount has been applied successfully.',
+      // Increment usage count via edge function or RPC
+      // This is handled server-side for security
+      const { error: updateError } = await supabase.rpc('increment_promo_usage', {
+        _promo_code_id: promoCodeId
       });
+
+      if (updateError) {
+        console.warn('Could not increment promo usage:', updateError);
+        // Non-fatal - the promo was still applied
+      }
 
       return true;
     } catch (error) {
       console.error('Error applying promo code:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to apply promo code. Please try again.',
-        variant: 'destructive',
-      });
       return false;
     } finally {
       setLoading(false);
-    }
-  };
-
-  const getPromoMessage = (promoCode: PromoCode): string => {
-    switch (promoCode.discount_type) {
-      case 'percentage':
-        return `${promoCode.discount_value}% off your subscription!`;
-      case 'fixed':
-        return `$${promoCode.discount_value} off your subscription!`;
-      case 'trial_extension':
-        return `${promoCode.trial_extension_days} extra days added to your trial!`;
-      default:
-        return 'Promo code applied!';
     }
   };
 
