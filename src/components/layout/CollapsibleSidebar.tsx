@@ -61,7 +61,8 @@ import {
   Wallet,
   Headphones,
   Cog,
-  TrendingUp
+  TrendingUp,
+  Bot
 } from 'lucide-react';
 
 interface NavItem {
@@ -166,6 +167,13 @@ const createNavigationGroups = (hasFeature: (key: string) => boolean, isAdminLev
       items: [
         { nameKey: 'sidebar.selections', href: '/admin/selections', icon: Palette, featureKey: 'selections_allowances' },
         { nameKey: 'sidebar.moodBoards', href: '/admin/mood-boards', icon: Shapes, featureKey: 'mood_boards' },
+      ]
+    },
+    {
+      nameKey: 'sidebar.aiTools',
+      icon: Bot,
+      items: [
+        { nameKey: 'sidebar.aiAssistant', href: '/admin/ai-tools', icon: Bot },
       ]
     },
     {
