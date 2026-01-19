@@ -96,7 +96,7 @@ export function GlobalAIAssistant() {
     'Help me get started',
   ];
 
-  // Hide when dialogs are open
+  // Hide when dialogs are open (must be after all hooks)
   if (hideWidgets && !isOpen) return null;
 
   if (!isOpen) {

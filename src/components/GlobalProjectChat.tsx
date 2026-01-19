@@ -47,56 +47,6 @@ export function GlobalProjectChat() {
   const [loading, setLoading] = useState(false);
   const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
 
-  // Hide when dialogs are open
-  if (hideWidgets && !isOpen) return null;
-
-  useEffect(() => {
-    if (isOpen && user) {
-      fetchProjects();
-      fetchPendingPartnerships();
-    }
-  }, [isOpen, user]);
-
-  // Real-time subscription for partnership invitations in global chat
-  useEffect(() => {
-    if (!userCompanyId || !isOpen) return;
-
-    const channel = supabase
-      .channel('global-chat-partnerships')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'project_companies',
-          filter: `company_id=eq.${userCompanyId}`
-        },
-        (payload) => {
-          console.log('New partnership invitation in global chat:', payload);
-          toast.info('New partnership invitation received!');
-          fetchPendingPartnerships();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'project_companies',
-          filter: `company_id=eq.${userCompanyId}`
-        },
-        () => {
-          fetchPendingPartnerships();
-          fetchProjects();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [userCompanyId, isOpen]);
-
   const fetchProjects = async () => {
     setLoading(true);
     const { data } = await supabase
@@ -149,6 +99,96 @@ export function GlobalProjectChat() {
       setPendingPartnerships(data as unknown as PendingPartnership[]);
     }
   };
+
+  useEffect(() => {
+    if (isOpen && user) {
+      fetchProjects();
+      fetchPendingPartnerships();
+    }
+  }, [isOpen, user]);
+
+  // Real-time subscription for partnership invitations in global chat
+  useEffect(() => {
+    if (!userCompanyId || !isOpen) return;
+
+    const channel = supabase
+      .channel('global-chat-partnerships')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'project_companies',
+          filter: `company_id=eq.${userCompanyId}`
+        },
+        (payload) => {
+          console.log('New partnership invitation in global chat:', payload);
+          toast.info('New partnership invitation received!');
+          fetchPendingPartnerships();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'project_companies',
+          filter: `company_id=eq.${userCompanyId}`
+        },
+        () => {
+          fetchPendingPartnerships();
+          fetchProjects();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userCompanyId, isOpen]);
+
+  // Real-time subscription for partnership invitations in global chat
+  useEffect(() => {
+    if (!userCompanyId || !isOpen) return;
+
+    const channel = supabase
+      .channel('global-chat-partnerships')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'project_companies',
+          filter: `company_id=eq.${userCompanyId}`
+        },
+        (payload) => {
+          console.log('New partnership invitation in global chat:', payload);
+          toast.info('New partnership invitation received!');
+          fetchPendingPartnerships();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'project_companies',
+          filter: `company_id=eq.${userCompanyId}`
+        },
+        () => {
+          fetchPendingPartnerships();
+          fetchProjects();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userCompanyId, isOpen]);
+
+  // Hide when dialogs are open (must be after all hooks)
+  if (hideWidgets && !isOpen) return null;
 
   const respondToInvitation = async (partnership: PendingPartnership, accept: boolean) => {
     try {
