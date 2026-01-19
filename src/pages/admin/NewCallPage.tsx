@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -148,13 +149,13 @@ const priorities = [
 ];
 
 const NewCallPage = () => {
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
+  const { effectiveCompanyId, isPlatformView, isLoading: companyLoading } = useEffectiveCompanyId();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [clients, setClients] = useState<Client[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
   const [companyType, setCompanyType] = useState<string>('other');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -191,31 +192,29 @@ const NewCallPage = () => {
   });
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (effectiveCompanyId) {
+      fetchData();
+    } else if (!companyLoading) {
+      setLoading(false);
+    }
+  }, [effectiveCompanyId, companyLoading]);
 
   const fetchData = async () => {
+    if (!effectiveCompanyId) {
+      setLoading(false);
+      return;
+    }
+    
     try {
-      // Get user's company first
-      const { data: memberData } = await supabase
-        .from('company_members')
-        .select('company_id')
-        .eq('user_id', user?.id)
-        .maybeSingle();
-
-      if (memberData?.company_id) {
-        setUserCompanyId(memberData.company_id);
-        
-        // Fetch company type
-        const { data: companyData } = await supabase
-          .from('companies')
-          .select('type')
-          .eq('id', memberData.company_id)
-          .single();
-        
-        if (companyData?.type) {
-          setCompanyType(companyData.type);
-        }
+      // Fetch company type
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('type')
+        .eq('id', effectiveCompanyId)
+        .single();
+      
+      if (companyData?.type) {
+        setCompanyType(companyData.type);
       }
 
       const [clientsRes, agentsRes, projectsRes] = await Promise.all([
@@ -243,8 +242,8 @@ const NewCallPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!userCompanyId) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Company not loaded. Please refresh and try again.' });
+    if (!effectiveCompanyId) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please select a company first.' });
       return;
     }
     
@@ -281,7 +280,7 @@ const NewCallPage = () => {
         status: formData.assigned_agent_id ? 'assigned' : 'pending',
         call_started_at: new Date().toISOString(),
         created_by: user?.id,
-        company_id: userCompanyId,
+        company_id: effectiveCompanyId,
         admin_approval_status: 'approved',
         admin_approved_at: new Date().toISOString(),
         admin_approved_by: user?.id,
