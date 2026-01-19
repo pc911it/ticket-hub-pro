@@ -17,6 +17,7 @@ interface AIRequest {
   messages?: Message[];
   context?: Record<string, unknown>;
   prompt?: string;
+  language?: string;
 }
 
 const systemPrompts: Record<string, string> = {
@@ -100,9 +101,14 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const { type = "chat", messages = [], context, prompt }: AIRequest = await req.json();
+    const { type = "chat", messages = [], context, prompt, language = "en" }: AIRequest = await req.json();
 
     const systemPrompt = systemPrompts[type] || systemPrompts.chat;
+    
+    // Build language instruction
+    const languageInstruction = language === "es" 
+      ? "\n\nIMPORTANT: You MUST respond entirely in Spanish (Español). All your responses should be in Spanish."
+      : "";
     
     // Build context message if provided
     let contextMessage = "";
@@ -112,7 +118,7 @@ serve(async (req) => {
 
     // Build final messages array
     const finalMessages: Message[] = [
-      { role: "system", content: systemPrompt + contextMessage },
+      { role: "system", content: systemPrompt + languageInstruction + contextMessage },
     ];
 
     if (prompt) {
