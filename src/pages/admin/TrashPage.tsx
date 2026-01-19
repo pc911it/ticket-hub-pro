@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -61,30 +62,24 @@ interface DeletedServiceType {
 
 const TrashPage = () => {
   const { isCompanyOwner, isSuperAdmin, isCompanyAdmin, user } = useAuth();
+  const { effectiveCompanyId, isPlatformView, isLoading: companyLoading } = useEffectiveCompanyId();
   const canPermanentlyDelete = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
 
   // Fetch company type to determine if vessels tab should be shown
   const { data: companyType } = useQuery({
-    queryKey: ['user-company-type-trash', user?.id],
+    queryKey: ['user-company-type-trash', effectiveCompanyId],
     queryFn: async () => {
-      if (!user) return null;
-      const { data: membership } = await supabase
-        .from('company_members')
-        .select('company_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      if (!membership?.company_id) return null;
+      if (!effectiveCompanyId) return null;
       
       const { data: company } = await supabase
         .from('companies')
         .select('type')
-        .eq('id', membership.company_id)
+        .eq('id', effectiveCompanyId)
         .single();
       
       return company?.type || null;
     },
-    enabled: !!user,
+    enabled: !!effectiveCompanyId,
   });
 
   const isBoatCompany = companyType === 'boat_services';
@@ -110,18 +105,22 @@ const TrashPage = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchDeletedItems();
-  }, []);
+    if (effectiveCompanyId) {
+      fetchDeletedItems();
+    }
+  }, [effectiveCompanyId]);
 
   const fetchDeletedItems = async () => {
+    if (!effectiveCompanyId) return;
+    
     const [{ data: projects }, { data: tickets }, { data: clients }, { data: inventory }, { data: suppliers }, { data: vessels }, { data: serviceTypes }] = await Promise.all([
-      supabase.from('projects').select('id, name, deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
-      supabase.from('tickets').select('id, title, deleted_at, clients(full_name)').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
-      supabase.from('clients').select('id, full_name, email, deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
-      supabase.from('inventory_items').select('id, name, sku, deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
-      supabase.from('suppliers').select('id, name, email, deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
-      supabase.from('vessels').select('id, boat_name, hull_id, deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
-      supabase.from('company_service_types').select('id, name, deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
+      supabase.from('projects').select('id, name, deleted_at').eq('company_id', effectiveCompanyId).not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
+      supabase.from('tickets').select('id, title, deleted_at, clients(full_name)').eq('company_id', effectiveCompanyId).not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
+      supabase.from('clients').select('id, full_name, email, deleted_at').eq('company_id', effectiveCompanyId).not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
+      supabase.from('inventory_items').select('id, name, sku, deleted_at').eq('company_id', effectiveCompanyId).not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
+      supabase.from('suppliers').select('id, name, email, deleted_at').eq('company_id', effectiveCompanyId).not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
+      supabase.from('vessels').select('id, boat_name, hull_id, deleted_at').eq('company_id', effectiveCompanyId).not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
+      supabase.from('company_service_types').select('id, name, deleted_at').eq('company_id', effectiveCompanyId).not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
     ]);
 
     if (projects) setDeletedProjects(projects);

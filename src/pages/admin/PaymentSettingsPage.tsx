@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffectiveCompanyId } from "@/hooks/useEffectiveCompanyId";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +70,7 @@ interface PaymentSetting {
 
 export default function PaymentSettingsPage() {
   const { user, isCompanyOwner, isSuperAdmin } = useAuth();
+  const { effectiveCompanyId, isPlatformView, isLoading: companyLoading } = useEffectiveCompanyId();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("stripe");
   const [showStripeSecret, setShowStripeSecret] = useState(false);
@@ -92,28 +94,33 @@ export default function PaymentSettingsPage() {
     isEnabled: false,
   });
 
-  // Fetch company
-  const { data: company, isLoading: companyLoading } = useQuery({
-    queryKey: ["payment-settings-company", user?.id],
+  // Fetch company data using effectiveCompanyId
+  const { data: company, isLoading: companyDataLoading } = useQuery({
+    queryKey: ["payment-settings-company", effectiveCompanyId],
     queryFn: async () => {
-      if (!user?.id) return null;
-      const { data: membership } = await supabase
-        .from("company_members")
-        .select("company_id, role")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      if (!effectiveCompanyId) return null;
       
-      if (!membership) return null;
+      // For super admins, we still need their role for the specific company
+      let userRole = 'admin'; // Default
+      if (!isSuperAdmin && user?.id) {
+        const { data: membership } = await supabase
+          .from("company_members")
+          .select("role")
+          .eq("user_id", user.id)
+          .eq("company_id", effectiveCompanyId)
+          .maybeSingle();
+        userRole = membership?.role || 'user';
+      }
       
       const { data: companyData } = await supabase
         .from("companies")
         .select("id, name")
-        .eq("id", membership.company_id)
+        .eq("id", effectiveCompanyId)
         .single();
       
-      return { ...companyData, userRole: membership.role };
+      return companyData ? { ...companyData, userRole } : null;
     },
-    enabled: !!user?.id,
+    enabled: !!effectiveCompanyId,
   });
 
   // Fetch existing payment settings

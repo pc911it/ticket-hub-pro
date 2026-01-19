@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,7 +37,8 @@ import {
 } from '@/components/ui/alert';
 
 const BillingSettingsPage = () => {
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
+  const { effectiveCompanyId, isLoading: companyLoading } = useEffectiveCompanyId();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showUpdateCard, setShowUpdateCard] = useState(false);
@@ -46,29 +48,21 @@ const BillingSettingsPage = () => {
   const [isUpdatingCard, setIsUpdatingCard] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-  // Fetch company data
-  const { data: company, isLoading: companyLoading } = useQuery({
-    queryKey: ['billing-company', user?.id],
+  // Fetch company data using effectiveCompanyId
+  const { data: company, isLoading: companyDataLoading } = useQuery({
+    queryKey: ['billing-company', effectiveCompanyId],
     queryFn: async () => {
-      if (!user) return null;
-      
-      const { data: membership } = await supabase
-        .from('company_members')
-        .select('company_id')
-        .eq('user_id', user.id)
-        .single();
+      if (!effectiveCompanyId) return null;
 
-      if (!membership) return null;
-
-      const { data: company } = await supabase
+      const { data: companyData } = await supabase
         .from('companies')
         .select('*')
-        .eq('id', membership.company_id)
+        .eq('id', effectiveCompanyId)
         .single();
 
-      return company;
+      return companyData;
     },
-    enabled: !!user,
+    enabled: !!effectiveCompanyId,
   });
 
   // Fetch billing history

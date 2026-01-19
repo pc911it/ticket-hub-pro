@@ -13,6 +13,7 @@ import { UserPlus, Shield, User, Users, Briefcase, Building2, KeyRound, Trash2 }
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffectiveCompanyId } from "@/hooks/useEffectiveCompanyId";
 import type { Database } from "@/integrations/supabase/types";
 import { validatePassword } from "@/lib/passwordValidation";
 import { PasswordStrengthIndicator } from "@/components/PasswordStrengthIndicator";
@@ -31,6 +32,7 @@ interface UserWithRole {
 
 export default function UsersPage() {
   const { user, userRole, isSuperAdmin } = useAuth();
+  const { effectiveCompanyId, isPlatformView, isLoading: companyLoading } = useEffectiveCompanyId();
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
@@ -38,7 +40,6 @@ export default function UsersPage() {
   const [selectedUserForReset, setSelectedUserForReset] = useState<UserWithRole | null>(null);
   const [selectedUserForDelete, setSelectedUserForDelete] = useState<UserWithRole | null>(null);
   const [newPassword, setNewPassword] = useState("");
-  const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
   const [isCompanyAdmin, setIsCompanyAdmin] = useState(false);
   const [newUser, setNewUser] = useState({
     email: "",
@@ -47,38 +48,40 @@ export default function UsersPage() {
     role: "user" as AppRole,
   });
 
-  // Fetch user's company and check if they're a company admin
+  // Check if user is a company admin
   useEffect(() => {
-    const fetchUserCompany = async () => {
+    const checkAdminRole = async () => {
       if (!user) return;
       
       if (isSuperAdmin) {
-        setIsCompanyAdmin(true); // Super admin has all permissions
+        setIsCompanyAdmin(true);
         return;
       }
       
-      const { data } = await supabase
-        .from("company_members")
-        .select("company_id, role")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      
-      if (data) {
-        setUserCompanyId(data.company_id);
-        setIsCompanyAdmin(data.role === "admin");
+      if (effectiveCompanyId) {
+        const { data } = await supabase
+          .from("company_members")
+          .select("role")
+          .eq("user_id", user.id)
+          .eq("company_id", effectiveCompanyId)
+          .maybeSingle();
+        
+        if (data) {
+          setIsCompanyAdmin(data.role === "admin");
+        }
       }
     };
     
-    fetchUserCompany();
-  }, [user, isSuperAdmin]);
+    checkAdminRole();
+  }, [user, isSuperAdmin, effectiveCompanyId]);
 
   const canManageUsers = isCompanyAdmin || isSuperAdmin;
 
   const { data: users, isLoading } = useQuery({
-    queryKey: ["users-with-roles", userCompanyId, isSuperAdmin],
+    queryKey: ["users-with-roles", effectiveCompanyId, isSuperAdmin],
     queryFn: async () => {
-      if (isSuperAdmin) {
-        // Super admin sees all users with their company info
+      if (isSuperAdmin && isPlatformView) {
+        // Super admin in platform view sees all users with their company info
         const { data: members, error: membersError } = await supabase
           .from("company_members")
           .select(`
@@ -109,13 +112,13 @@ export default function UsersPage() {
 
         return usersWithRoles;
       } else {
-        // Company admin only sees their company's users
-        if (!userCompanyId) return [];
+        // Company admin or Super admin viewing specific company
+        if (!effectiveCompanyId) return [];
 
         const { data: members, error: membersError } = await supabase
           .from("company_members")
           .select("user_id, role")
-          .eq("company_id", userCompanyId);
+          .eq("company_id", effectiveCompanyId);
 
         if (membersError) throw membersError;
 
@@ -131,7 +134,6 @@ export default function UsersPage() {
         if (profilesError) throw profilesError;
 
         // Build users list from members, with profile info if available
-        // Show all company users - admins can manage all roles
         const usersWithRoles: UserWithRole[] = members.map((member) => {
           const profile = profiles?.find((p) => p.user_id === member.user_id);
           return {
@@ -146,7 +148,7 @@ export default function UsersPage() {
         return usersWithRoles;
       }
     },
-    enabled: canManageUsers && (isSuperAdmin || !!userCompanyId),
+    enabled: canManageUsers && (isSuperAdmin || !!effectiveCompanyId),
   });
 
   const createUserMutation = useMutation({
@@ -174,7 +176,7 @@ export default function UsersPage() {
           password: userData.password,
           fullName: userData.fullName.trim(),
           role: userData.role,
-          companyId: userCompanyId,
+          companyId: effectiveCompanyId,
         },
       });
 
@@ -638,7 +640,7 @@ export default function UsersPage() {
                   resetPasswordMutation.mutate({
                     userId: selectedUserForReset.user_id,
                     newPassword,
-                    companyId: userCompanyId || undefined,
+                    companyId: effectiveCompanyId || undefined,
                   });
                 }
               }}
@@ -665,10 +667,10 @@ export default function UsersPage() {
             <AlertDialogCancel onClick={() => setSelectedUserForDelete(null)}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                if (selectedUserForDelete && userCompanyId) {
+                if (selectedUserForDelete && effectiveCompanyId) {
                   deleteUserMutation.mutate({
                     userId: selectedUserForDelete.user_id,
-                    companyId: userCompanyId,
+                    companyId: effectiveCompanyId,
                   });
                 }
               }}

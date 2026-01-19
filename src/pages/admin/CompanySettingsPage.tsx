@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffectiveCompanyId } from "@/hooks/useEffectiveCompanyId";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +42,7 @@ const paymentProviders = [
 
 export default function CompanySettingsPage() {
   const { user, isCompanyOwner, isSuperAdmin, signOut } = useAuth();
+  const { effectiveCompanyId, isLoading: companyIdLoading } = useEffectiveCompanyId();
   const canRemoveMembers = isCompanyOwner || isSuperAdmin;
   const canDeleteCompany = isCompanyOwner || isSuperAdmin;
   const queryClient = useQueryClient();
@@ -55,27 +57,31 @@ export default function CompanySettingsPage() {
   const [uploading, setUploading] = useState(false);
 
   const { data: company, isLoading } = useQuery({
-    queryKey: ["company-settings", user?.id],
+    queryKey: ["company-settings", effectiveCompanyId],
     queryFn: async () => {
-      if (!user?.id) return null;
+      if (!effectiveCompanyId) return null;
 
-      const { data: membership } = await supabase
-        .from("company_members")
-        .select("company_id, role")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (!membership) return null;
+      // Get user role for this company
+      let userRole = 'admin'; // Default for super admins
+      if (!isSuperAdmin && user?.id) {
+        const { data: membership } = await supabase
+          .from("company_members")
+          .select("role")
+          .eq("user_id", user.id)
+          .eq("company_id", effectiveCompanyId)
+          .maybeSingle();
+        userRole = membership?.role || 'user';
+      }
 
       const { data: companyData } = await supabase
         .from("companies")
         .select("*")
-        .eq("id", membership.company_id)
+        .eq("id", effectiveCompanyId)
         .single();
 
-      return { ...companyData, userRole: membership.role };
+      return companyData ? { ...companyData, userRole } : null;
     },
-    enabled: !!user?.id,
+    enabled: !!effectiveCompanyId,
   });
 
   const { data: members } = useQuery({
