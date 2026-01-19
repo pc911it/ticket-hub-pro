@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { SignaturePad } from '@/components/SignaturePad';
+import { SignedImage } from '@/components/SignedImage';
 import { JobTimelineMap } from '@/components/JobTimelineMap';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -173,16 +174,12 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, onUpdate }: Tick
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('client-signatures')
-        .getPublicUrl(fileName);
-
-      // Update ticket with signature
+      // Store the file path (not public URL since bucket is private)
+      // Update ticket with signature path
       const { error: updateError } = await supabase
         .from('tickets')
         .update({
-          client_signature_url: urlData.publicUrl,
+          client_signature_url: fileName,
           client_approved_at: new Date().toISOString(),
           client_approved_by: user.id,
         })
@@ -198,6 +195,7 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, onUpdate }: Tick
       setShowSignature(false);
       onUpdate();
     } catch (error) {
+      console.error('Error saving signature:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -427,8 +425,9 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, onUpdate }: Tick
                     </p>
                   </div>
                 </div>
-                <img 
-                  src={ticket.client_signature_url!} 
+                <SignedImage 
+                  bucket="client-signatures"
+                  path={ticket.client_signature_url!} 
                   alt="Client signature" 
                   className="max-h-24 border rounded-lg bg-white"
                 />

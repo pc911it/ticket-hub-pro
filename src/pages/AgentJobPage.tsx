@@ -18,6 +18,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { SignaturePad } from '@/components/SignaturePad';
+import { SignedImage } from '@/components/SignedImage';
 
 interface Ticket {
   id: string;
@@ -187,15 +188,12 @@ const AgentJobPage = () => {
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('client-signatures')
-        .getPublicUrl(fileName);
-
-      // Update ticket with signature
+      // Store file path (not public URL since bucket is private)
+      // Update ticket with signature path
       const { error: updateError } = await supabase
         .from('tickets')
         .update({
-          client_signature_url: publicUrl,
+          client_signature_url: fileName,
           client_approved_at: new Date().toISOString(),
           client_approved_by: user.id,
         })
@@ -205,7 +203,7 @@ const AgentJobPage = () => {
 
       setSelectedTicket({
         ...selectedTicket,
-        client_signature_url: publicUrl,
+        client_signature_url: fileName,
         client_approved_at: new Date().toISOString(),
       });
 
@@ -533,8 +531,9 @@ const AgentJobPage = () => {
               {selectedTicket.client_signature_url ? (
                 <div className="space-y-2">
                   <div className="border rounded-lg p-2 bg-white">
-                    <img 
-                      src={selectedTicket.client_signature_url} 
+                    <SignedImage 
+                      bucket="client-signatures"
+                      path={selectedTicket.client_signature_url} 
                       alt="Client signature" 
                       className="w-full h-24 object-contain"
                     />

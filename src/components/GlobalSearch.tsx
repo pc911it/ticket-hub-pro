@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { 
   Search, 
   Building2, 
@@ -334,6 +334,7 @@ export function GlobalSearch() {
         <DialogContent className="sm:max-w-[550px] p-0 gap-0">
           <DialogHeader className="px-4 pt-4 pb-2">
             <DialogTitle className="sr-only">Search</DialogTitle>
+            <DialogDescription className="sr-only">Search across companies, users, projects, tickets, and pages</DialogDescription>
             <div className="flex items-center gap-2">
               <Search className="h-4 w-4 text-muted-foreground" />
               <Input

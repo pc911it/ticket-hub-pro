@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { TicketProgressTracker } from "@/components/TicketProgressTracker";
 import { WorkOrderPDF } from "@/components/WorkOrderPDF";
+import { SignedImage } from "@/components/SignedImage";
 import { 
   Calendar, 
   Clock, 
@@ -303,8 +304,9 @@ export function ClientTicketDetailDialog({ ticket, open, onOpenChange }: ClientT
                     Client Approval Signature
                   </h4>
                   <div className="bg-muted/30 p-3 rounded-lg">
-                    <img 
-                      src={ticket.client_signature_url} 
+                    <SignedImage 
+                      bucket="client-signatures"
+                      path={ticket.client_signature_url} 
                       alt="Client signature" 
                       className="max-h-24 mx-auto"
                     />
