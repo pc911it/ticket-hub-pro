@@ -6,29 +6,40 @@ const corsHeaders = {
 };
 
 // Default plan prices in cents (fallback if database fetch fails)
-const DEFAULT_PLAN_PRICES: Record<string, { monthly: number; yearly: number }> = {
-  professional: { monthly: 34900, yearly: 299000 },
-  advanced: { monthly: 89900, yearly: 749000 },
-  enterprise: { monthly: 0, yearly: 0 },
+const DEFAULT_PLAN_PRICES: Record<string, { monthly: number; yearly: number; discount_percent: number; discount_fixed_amount: number; discount_valid_until: string | null }> = {
+  professional: { monthly: 34900, yearly: 299000, discount_percent: 0, discount_fixed_amount: 0, discount_valid_until: null },
+  advanced: { monthly: 89900, yearly: 749000, discount_percent: 0, discount_fixed_amount: 0, discount_valid_until: null },
+  enterprise: { monthly: 0, yearly: 0, discount_percent: 0, discount_fixed_amount: 0, discount_valid_until: null },
 };
 
-// Fetch plan prices from database
-async function getPlanPrices(supabase: any): Promise<Record<string, { monthly: number; yearly: number }>> {
+interface PlanPriceData {
+  monthly: number;
+  yearly: number;
+  discount_percent: number;
+  discount_fixed_amount: number;
+  discount_valid_until: string | null;
+}
+
+// Fetch plan prices and discounts from database
+async function getPlanPrices(supabase: any): Promise<Record<string, PlanPriceData>> {
   try {
     const { data, error } = await supabase
       .from("subscription_plans")
-      .select("id, monthly_price, yearly_price, is_custom_pricing");
+      .select("id, monthly_price, yearly_price, is_custom_pricing, discount_percent, discount_fixed_amount, discount_valid_until");
     
     if (error || !data) {
       console.warn("Failed to fetch plan prices, using defaults:", error);
       return DEFAULT_PLAN_PRICES;
     }
     
-    const prices: Record<string, { monthly: number; yearly: number }> = {};
+    const prices: Record<string, PlanPriceData> = {};
     for (const plan of data) {
       prices[plan.id] = {
         monthly: plan.is_custom_pricing ? 0 : plan.monthly_price,
         yearly: plan.is_custom_pricing ? 0 : plan.yearly_price,
+        discount_percent: plan.discount_percent || 0,
+        discount_fixed_amount: plan.discount_fixed_amount || 0,
+        discount_valid_until: plan.discount_valid_until,
       };
     }
     return prices;
@@ -105,6 +116,20 @@ async function calculateChargeAmount(
   
   let finalPrice = basePrice;
   let discountDescription = '';
+  
+  // Apply plan-level discounts (from Plan Management)
+  const isPlanDiscountValid = !planPrices.discount_valid_until || new Date(planPrices.discount_valid_until) > new Date();
+  if (isPlanDiscountValid) {
+    if (planPrices.discount_percent > 0) {
+      const discount = Math.round(finalPrice * planPrices.discount_percent / 100);
+      finalPrice -= discount;
+      discountDescription = ` (${planPrices.discount_percent}% plan discount)`;
+    }
+    if (planPrices.discount_fixed_amount > 0) {
+      finalPrice -= planPrices.discount_fixed_amount;
+      discountDescription += ` ($${planPrices.discount_fixed_amount / 100} plan discount)`;
+    }
+  }
   
   // Check for recurring promo code discounts
   const { data: promoData } = await supabase
