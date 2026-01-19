@@ -5,12 +5,38 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Plan prices in cents
-const PLAN_PRICES: Record<string, { monthly: number; yearly: number }> = {
-  professional: { monthly: 34900, yearly: 299000 }, // $349/mo or $2990/yr
-  advanced: { monthly: 89900, yearly: 749000 },     // $899/mo or $7490/yr
-  enterprise: { monthly: 0, yearly: 0 },            // Custom pricing - contact sales
+// Default plan prices in cents (fallback if database fetch fails)
+const DEFAULT_PLAN_PRICES: Record<string, { monthly: number; yearly: number }> = {
+  professional: { monthly: 34900, yearly: 299000 },
+  advanced: { monthly: 89900, yearly: 749000 },
+  enterprise: { monthly: 0, yearly: 0 },
 };
+
+// Fetch plan prices from database
+async function getPlanPrices(supabase: any): Promise<Record<string, { monthly: number; yearly: number }>> {
+  try {
+    const { data, error } = await supabase
+      .from("subscription_plans")
+      .select("id, monthly_price, yearly_price, is_custom_pricing");
+    
+    if (error || !data) {
+      console.warn("Failed to fetch plan prices, using defaults:", error);
+      return DEFAULT_PLAN_PRICES;
+    }
+    
+    const prices: Record<string, { monthly: number; yearly: number }> = {};
+    for (const plan of data) {
+      prices[plan.id] = {
+        monthly: plan.is_custom_pricing ? 0 : plan.monthly_price,
+        yearly: plan.is_custom_pricing ? 0 : plan.yearly_price,
+      };
+    }
+    return prices;
+  } catch (err) {
+    console.warn("Error fetching plan prices:", err);
+    return DEFAULT_PLAN_PRICES;
+  }
+}
 
 interface BusinessConfig {
   is_free_account?: boolean;
@@ -61,8 +87,11 @@ async function calculateChargeAmount(
     return { amount: 0, description: 'Free account - no charge', skipCharge: true };
   }
   
+  // Fetch dynamic prices from database
+  const PLAN_PRICES = await getPlanPrices(supabase);
+  
   // Get base price
-  const planPrices = PLAN_PRICES[plan] || PLAN_PRICES.professional;
+  const planPrices = PLAN_PRICES[plan] || DEFAULT_PLAN_PRICES.professional;
   let basePrice = billingCycle === 'yearly' ? planPrices.yearly : planPrices.monthly;
   
   // Enterprise has custom pricing
