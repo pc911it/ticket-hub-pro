@@ -31,7 +31,7 @@ const pageContextMap: Record<string, string> = {
 };
 
 export function GlobalAIAssistant() {
-  const { hideWidgets } = useFloatingWidgets();
+  const { hideWidgets, minimized } = useFloatingWidgets();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [input, setInput] = useState('');
@@ -96,8 +96,8 @@ export function GlobalAIAssistant() {
     'Help me get started',
   ];
 
-  // Hide when dialogs are open (must be after all hooks)
-  if (hideWidgets && !isOpen) return null;
+  // Hide when dialogs are open or minimized (must be after all hooks)
+  if ((hideWidgets || minimized) && !isOpen) return null;
 
   if (!isOpen) {
     return (

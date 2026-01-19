@@ -33,7 +33,7 @@ interface SupportChat {
 
 export function CompanyLiveSupportChat() {
   const { user } = useAuth();
-  const { hideWidgets } = useFloatingWidgets();
+  const { hideWidgets, minimized } = useFloatingWidgets();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -216,9 +216,9 @@ export function CompanyLiveSupportChat() {
     startChatMutation.mutate();
   };
 
-  // Hide when dialogs are open (must be after all hooks)
+  // Hide when dialogs are open or minimized (must be after all hooks)
   if (!companyId) return null;
-  if (hideWidgets && !isOpen) return null;
+  if ((hideWidgets || minimized) && !isOpen) return null;
 
   // Floating button when closed
   if (!isOpen) {

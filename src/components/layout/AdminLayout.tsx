@@ -11,6 +11,7 @@ import { useCompanyLiveSupportNotifications } from '@/hooks/useCompanyLiveSuppor
 import { LiveAlertsBanner } from '@/components/LiveAlertsBanner';
 import { GlobalProjectChat } from '@/components/GlobalProjectChat';
 import { CompanyLiveSupportChat } from '@/components/CompanyLiveSupportChat';
+import { FloatingWidgetsToggle } from '@/components/FloatingWidgetsToggle';
 import { NotificationToggle, NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
 import { BillingAlertBanner } from '@/components/BillingAlertBanner';
 import { PasswordResetReminder } from '@/components/PasswordResetReminder';
@@ -133,6 +134,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             {children}
           </main>
 
+          {/* Floating Widgets Toggle Button */}
+          <FloatingWidgetsToggle />
+          
           {/* Global Chat Button */}
           <GlobalProjectChat />
           
