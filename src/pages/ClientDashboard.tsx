@@ -468,15 +468,12 @@ export default function ClientDashboard() {
       
       if (uploadError) throw uploadError;
       
-      const { data: urlData } = supabase.storage
-        .from("client-signatures")
-        .getPublicUrl(fileName);
-      
+      // Store file path (not public URL since bucket is private)
       // Update ticket with approval info
       const { error: updateError } = await supabase
         .from("tickets")
         .update({
-          client_signature_url: urlData?.publicUrl,
+          client_signature_url: fileName,
           client_approved_at: new Date().toISOString(),
           client_approved_by: user?.id,
         })
@@ -484,7 +481,7 @@ export default function ClientDashboard() {
       
       if (updateError) throw updateError;
       
-      return { ticketId, signatureUrl: urlData?.publicUrl };
+      return { ticketId, signatureUrl: fileName };
     },
     onSuccess: () => {
       toast({ title: "Work Approved", description: "Thank you! Your approval has been recorded." });
