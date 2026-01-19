@@ -19,6 +19,7 @@ import { WelcomeTour } from '@/components/WelcomeTour';
 import { PaymentGate } from '@/components/PaymentGate';
 import { CollapsibleSidebar } from './CollapsibleSidebar';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { GlobalSearch } from '@/components/GlobalSearch';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
 
@@ -97,6 +98,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             
             {/* Super Admin Company Selector */}
             <SuperAdminCompanySelector />
+            
+            {/* Global Search */}
+            <GlobalSearch />
             
             <div className="flex-1" />
             
