@@ -211,16 +211,37 @@ export default function FloorPlansPage() {
       return;
     }
 
+    if (!user?.id) {
+      toast.error('You must be logged in to upload floor plans');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const fileExt = modelFile.name.split('.').pop()?.toLowerCase();
-      const filePath = `${effectiveCompanyId}/${Date.now()}.${fileExt}`;
+      // Use a unique filename with timestamp and random suffix
+      const uniqueId = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      const filePath = `${effectiveCompanyId}/${uniqueId}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage
+      console.log('Uploading file to path:', filePath);
+      console.log('File size:', modelFile.size, 'bytes');
+      console.log('File type:', modelFile.type);
+
+      // Upload with explicit content type
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('floor-plans')
-        .upload(filePath, modelFile);
+        .upload(filePath, modelFile, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: modelFile.type || 'application/octet-stream',
+        });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
+        throw new Error(`Upload failed: ${uploadError.message}`);
+      }
+
+      console.log('Upload successful:', uploadData);
 
       // Store the file path, not the public URL (bucket is private)
       const { error } = await supabase.from('floor_plans').insert({
@@ -234,7 +255,12 @@ export default function FloorPlansPage() {
         uploaded_by: user?.id,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database insert error:', error);
+        // Try to clean up the uploaded file if DB insert fails
+        await supabase.storage.from('floor-plans').remove([filePath]);
+        throw error;
+      }
 
       toast.success('Floor plan uploaded successfully');
       queryClient.invalidateQueries({ queryKey: ['floor-plans'] });
