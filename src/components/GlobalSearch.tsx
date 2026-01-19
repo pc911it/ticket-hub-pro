@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
@@ -16,15 +16,20 @@ import {
   User,
   Loader2,
   X,
-  LayoutDashboard
+  LayoutDashboard,
+  Text,
+  Table,
+  CreditCard,
+  Hash
 } from 'lucide-react';
 
 interface SearchResult {
   id: string;
-  type: 'company' | 'user' | 'project' | 'ticket' | 'client' | 'invoice' | 'page';
+  type: 'company' | 'user' | 'project' | 'ticket' | 'client' | 'invoice' | 'page' | 'page-content' | 'table-row' | 'card' | 'text';
   title: string;
   subtitle?: string;
   url: string;
+  element?: Element;
 }
 
 // All navigable pages in the app
@@ -83,7 +88,133 @@ export function GlobalSearch() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { isSuperAdmin } = useAuth();
+
+  // Function to search visible page content
+  const searchPageContent = useCallback((searchQuery: string): SearchResult[] => {
+    const lowerQuery = searchQuery.toLowerCase();
+    const pageResults: SearchResult[] = [];
+    const seenTexts = new Set<string>();
+    
+    // Search table rows
+    const tableRows = document.querySelectorAll('table tbody tr');
+    tableRows.forEach((row, index) => {
+      const rowText = row.textContent?.toLowerCase() || '';
+      if (rowText.includes(lowerQuery)) {
+        const cells = row.querySelectorAll('td');
+        const firstCell = cells[0]?.textContent?.trim() || '';
+        const secondCell = cells[1]?.textContent?.trim() || '';
+        const title = firstCell || `Row ${index + 1}`;
+        const key = `table-${title}-${index}`;
+        
+        if (!seenTexts.has(key)) {
+          seenTexts.add(key);
+          pageResults.push({
+            id: `table-row-${index}`,
+            type: 'table-row',
+            title: title.substring(0, 60),
+            subtitle: secondCell ? secondCell.substring(0, 80) : 'Table row match',
+            url: location.pathname,
+            element: row as Element,
+          });
+        }
+      }
+    });
+
+    // Search cards
+    const cards = document.querySelectorAll('[class*="card"], [class*="Card"]');
+    cards.forEach((card, index) => {
+      const cardText = card.textContent?.toLowerCase() || '';
+      if (cardText.includes(lowerQuery)) {
+        const heading = card.querySelector('h1, h2, h3, h4, h5, h6, [class*="title"], [class*="Title"]');
+        const title = heading?.textContent?.trim() || card.textContent?.trim().substring(0, 40) || `Card ${index + 1}`;
+        const key = `card-${title}`;
+        
+        if (!seenTexts.has(key) && title.length > 2) {
+          seenTexts.add(key);
+          pageResults.push({
+            id: `card-${index}`,
+            type: 'card',
+            title: title.substring(0, 60),
+            subtitle: 'Card content match',
+            url: location.pathname,
+            element: card as Element,
+          });
+        }
+      }
+    });
+
+    // Search headings and important text
+    const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    headings.forEach((heading, index) => {
+      const headingText = heading.textContent?.toLowerCase() || '';
+      if (headingText.includes(lowerQuery)) {
+        const title = heading.textContent?.trim() || '';
+        const key = `heading-${title}`;
+        
+        if (!seenTexts.has(key) && title.length > 2) {
+          seenTexts.add(key);
+          pageResults.push({
+            id: `heading-${index}`,
+            type: 'page-content',
+            title: title.substring(0, 60),
+            subtitle: `Heading on this page`,
+            url: location.pathname,
+            element: heading as Element,
+          });
+        }
+      }
+    });
+
+    // Search buttons and links with text
+    const clickables = document.querySelectorAll('button, a, [role="button"]');
+    clickables.forEach((el, index) => {
+      const elText = el.textContent?.toLowerCase() || '';
+      if (elText.includes(lowerQuery) && elText.length > 2 && elText.length < 100) {
+        const title = el.textContent?.trim() || '';
+        const key = `clickable-${title}`;
+        
+        if (!seenTexts.has(key)) {
+          seenTexts.add(key);
+          pageResults.push({
+            id: `clickable-${index}`,
+            type: 'text',
+            title: title.substring(0, 60),
+            subtitle: 'Button/Link on this page',
+            url: location.pathname,
+            element: el as Element,
+          });
+        }
+      }
+    });
+
+    // Search labels, badges, and other text elements
+    const textElements = document.querySelectorAll('label, span, p, [class*="badge"], [class*="Badge"]');
+    textElements.forEach((el, index) => {
+      const elText = el.textContent?.toLowerCase() || '';
+      const directText = el.childNodes.length === 1 && el.childNodes[0].nodeType === Node.TEXT_NODE;
+      
+      if (elText.includes(lowerQuery) && directText && elText.length > 2 && elText.length < 100) {
+        const title = el.textContent?.trim() || '';
+        const key = `text-${title}`;
+        
+        if (!seenTexts.has(key)) {
+          seenTexts.add(key);
+          pageResults.push({
+            id: `text-${index}`,
+            type: 'text',
+            title: title.substring(0, 60),
+            subtitle: 'Text on this page',
+            url: location.pathname,
+            element: el as Element,
+          });
+        }
+      }
+    });
+
+    return pageResults.slice(0, 10);
+  }, [location.pathname]);
 
   // Keyboard shortcut to open search
   useEffect(() => {
@@ -122,7 +253,11 @@ export function GlobalSearch() {
       const searchTerm = `%${query}%`;
       const lowerQuery = query.toLowerCase();
 
-      // Search pages/navigation first (instant, no DB call)
+      // Search current page content first (instant, no DB call)
+      const pageContentResults = searchPageContent(query);
+      searchResults.push(...pageContentResults);
+
+      // Search pages/navigation (instant, no DB call)
       const matchingPages = PAGES.filter(
         page => 
           page.title.toLowerCase().includes(lowerQuery) ||
@@ -262,7 +397,7 @@ export function GlobalSearch() {
 
     const debounce = setTimeout(search, 300);
     return () => clearTimeout(debounce);
-  }, [query, isSuperAdmin]);
+  }, [query, isSuperAdmin, searchPageContent]);
 
   // Handle keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -282,7 +417,29 @@ export function GlobalSearch() {
 
   const handleSelect = (result: SearchResult) => {
     setOpen(false);
-    navigate(result.url);
+    
+    // If result has an element reference, scroll to it and highlight
+    if (result.element) {
+      setTimeout(() => {
+        result.element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Add highlight effect
+        const el = result.element as HTMLElement;
+        const originalBg = el.style.backgroundColor;
+        const originalTransition = el.style.transition;
+        el.style.transition = 'background-color 0.3s ease';
+        el.style.backgroundColor = 'hsl(var(--primary) / 0.2)';
+        
+        setTimeout(() => {
+          el.style.backgroundColor = originalBg;
+          setTimeout(() => {
+            el.style.transition = originalTransition;
+          }, 300);
+        }, 2000);
+      }, 100);
+    } else {
+      navigate(result.url);
+    }
   };
 
   const getIcon = (type: SearchResult['type']) => {
@@ -294,12 +451,13 @@ export function GlobalSearch() {
       case 'client': return <Users className="h-4 w-4" />;
       case 'invoice': return <FileText className="h-4 w-4" />;
       case 'page': return <LayoutDashboard className="h-4 w-4" />;
+      case 'page-content': return <Hash className="h-4 w-4" />;
+      case 'table-row': return <Table className="h-4 w-4" />;
+      case 'card': return <CreditCard className="h-4 w-4" />;
+      case 'text': return <Text className="h-4 w-4" />;
     }
   };
 
-  const getTypeLabel = (type: SearchResult['type']) => {
-    return type.charAt(0).toUpperCase() + type.slice(1);
-  };
 
   const getTypeBadgeVariant = (type: SearchResult['type']) => {
     switch (type) {
@@ -310,6 +468,20 @@ export function GlobalSearch() {
       case 'client': return 'default';
       case 'invoice': return 'secondary';
       case 'page': return 'outline';
+      case 'page-content': return 'secondary';
+      case 'table-row': return 'default';
+      case 'card': return 'secondary';
+      case 'text': return 'outline';
+    }
+  };
+
+  const getTypeLabel = (type: SearchResult['type']) => {
+    switch (type) {
+      case 'page-content': return 'Heading';
+      case 'table-row': return 'Table';
+      case 'card': return 'Card';
+      case 'text': return 'Text';
+      default: return type.charAt(0).toUpperCase() + type.slice(1);
     }
   };
 
