@@ -15,16 +15,65 @@ import {
   FileText, 
   User,
   Loader2,
-  X
+  X,
+  LayoutDashboard
 } from 'lucide-react';
 
 interface SearchResult {
   id: string;
-  type: 'company' | 'user' | 'project' | 'ticket' | 'client' | 'invoice';
+  type: 'company' | 'user' | 'project' | 'ticket' | 'client' | 'invoice' | 'page';
   title: string;
   subtitle?: string;
   url: string;
 }
+
+// All navigable pages in the app
+const PAGES: SearchResult[] = [
+  { id: 'dashboard', type: 'page', title: 'Dashboard', subtitle: 'Main overview', url: '/admin/dashboard' },
+  { id: 'projects', type: 'page', title: 'Projects', subtitle: 'Manage projects', url: '/admin/projects' },
+  { id: 'tickets', type: 'page', title: 'Tickets', subtitle: 'Support tickets', url: '/admin/tickets' },
+  { id: 'clients', type: 'page', title: 'Clients', subtitle: 'Client management', url: '/admin/clients' },
+  { id: 'users', type: 'page', title: 'Users', subtitle: 'User management', url: '/admin/users' },
+  { id: 'employees', type: 'page', title: 'Employees', subtitle: 'Employee management', url: '/admin/employees' },
+  { id: 'billing', type: 'page', title: 'Billing', subtitle: 'Invoices & payments', url: '/admin/billing' },
+  { id: 'calendar', type: 'page', title: 'Calendar', subtitle: 'Schedule & events', url: '/admin/calendar' },
+  { id: 'leads', type: 'page', title: 'Leads', subtitle: 'Lead management', url: '/admin/leads' },
+  { id: 'bids', type: 'page', title: 'Bids', subtitle: 'Bid management', url: '/admin/bids' },
+  { id: 'contracts', type: 'page', title: 'Contracts', subtitle: 'Contract management', url: '/admin/contracts' },
+  { id: 'permits', type: 'page', title: 'Permits', subtitle: 'Permit tracking', url: '/admin/permits' },
+  { id: 'rfis', type: 'page', title: 'RFIs', subtitle: 'Request for information', url: '/admin/rfis' },
+  { id: 'submittals', type: 'page', title: 'Submittals', subtitle: 'Submittal tracking', url: '/admin/submittals' },
+  { id: 'change-orders', type: 'page', title: 'Change Orders', subtitle: 'Change order management', url: '/admin/change-orders' },
+  { id: 'daily-logs', type: 'page', title: 'Daily Logs', subtitle: 'Daily log entries', url: '/admin/daily-logs' },
+  { id: 'punch-lists', type: 'page', title: 'Punch Lists', subtitle: 'Punch list items', url: '/admin/punch-lists' },
+  { id: 'inspections', type: 'page', title: 'Inspections', subtitle: 'Inspection tracking', url: '/admin/inspections' },
+  { id: 'warranties', type: 'page', title: 'Warranties', subtitle: 'Warranty management', url: '/admin/warranties' },
+  { id: 'equipment', type: 'page', title: 'Equipment', subtitle: 'Equipment tracking', url: '/admin/equipment' },
+  { id: 'inventory', type: 'page', title: 'Inventory', subtitle: 'Inventory management', url: '/admin/inventory' },
+  { id: 'suppliers', type: 'page', title: 'Suppliers', subtitle: 'Supplier management', url: '/admin/suppliers' },
+  { id: 'subcontractors', type: 'page', title: 'Subcontractors', subtitle: 'Subcontractor management', url: '/admin/subcontractors' },
+  { id: 'purchase-orders', type: 'page', title: 'Purchase Orders', subtitle: 'PO management', url: '/admin/purchase-orders' },
+  { id: 'budgeting', type: 'page', title: 'Budgeting', subtitle: 'Budget tracking', url: '/admin/budgeting' },
+  { id: 'floor-plans', type: 'page', title: 'Floor Plans', subtitle: 'Floor plan viewer', url: '/admin/floor-plans' },
+  { id: 'construction-plans', type: 'page', title: 'Construction Plans', subtitle: 'Construction documents', url: '/admin/construction-plans' },
+  { id: 'selections', type: 'page', title: 'Selections', subtitle: 'Material selections', url: '/admin/selections' },
+  { id: 'mood-boards', type: 'page', title: 'Mood Boards', subtitle: 'Design mood boards', url: '/admin/mood-boards' },
+  { id: 'product-library', type: 'page', title: 'Product Library', subtitle: 'Product catalog', url: '/admin/product-library' },
+  { id: 'cost-calculator', type: 'page', title: 'Cost Calculator', subtitle: 'Cost estimation', url: '/admin/cost-calculator' },
+  { id: 'ai-tools', type: 'page', title: 'AI Tools', subtitle: 'AI-powered features', url: '/admin/ai-tools' },
+  { id: 'follow-ups', type: 'page', title: 'Follow Ups', subtitle: 'Follow up tasks', url: '/admin/follow-ups' },
+  { id: 'dispatcher', type: 'page', title: 'Dispatcher', subtitle: 'Dispatch dashboard', url: '/admin/dispatcher' },
+  { id: 'live-chats', type: 'page', title: 'Live Chats', subtitle: 'Live chat support', url: '/admin/live-chats' },
+  { id: 'notifications', type: 'page', title: 'Notifications', subtitle: 'Notification center', url: '/admin/notifications' },
+  { id: 'updates', type: 'page', title: 'Updates', subtitle: 'System updates', url: '/admin/updates' },
+  { id: 'settings', type: 'page', title: 'Company Settings', subtitle: 'Company configuration', url: '/admin/settings' },
+  { id: 'billing-settings', type: 'page', title: 'Billing Settings', subtitle: 'Payment configuration', url: '/admin/billing-settings' },
+  { id: 'service-types', type: 'page', title: 'Service Types', subtitle: 'Service configuration', url: '/admin/service-types' },
+  { id: 'integrations', type: 'page', title: 'Integrations', subtitle: 'Third-party integrations', url: '/admin/integrations' },
+  { id: 'import-export', type: 'page', title: 'Import/Export', subtitle: 'Data import & export', url: '/admin/import-export' },
+  { id: 'trash', type: 'page', title: 'Trash', subtitle: 'Deleted items', url: '/admin/trash' },
+  { id: 'support', type: 'page', title: 'Support', subtitle: 'Get help', url: '/admin/support' },
+];
 
 export function GlobalSearch() {
   const [open, setOpen] = useState(false);
@@ -71,6 +120,15 @@ export function GlobalSearch() {
       setIsLoading(true);
       const searchResults: SearchResult[] = [];
       const searchTerm = `%${query}%`;
+      const lowerQuery = query.toLowerCase();
+
+      // Search pages/navigation first (instant, no DB call)
+      const matchingPages = PAGES.filter(
+        page => 
+          page.title.toLowerCase().includes(lowerQuery) ||
+          page.subtitle?.toLowerCase().includes(lowerQuery)
+      ).slice(0, 5);
+      searchResults.push(...matchingPages);
 
       try {
         // Search companies (super admin only)
@@ -235,6 +293,7 @@ export function GlobalSearch() {
       case 'ticket': return <Ticket className="h-4 w-4" />;
       case 'client': return <Users className="h-4 w-4" />;
       case 'invoice': return <FileText className="h-4 w-4" />;
+      case 'page': return <LayoutDashboard className="h-4 w-4" />;
     }
   };
 
@@ -250,6 +309,7 @@ export function GlobalSearch() {
       case 'ticket': return 'destructive';
       case 'client': return 'default';
       case 'invoice': return 'secondary';
+      case 'page': return 'outline';
     }
   };
 
