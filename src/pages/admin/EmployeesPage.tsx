@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,10 +60,10 @@ interface CompanyUser {
 
 const EmployeesPage = () => {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
+  const { effectiveCompanyId, isPlatformView, isLoading: companyLoading } = useEffectiveCompanyId();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [companyUsers, setCompanyUsers] = useState<CompanyUser[]>([]);
-  const [companyId, setCompanyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -99,74 +100,71 @@ const EmployeesPage = () => {
   });
 
   useEffect(() => {
-    if (user) {
+    if (user && effectiveCompanyId) {
       fetchCompanyAndAgents();
+    } else if (!companyLoading && !effectiveCompanyId) {
+      setLoading(false);
+      setAgents([]);
     }
-  }, [user]);
+  }, [user, effectiveCompanyId, companyLoading]);
 
   const fetchCompanyAndAgents = async () => {
+    if (!effectiveCompanyId) {
+      setLoading(false);
+      return;
+    }
+    
     try {
-      // Get user's company
-      const { data: memberData } = await supabase
+      // Fetch agents for this company
+      const { data: agentsData, error } = await supabase
+        .from('agents')
+        .select('*')
+        .eq('company_id', effectiveCompanyId)
+        .order('full_name');
+
+      if (error) throw error;
+      
+      // Fetch emails for agents from profiles
+      if (agentsData && agentsData.length > 0) {
+        const agentUserIds = agentsData.map(a => a.user_id);
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('user_id, email')
+          .in('user_id', agentUserIds);
+        
+        // Merge email into agents
+        const agentsWithEmail = agentsData.map(agent => ({
+          ...agent,
+          email: profilesData?.find(p => p.user_id === agent.user_id)?.email || null
+        }));
+        setAgents(agentsWithEmail);
+      } else {
+        setAgents([]);
+      }
+
+      // Fetch company members who are not already agents
+      const { data: membersData } = await supabase
         .from('company_members')
-        .select('company_id')
-        .eq('user_id', user?.id)
-        .maybeSingle();
+        .select('user_id')
+        .eq('company_id', effectiveCompanyId);
 
-      if (memberData?.company_id) {
-        setCompanyId(memberData.company_id);
-        
-        // Fetch agents for this company
-        const { data: agentsData, error } = await supabase
-          .from('agents')
-          .select('*')
-          .eq('company_id', memberData.company_id)
-          .order('full_name');
+      if (membersData && membersData.length > 0) {
+        // Get profiles for these users
+        const userIds = membersData.map(m => m.user_id);
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('user_id, full_name, email')
+          .in('user_id', userIds);
 
-        if (error) throw error;
-        
-        // Fetch emails for agents from profiles
-        if (agentsData && agentsData.length > 0) {
-          const agentUserIds = agentsData.map(a => a.user_id);
-          const { data: profilesData } = await supabase
-            .from('profiles')
-            .select('user_id, email')
-            .in('user_id', agentUserIds);
-          
-          // Merge email into agents
-          const agentsWithEmail = agentsData.map(agent => ({
-            ...agent,
-            email: profilesData?.find(p => p.user_id === agent.user_id)?.email || null
+        // Filter out users who are already agents
+        const agentUserIds = (agentsData || []).map(a => a.user_id);
+        const availableUsers = (profilesData || [])
+          .filter(p => !agentUserIds.includes(p.user_id))
+          .map(p => ({
+            user_id: p.user_id,
+            profiles: { full_name: p.full_name, email: p.email }
           }));
-          setAgents(agentsWithEmail);
-        } else {
-          setAgents([]);
-        }
-
-        // Fetch company members who are not already agents
-        const { data: membersData } = await supabase
-          .from('company_members')
-          .select('user_id')
-          .eq('company_id', memberData.company_id);
-
-        if (membersData && membersData.length > 0) {
-          // Get profiles for these users
-          const userIds = membersData.map(m => m.user_id);
-          const { data: profilesData } = await supabase
-            .from('profiles')
-            .select('user_id, full_name, email')
-            .in('user_id', userIds);
-
-          // Filter out users who are already agents
-          const agentUserIds = (agentsData || []).map(a => a.user_id);
-          const availableUsers = (profilesData || [])
-            .filter(p => !agentUserIds.includes(p.user_id))
-            .map(p => ({
-              user_id: p.user_id,
-              profiles: { full_name: p.full_name, email: p.email }
-            }));
-          setCompanyUsers(availableUsers);
-        }
+        setCompanyUsers(availableUsers);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -193,10 +191,10 @@ const EmployeesPage = () => {
   };
 
   useEffect(() => {
-    if (companyId) {
+    if (effectiveCompanyId) {
       return setupRealtimeSubscription();
     }
-  }, [companyId]);
+  }, [effectiveCompanyId]);
 
   const handleOpenDialog = (agent?: Agent) => {
     if (agent) {
@@ -243,8 +241,8 @@ const EmployeesPage = () => {
   const handleAddAgent = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!companyId) {
-      toast({ variant: 'destructive', title: 'Error', description: 'No company found.' });
+    if (!effectiveCompanyId) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please select a company first.' });
       return;
     }
 
@@ -262,7 +260,7 @@ const EmployeesPage = () => {
     const { error } = await supabase
       .from('agents')
       .insert({
-        company_id: companyId,
+        company_id: effectiveCompanyId,
         user_id: addFormData.user_id,
         full_name: addFormData.full_name,
         phone: addFormData.phone || null,
@@ -282,8 +280,8 @@ const EmployeesPage = () => {
   const handleCreateEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!companyId) {
-      toast({ variant: 'destructive', title: 'Error', description: 'No company found.' });
+    if (!effectiveCompanyId) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please select a company first.' });
       return;
     }
 
@@ -304,7 +302,7 @@ const EmployeesPage = () => {
       const { data: companyData } = await supabase
         .from('companies')
         .select('name')
-        .eq('id', companyId)
+        .eq('id', effectiveCompanyId)
         .single();
 
       // Create user account via edge function
@@ -314,7 +312,7 @@ const EmployeesPage = () => {
           password: createFormData.password,
           fullName: createFormData.full_name,
           role: 'staff',
-          companyId: companyId,
+          companyId: effectiveCompanyId,
         },
       });
 
@@ -335,7 +333,7 @@ const EmployeesPage = () => {
       const { error: agentError } = await supabase
         .from('agents')
         .insert({
-          company_id: companyId,
+          company_id: effectiveCompanyId,
           user_id: userId,
           full_name: createFormData.full_name,
           phone: createFormData.phone || null,
@@ -388,7 +386,7 @@ const EmployeesPage = () => {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!resetPasswordAgent || !newPassword || !companyId) {
+    if (!resetPasswordAgent || !newPassword || !effectiveCompanyId) {
       toast({ variant: 'destructive', title: 'Error', description: 'Missing required information.' });
       return;
     }
@@ -405,7 +403,7 @@ const EmployeesPage = () => {
         body: {
           userId: resetPasswordAgent.user_id,
           newPassword: newPassword,
-          companyId: companyId,
+          companyId: effectiveCompanyId,
         },
       });
 
@@ -449,7 +447,7 @@ const EmployeesPage = () => {
   };
 
   const handleDeleteAgent = async () => {
-    if (!deletingAgent || !companyId) return;
+    if (!deletingAgent || !effectiveCompanyId) return;
 
     setDeleting(true);
     try {
@@ -518,10 +516,31 @@ const EmployeesPage = () => {
   const onlineCount = agents.filter(a => a.is_online).length;
   const availableCount = agents.filter(a => a.is_online && a.is_available).length;
 
-  if (loading) {
+  if (loading || companyLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  // Super admin without company selected
+  if (isSuperAdmin && isPlatformView) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div>
+          <h1 className="text-3xl font-display font-bold text-foreground">Employees</h1>
+          <p className="text-muted-foreground mt-1">Manage field agents and employees.</p>
+        </div>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <User className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Select a Company</h3>
+            <p className="text-muted-foreground text-center max-w-md">
+              Please select a company from the dropdown in the header to view and manage employees.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
