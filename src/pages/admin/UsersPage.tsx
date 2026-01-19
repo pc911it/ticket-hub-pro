@@ -429,6 +429,15 @@ export default function UsersPage() {
                           </span>
                         </SelectItem>
                       )}
+                      {/* Super Admin option - only visible to super admins */}
+                      {isSuperAdmin && (
+                        <SelectItem value="super_admin">
+                          <span className="flex items-center gap-2">
+                            <Shield className="h-4 w-4 text-red-500" />
+                            Super Admin - Platform-wide access (max 2)
+                          </span>
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   {hasExistingAdmin && !isSuperAdmin && (
