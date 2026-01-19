@@ -216,9 +216,8 @@ export function CompanyLiveSupportChat() {
     startChatMutation.mutate();
   };
 
+  // Hide when dialogs are open (must be after all hooks)
   if (!companyId) return null;
-
-  // Hide when dialogs are open
   if (hideWidgets && !isOpen) return null;
 
   // Floating button when closed
