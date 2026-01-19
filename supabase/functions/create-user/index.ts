@@ -89,6 +89,29 @@ serve(async (req) => {
     // we allow it - they just create the user without company membership
     const skipCompanyMembership = isSuperAdmin && !targetCompanyId;
 
+    // Only super admins can create super_admin users
+    if (role === "super_admin") {
+      if (!isSuperAdmin) {
+        return new Response(
+          JSON.stringify({ error: "Only super admins can create other super admins" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Check super admin limit (max 2)
+      const { data: existingSuperAdmins } = await adminClient
+        .from("user_roles")
+        .select("id")
+        .eq("role", "super_admin");
+
+      if (existingSuperAdmins && existingSuperAdmins.length >= 2) {
+        return new Response(
+          JSON.stringify({ error: "Maximum of 2 super admins allowed. Please remove an existing super admin first." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // Prevent creating additional admins (only one admin per company) - only if adding to company
     if (!skipCompanyMembership && role === "admin" && targetCompanyId) {
       const { data: existingAdmins, error: adminCheckError } = await adminClient
