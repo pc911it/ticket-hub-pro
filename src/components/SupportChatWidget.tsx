@@ -164,8 +164,8 @@ export function SupportChatWidget() {
   const greetingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
-  // WhatsApp Business number from environment
-  const whatsappNumber = import.meta.env.VITE_WHATSAPP_NUMBER || '14155238886';
+  // WhatsApp Business number
+  const whatsappNumber = '17864814375';
 
   useEffect(() => {
     console.log('Greeting check - hasInteracted:', hasInteracted, 'isOpen:', isOpen);
