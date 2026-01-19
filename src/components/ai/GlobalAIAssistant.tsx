@@ -98,7 +98,7 @@ export function GlobalAIAssistant() {
     return (
       <Button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 bg-primary hover:bg-primary/90"
+        className="fixed bottom-6 left-6 h-14 w-14 rounded-full shadow-lg z-50 bg-primary hover:bg-primary/90"
         size="icon"
       >
         <Sparkles className="h-6 w-6" />
@@ -111,8 +111,8 @@ export function GlobalAIAssistant() {
       className={cn(
         'fixed z-50 bg-background border rounded-lg shadow-2xl transition-all duration-200',
         isMinimized
-          ? 'bottom-6 right-6 w-72 h-14'
-          : 'bottom-6 right-6 w-96 h-[500px] max-h-[80vh]'
+          ? 'bottom-6 left-6 w-72 h-14'
+          : 'bottom-6 left-6 w-96 h-[500px] max-h-[80vh]'
       )}
     >
       {/* Header */}
