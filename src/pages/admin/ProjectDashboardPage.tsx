@@ -52,11 +52,11 @@ interface ProjectTicket {
   id: string;
   title: string;
   description: string | null;
-  status: string | null;
+  status: string;
   priority: string | null;
   scheduled_date: string;
   scheduled_time: string;
-  duration_minutes: number | null;
+  duration_minutes: number;
   total_time_minutes: number | null;
   client_signature_url: string | null;
   client_approved_at: string | null;
@@ -101,6 +101,7 @@ const ProjectDashboardPage = () => {
         .from('tickets')
         .select('id, title, description, status, priority, scheduled_date, scheduled_time, duration_minutes, total_time_minutes, client_signature_url, client_approved_at, call_started_at, call_ended_at, clients(full_name), projects(name), agents:assigned_agent_id(full_name)')
         .eq('project_id', projectId)
+        .is('deleted_at', null)
         .order('scheduled_date', { ascending: true }),
       supabase
         .from('project_milestones')
@@ -110,7 +111,15 @@ const ProjectDashboardPage = () => {
     ]);
 
     if (projectData) setProject(projectData);
-    if (ticketsData) setTickets(ticketsData as ProjectTicket[]);
+    if (ticketsData) {
+      // Transform data to ensure proper types
+      const transformedTickets = ticketsData.map(t => ({
+        ...t,
+        status: t.status || 'pending',
+        duration_minutes: t.duration_minutes || 60,
+      })) as ProjectTicket[];
+      setTickets(transformedTickets);
+    }
     if (milestonesData) setMilestones(milestonesData);
     setLoading(false);
   };
@@ -592,11 +601,7 @@ const ProjectDashboardPage = () => {
 
           {/* Ticket Detail Sheet */}
           <TicketDetailSheet
-            ticket={selectedTicket ? {
-              ...selectedTicket,
-              status: selectedTicket.status || 'pending',
-              duration_minutes: selectedTicket.duration_minutes || 60,
-            } : null}
+            ticket={selectedTicket}
             open={ticketSheetOpen}
             onOpenChange={(open) => {
               setTicketSheetOpen(open);
@@ -612,7 +617,13 @@ const ProjectDashboardPage = () => {
                   .eq('id', selectedTicket.id)
                   .single()
                   .then(({ data }) => {
-                    if (data) setSelectedTicket(data as ProjectTicket);
+                    if (data) {
+                      setSelectedTicket({
+                        ...data,
+                        status: data.status || 'pending',
+                        duration_minutes: data.duration_minutes || 60,
+                      } as ProjectTicket);
+                    }
                   });
               }
             }}
