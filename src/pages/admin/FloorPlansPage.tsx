@@ -196,11 +196,11 @@ export default function FloorPlansPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
       const file = e.target.files[0];
-      const validTypes = ['.obj', '.gltf', '.glb', '.ifc', '.fbx', '.dae', '.stl'];
+      const validTypes = ['.obj', '.gltf', '.glb', '.ifc', '.fbx', '.dae', '.stl', '.dxf', '.dwg'];
       const ext = '.' + file.name.split('.').pop()?.toLowerCase();
       
       if (!validTypes.includes(ext)) {
-        toast.error('Please upload a valid 3D model file (OBJ, GLTF, GLB, IFC, FBX, DAE, STL)');
+        toast.error('Please upload a valid file (OBJ, GLTF, GLB, IFC, FBX, DAE, STL, DXF, DWG)');
         return;
       }
       
