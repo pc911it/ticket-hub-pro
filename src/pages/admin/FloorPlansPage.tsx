@@ -68,7 +68,7 @@ const formatInfo: Record<string, { name: string; supported: boolean; description
 };
 
 export default function FloorPlansPage() {
-  const { effectiveCompanyId } = useEffectiveCompanyId();
+  const { effectiveCompanyId, isPlatformView } = useEffectiveCompanyId();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -564,6 +564,16 @@ export default function FloorPlansPage() {
             <DialogTitle>Upload 3D Model</DialogTitle>
           </DialogHeader>
 
+          {isPlatformView ? (
+            <div className="py-6 text-center">
+              <p className="text-muted-foreground mb-4">
+                Please select a company from the company selector in the sidebar to upload floor plans.
+              </p>
+              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                Close
+              </Button>
+            </div>
+          ) : (
           <div className="space-y-4">
             <div>
               <Label htmlFor="name">Name *</Label>
@@ -655,6 +665,7 @@ export default function FloorPlansPage() {
               </Button>
             </div>
           </div>
+          )}
         </DialogContent>
       </Dialog>
 
