@@ -1,4 +1,4 @@
-import { Suspense, useRef, useState, useEffect, Component, ReactNode } from 'react';
+import { Suspense, useRef, useState, useEffect, Component, ReactNode, useCallback } from 'react';
 import { Canvas, useLoader } from '@react-three/fiber';
 import { OrbitControls, Environment, useGLTF, Center, Html, useProgress } from '@react-three/drei';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
@@ -8,7 +8,7 @@ import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader.js';
 import * as THREE from 'three';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, RotateCcw, ZoomIn, ZoomOut, Maximize2, Box, AlertCircle, Download } from 'lucide-react';
+import { ExternalLink, RotateCcw, ZoomIn, ZoomOut, Maximize2, Box, AlertCircle, Download, RefreshCw } from 'lucide-react';
 
 interface Model3DViewerProps {
   modelUrl: string;
@@ -27,22 +27,62 @@ const formatInfo: Record<string, { name: string; supported: boolean; description
   ifc: { name: 'IFC', supported: false, description: 'Industry Foundation Classes - BIM format (requires specialized viewer)' },
 };
 
+// Check WebGL support
+function checkWebGLSupport(): { supported: boolean; message: string } {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl2') as WebGL2RenderingContext | null
+      || canvas.getContext('webgl') as WebGLRenderingContext | null
+      || canvas.getContext('experimental-webgl') as WebGLRenderingContext | null;
+    
+    if (!gl) {
+      return { 
+        supported: false, 
+        message: 'WebGL is not supported by your browser. Try updating your browser or using Chrome/Firefox.' 
+      };
+    }
+    
+    // Check for common WebGL issues
+    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+    if (debugInfo) {
+      const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) as string;
+      console.log('WebGL Renderer:', renderer);
+      
+      // Check for software rendering (often causes issues)
+      if (renderer && (renderer.toLowerCase().includes('swiftshader') || renderer.toLowerCase().includes('llvmpipe'))) {
+        return { 
+          supported: true, 
+          message: 'Software rendering detected - 3D performance may be limited.' 
+        };
+      }
+    }
+    
+    return { supported: true, message: '' };
+  } catch (e) {
+    return { 
+      supported: false, 
+      message: 'Failed to initialize WebGL. Your device may not support 3D rendering.' 
+    };
+  }
+}
+
 // Error Boundary Class Component
 class ErrorBoundary extends Component<
-  { children: ReactNode; fallback: ReactNode },
-  { hasError: boolean }
+  { children: ReactNode; fallback: ReactNode; onError?: () => void },
+  { hasError: boolean; error: Error | null }
 > {
-  constructor(props: { children: ReactNode; fallback: ReactNode }) {
+  constructor(props: { children: ReactNode; fallback: ReactNode; onError?: () => void }) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, error: null };
   }
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('3D Viewer Error:', error, errorInfo);
+    this.props.onError?.();
   }
 
   render() {
@@ -59,7 +99,7 @@ function Loader() {
     <Html center>
       <div className="flex flex-col items-center gap-2">
         <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-muted-foreground">{progress.toFixed(0)}% loaded</p>
+        <p className="text-sm text-white">{progress.toFixed(0)}% loaded</p>
       </div>
     </Html>
   );
@@ -71,7 +111,7 @@ function ErrorBoundaryFallback({ error }: { error: string }) {
       <div className="flex flex-col items-center gap-2 text-center p-4">
         <AlertCircle className="h-8 w-8 text-destructive" />
         <p className="text-sm text-destructive font-medium">Failed to load model</p>
-        <p className="text-xs text-muted-foreground max-w-xs">{error}</p>
+        <p className="text-xs text-white/60 max-w-xs">{error}</p>
       </div>
     </Html>
   );
@@ -252,13 +292,11 @@ function Scene({
   modelType, 
   autoRotate,
   controlsRef,
-  onError
 }: { 
   modelUrl: string; 
   modelType: string | null;
   autoRotate: boolean;
   controlsRef: React.RefObject<any>;
-  onError: () => void;
 }) {
   return (
     <>
@@ -273,11 +311,9 @@ function Scene({
       <directionalLight position={[-10, -10, -5]} intensity={0.3} />
       <pointLight position={[0, 10, 0]} intensity={0.5} />
       
-      <ErrorBoundary fallback={<ErrorBoundaryFallback error="Could not load the 3D model. The file may be corrupted or in an incompatible format." />}>
-        <Suspense fallback={<Loader />}>
-          <ModelRenderer url={modelUrl} type={modelType} />
-        </Suspense>
-      </ErrorBoundary>
+      <Suspense fallback={<Loader />}>
+        <ModelRenderer url={modelUrl} type={modelType} />
+      </Suspense>
       
       <OrbitControls 
         ref={controlsRef}
@@ -299,34 +335,100 @@ function Scene({
   );
 }
 
+// Fallback viewer for when WebGL fails
+function FallbackViewer({ 
+  modelUrl, 
+  modelName, 
+  modelType,
+  onRetry 
+}: { 
+  modelUrl: string; 
+  modelName: string;
+  modelType: string | null;
+  onRetry: () => void;
+}) {
+  const info = formatInfo[modelType?.toLowerCase() || ''] || { name: modelType?.toUpperCase() || 'Unknown', supported: false };
+  
+  return (
+    <div className="flex-1 bg-gradient-to-b from-slate-900 to-slate-800 rounded-lg flex items-center justify-center min-h-[400px]">
+      <div className="text-center p-8">
+        <AlertCircle className="h-16 w-16 text-amber-500 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-white mb-2">3D Preview Unavailable</h3>
+        <Badge variant="secondary" className="mb-4">{info.name}</Badge>
+        <p className="text-white/60 mb-6 max-w-md">
+          The 3D viewer couldn't load on this device. This may be due to browser limitations, 
+          WebGL support, or network restrictions.
+        </p>
+        <div className="flex gap-3 justify-center flex-wrap">
+          <Button variant="outline" onClick={onRetry}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Try Again
+          </Button>
+          <Button asChild>
+            <a href={modelUrl} target="_blank" rel="noopener noreferrer" download={modelName}>
+              <Download className="h-4 w-4 mr-2" />
+              Download Model
+            </a>
+          </Button>
+        </div>
+        <p className="text-xs text-white/40 mt-4">
+          Tip: Try using Chrome or Firefox with hardware acceleration enabled
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function Model3DViewer({ modelUrl, modelType, modelName }: Model3DViewerProps) {
   const controlsRef = useRef<any>(null);
   const [autoRotate, setAutoRotate] = useState(true);
-  const [hasError, setHasError] = useState(false);
-  const [isCanvasReady, setIsCanvasReady] = useState(false);
-  const [initError, setInitError] = useState<string | null>(null);
+  const [viewerState, setViewerState] = useState<'loading' | 'ready' | 'error' | 'webgl-error'>('loading');
+  const [webglMessage, setWebglMessage] = useState<string>('');
+  const [retryCount, setRetryCount] = useState(0);
   
   const info = formatInfo[modelType?.toLowerCase() || ''] || { name: modelType?.toUpperCase() || 'Unknown', supported: false, description: '' };
   
   const supportedFormats = ['gltf', 'glb', 'obj', 'stl', 'fbx', 'dae'];
   const isSupported = supportedFormats.includes(modelType?.toLowerCase() || '');
-  
+
+  // Check WebGL and validate URL on mount
   useEffect(() => {
-    // Reset error state when model changes
-    setHasError(false);
-    setInitError(null);
-    setIsCanvasReady(false);
+    setViewerState('loading');
     
-    // Validate URL before attempting to load
-    if (!modelUrl) {
-      setInitError('No model URL provided');
+    // Check WebGL support first
+    const webglCheck = checkWebGLSupport();
+    if (!webglCheck.supported) {
+      setWebglMessage(webglCheck.message);
+      setViewerState('webgl-error');
       return;
     }
     
-    // Give canvas time to initialize
-    const timer = setTimeout(() => setIsCanvasReady(true), 200);
+    if (webglCheck.message) {
+      setWebglMessage(webglCheck.message);
+    }
+    
+    // Validate URL
+    if (!modelUrl) {
+      setViewerState('error');
+      return;
+    }
+    
+    // Give canvas time to initialize (longer on first load)
+    const delay = retryCount === 0 ? 500 : 300;
+    const timer = setTimeout(() => {
+      setViewerState('ready');
+    }, delay);
+    
     return () => clearTimeout(timer);
-  }, [modelUrl, modelType]);
+  }, [modelUrl, modelType, retryCount]);
+  
+  const handleRetry = useCallback(() => {
+    setRetryCount(c => c + 1);
+  }, []);
+
+  const handleError = useCallback(() => {
+    setViewerState('error');
+  }, []);
   
   if (!isSupported) {
     return (
@@ -338,17 +440,18 @@ export default function Model3DViewer({ modelUrl, modelType, modelName }: Model3
     );
   }
 
-  if (initError) {
+  // WebGL not supported
+  if (viewerState === 'webgl-error') {
     return (
-      <div className="flex-1 bg-muted rounded-lg flex items-center justify-center min-h-[400px]">
+      <div className="flex-1 bg-gradient-to-b from-slate-900 to-slate-800 rounded-lg flex items-center justify-center min-h-[400px]">
         <div className="text-center p-8">
           <AlertCircle className="h-16 w-16 text-destructive mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2">Cannot Load Model</h3>
-          <p className="text-muted-foreground mb-4 max-w-md">{initError}</p>
+          <h3 className="text-lg font-medium text-white mb-2">WebGL Not Available</h3>
+          <p className="text-white/60 mb-4 max-w-md">{webglMessage}</p>
           <Button asChild>
             <a href={modelUrl} target="_blank" rel="noopener noreferrer" download={modelName}>
               <Download className="h-4 w-4 mr-2" />
-              Download Instead
+              Download Model
             </a>
           </Button>
         </div>
@@ -356,33 +459,15 @@ export default function Model3DViewer({ modelUrl, modelType, modelName }: Model3
     );
   }
 
-  if (hasError) {
+  // Error state with retry option
+  if (viewerState === 'error') {
     return (
-      <div className="flex-1 bg-muted rounded-lg flex items-center justify-center min-h-[400px]">
-        <div className="text-center p-8">
-          <AlertCircle className="h-16 w-16 text-destructive mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2">Failed to Load Model</h3>
-          <p className="text-muted-foreground mb-4 max-w-md">
-            The model could not be loaded. This may be due to CORS restrictions, 
-            file corruption, or an incompatible format.
-          </p>
-          <div className="flex gap-2 justify-center">
-            <Button variant="outline" onClick={() => {
-              setHasError(false);
-              setIsCanvasReady(false);
-              setTimeout(() => setIsCanvasReady(true), 200);
-            }}>
-              Try Again
-            </Button>
-            <Button asChild>
-              <a href={modelUrl} target="_blank" rel="noopener noreferrer" download={modelName}>
-                <Download className="h-4 w-4 mr-2" />
-                Download Instead
-              </a>
-            </Button>
-          </div>
-        </div>
-      </div>
+      <FallbackViewer 
+        modelUrl={modelUrl} 
+        modelName={modelName}
+        modelType={modelType}
+        onRetry={handleRetry}
+      />
     );
   }
 
@@ -414,6 +499,11 @@ export default function Model3DViewer({ modelUrl, modelType, modelName }: Model3
       <div className="flex items-center justify-between p-2 border-b bg-background/50 flex-wrap gap-2">
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="secondary">{info.name}</Badge>
+          {webglMessage && (
+            <Badge variant="outline" className="text-amber-500 border-amber-500/50">
+              {webglMessage}
+            </Badge>
+          )}
           <Button variant="outline" size="sm" onClick={handleReset}>
             <RotateCcw className="h-4 w-4 mr-1" />
             Reset
@@ -443,23 +533,28 @@ export default function Model3DViewer({ modelUrl, modelType, modelName }: Model3
 
       {/* 3D Canvas */}
       <div className="flex-1 bg-gradient-to-b from-slate-900 to-slate-800 rounded-b-lg overflow-hidden relative">
-        {isCanvasReady && modelUrl && (
+        {viewerState === 'loading' && (
+          <div className="absolute inset-0 flex items-center justify-center z-10">
+            <div className="text-center">
+              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-white/60 text-sm">Initializing 3D viewer...</p>
+            </div>
+          </div>
+        )}
+        
+        {viewerState === 'ready' && modelUrl && (
           <ErrorBoundary
             fallback={
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center p-8">
-                  <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-                  <p className="text-white mb-2">Failed to initialize 3D viewer</p>
-                  <p className="text-white/60 text-sm mb-4">Your browser may not support WebGL or the model format.</p>
-                  <Button asChild variant="secondary">
-                    <a href={modelUrl} target="_blank" rel="noopener noreferrer" download={modelName}>
-                      <Download className="h-4 w-4 mr-2" />
-                      Download Model
-                    </a>
-                  </Button>
-                </div>
+                <FallbackViewer 
+                  modelUrl={modelUrl} 
+                  modelName={modelName}
+                  modelType={modelType}
+                  onRetry={handleRetry}
+                />
               </div>
             }
+            onError={handleError}
           >
             <Canvas
               camera={{ position: [5, 5, 5], fov: 50 }}
@@ -468,31 +563,31 @@ export default function Model3DViewer({ modelUrl, modelType, modelName }: Model3
               gl={{ 
                 antialias: true, 
                 alpha: false,
-                powerPreference: 'high-performance',
-                failIfMajorPerformanceCaveat: false
+                powerPreference: 'default',
+                failIfMajorPerformanceCaveat: false,
+                preserveDrawingBuffer: true
+              }}
+              onCreated={({ gl }) => {
+                console.log('Canvas created, renderer:', gl.getContext().getParameter(gl.getContext().VERSION));
               }}
               onError={(e) => {
                 console.error('Canvas error:', e);
-                setHasError(true);
+                setViewerState('error');
               }}
             >
-              <Scene
-                modelUrl={modelUrl}
-                modelType={modelType}
-                autoRotate={autoRotate}
-                controlsRef={controlsRef}
-                onError={() => setHasError(true)}
-              />
+              <ErrorBoundary
+                fallback={<ErrorBoundaryFallback error="Model loading failed. Try downloading the file." />}
+                onError={handleError}
+              >
+                <Scene
+                  modelUrl={modelUrl}
+                  modelType={modelType}
+                  autoRotate={autoRotate}
+                  controlsRef={controlsRef}
+                />
+              </ErrorBoundary>
             </Canvas>
           </ErrorBoundary>
-        )}
-        {!isCanvasReady && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-white/60 text-sm">Initializing 3D viewer...</p>
-            </div>
-          </div>
         )}
       </div>
 
