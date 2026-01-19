@@ -37,7 +37,7 @@ interface PendingPartnership {
 
 export function GlobalProjectChat() {
   const { user } = useAuth();
-  const { hideWidgets } = useFloatingWidgets();
+  const { hideWidgets, minimized } = useFloatingWidgets();
   const [isOpen, setIsOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [pendingPartnerships, setPendingPartnerships] = useState<PendingPartnership[]>([]);
@@ -187,8 +187,8 @@ export function GlobalProjectChat() {
     };
   }, [userCompanyId, isOpen]);
 
-  // Hide when dialogs are open (must be after all hooks)
-  if (hideWidgets && !isOpen) return null;
+  // Hide when dialogs are open or minimized (must be after all hooks)
+  if ((hideWidgets || minimized) && !isOpen) return null;
 
   const respondToInvitation = async (partnership: PendingPartnership, accept: boolean) => {
     try {
