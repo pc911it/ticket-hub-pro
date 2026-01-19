@@ -1,4 +1,4 @@
-import { useState, useRef, lazy, Suspense } from 'react';
+import { useState, useRef, lazy, Suspense, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const Model3DViewer = lazy(() => import('@/components/Model3DViewer'));
@@ -16,6 +16,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -46,9 +47,25 @@ import {
   Building,
   Layers,
   ExternalLink,
+  Download,
+  FileType,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { extractPathFromUrl } from '@/lib/secureStorage';
+
+// Supported format info
+const formatInfo: Record<string, { name: string; supported: boolean; description: string }> = {
+  gltf: { name: 'glTF', supported: true, description: 'GL Transmission Format - Web optimized' },
+  glb: { name: 'GLB', supported: true, description: 'Binary glTF - Compact web format' },
+  obj: { name: 'OBJ', supported: true, description: 'Wavefront OBJ - Universal 3D format' },
+  stl: { name: 'STL', supported: true, description: 'Stereolithography - 3D printing format' },
+  fbx: { name: 'FBX', supported: true, description: 'Autodesk FBX - Animation format' },
+  dae: { name: 'Collada', supported: true, description: 'COLLADA - Digital asset exchange' },
+  ifc: { name: 'IFC', supported: false, description: 'Industry Foundation Classes - BIM format' },
+};
 
 export default function FloorPlansPage() {
   const { effectiveCompanyId } = useEffectiveCompanyId();
@@ -57,9 +74,12 @@ export default function FloorPlansPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [projectFilter, setProjectFilter] = useState<string>('all');
+  const [formatFilter, setFormatFilter] = useState<string>('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedFloorPlan, setSelectedFloorPlan] = useState<any>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [signedModelUrl, setSignedModelUrl] = useState<string | null>(null);
+  const [isLoadingUrl, setIsLoadingUrl] = useState(false);
 
   // Create form state
   const [name, setName] = useState('');
@@ -108,8 +128,67 @@ export default function FloorPlansPage() {
       plan.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       plan.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesProject = projectFilter === 'all' || plan.project_id === projectFilter;
-    return matchesSearch && matchesProject;
+    const matchesFormat = formatFilter === 'all' || plan.model_type?.toLowerCase() === formatFilter;
+    return matchesSearch && matchesProject && matchesFormat;
   }) || [];
+
+  // Get signed URL for viewing models from private bucket
+  const getSignedUrl = async (modelUrl: string): Promise<string | null> => {
+    try {
+      let path = modelUrl;
+      
+      // If it's a full URL, extract the path
+      if (modelUrl.startsWith('http')) {
+        const extractedPath = extractPathFromUrl(modelUrl, 'floor-plans');
+        if (!extractedPath) {
+          console.error('Could not extract path from URL:', modelUrl);
+          // Try to use the URL directly (might work if bucket was public before)
+          return modelUrl;
+        }
+        path = extractedPath;
+      }
+
+      const { data, error } = await supabase.storage
+        .from('floor-plans')
+        .createSignedUrl(path, 3600); // 1 hour expiry
+
+      if (error) {
+        console.error('Error creating signed URL:', error);
+        return null;
+      }
+
+      return data.signedUrl;
+    } catch (err) {
+      console.error('Error getting signed URL:', err);
+      return null;
+    }
+  };
+
+  // Handle opening the viewer with a signed URL
+  const handleViewFloorPlan = async (plan: any) => {
+    setSelectedFloorPlan(plan);
+    setIsViewerOpen(true);
+    setIsLoadingUrl(true);
+    setSignedModelUrl(null);
+
+    const url = await getSignedUrl(plan.model_url);
+    if (url) {
+      setSignedModelUrl(url);
+    } else {
+      toast.error('Failed to load model. Try downloading instead.');
+    }
+    setIsLoadingUrl(false);
+  };
+
+  // Handle download with signed URL
+  const handleDownload = async (plan: any) => {
+    const url = await getSignedUrl(plan.model_url);
+    if (url) {
+      window.open(url, '_blank');
+    } else {
+      toast.error('Failed to get download link');
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
@@ -134,7 +213,7 @@ export default function FloorPlansPage() {
 
     setIsSubmitting(true);
     try {
-      const fileExt = modelFile.name.split('.').pop();
+      const fileExt = modelFile.name.split('.').pop()?.toLowerCase();
       const filePath = `${effectiveCompanyId}/${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
@@ -143,18 +222,15 @@ export default function FloorPlansPage() {
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('floor-plans')
-        .getPublicUrl(filePath);
-
+      // Store the file path, not the public URL (bucket is private)
       const { error } = await supabase.from('floor_plans').insert({
         company_id: effectiveCompanyId,
         project_id: projectId || null,
         name: name.trim(),
         description: description.trim() || null,
         floor_number: floorNumber ? parseInt(floorNumber) : null,
-        model_url: publicUrl,
-        model_type: fileExt?.toLowerCase(),
+        model_url: filePath, // Store path, not public URL
+        model_type: fileExt,
         uploaded_by: user?.id,
       });
 
@@ -271,7 +347,7 @@ export default function FloorPlansPage() {
           />
         </div>
         <Select value={projectFilter} onValueChange={setProjectFilter}>
-          <SelectTrigger className="w-full sm:w-[200px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Filter by project" />
           </SelectTrigger>
           <SelectContent>
@@ -281,7 +357,45 @@ export default function FloorPlansPage() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={formatFilter} onValueChange={setFormatFilter}>
+          <SelectTrigger className="w-full sm:w-[160px]">
+            <SelectValue placeholder="Filter by format" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Formats</SelectItem>
+            {Object.entries(formatInfo).map(([key, info]) => (
+              <SelectItem key={key} value={key}>
+                <div className="flex items-center gap-2">
+                  {info.supported ? (
+                    <CheckCircle className="h-3 w-3 text-green-500" />
+                  ) : (
+                    <XCircle className="h-3 w-3 text-muted-foreground" />
+                  )}
+                  {info.name}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
+
+      {/* Supported Formats Info */}
+      <Card className="bg-muted/50">
+        <CardContent className="py-3">
+          <div className="flex items-center gap-2 flex-wrap text-sm">
+            <FileType className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">Supported formats:</span>
+            {Object.entries(formatInfo).filter(([_, info]) => info.supported).map(([key, info]) => (
+              <Badge key={key} variant="secondary" className="text-xs">{info.name}</Badge>
+            ))}
+            <span className="text-muted-foreground ml-2">|</span>
+            <span className="text-muted-foreground">Download only:</span>
+            {Object.entries(formatInfo).filter(([_, info]) => !info.supported).map(([key, info]) => (
+              <Badge key={key} variant="outline" className="text-xs">{info.name}</Badge>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Floor Plans Grid */}
       {isLoading ? (
@@ -294,11 +408,11 @@ export default function FloorPlansPage() {
             <Box className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">No floor plans found</h3>
             <p className="text-muted-foreground text-center mb-4">
-              {searchTerm || projectFilter !== 'all'
+              {searchTerm || projectFilter !== 'all' || formatFilter !== 'all'
                 ? 'Try adjusting your search or filters'
                 : 'Upload your first 3D model to get started'}
             </p>
-            {!searchTerm && projectFilter === 'all' && (
+            {!searchTerm && projectFilter === 'all' && formatFilter === 'all' && (
               <Button onClick={() => setIsCreateDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Upload Model
@@ -308,86 +422,101 @@ export default function FloorPlansPage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredFloorPlans.map((plan) => (
-            <Card key={plan.id} className="overflow-hidden">
-              <div className="aspect-video bg-muted flex items-center justify-center relative group">
-                {plan.thumbnail_url ? (
-                  <img 
-                    src={plan.thumbnail_url} 
-                    alt={plan.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <Box className="h-16 w-16 text-muted-foreground" />
-                )}
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="secondary"
-                    onClick={() => {
-                      setSelectedFloorPlan(plan);
-                      setIsViewerOpen(true);
-                    }}
-                  >
-                    <Eye className="h-4 w-4 mr-1" />
-                    View
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="secondary"
-                    asChild
-                  >
-                    <a href={plan.model_url} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="h-4 w-4 mr-1" />
-                      Download
-                    </a>
-                  </Button>
-                </div>
-              </div>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-semibold">{plan.name}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline">{getModelTypeLabel(plan.model_type)}</Badge>
-                      {plan.floor_number && (
-                        <Badge variant="outline">Floor {plan.floor_number}</Badge>
-                      )}
+          {filteredFloorPlans.map((plan) => {
+            const typeInfo = formatInfo[plan.model_type?.toLowerCase() || ''] || { name: plan.model_type, supported: false };
+            return (
+              <Card key={plan.id} className="overflow-hidden">
+                <div className="aspect-video bg-muted flex items-center justify-center relative group">
+                  {plan.thumbnail_url ? (
+                    <img 
+                      src={plan.thumbnail_url} 
+                      alt={plan.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <Box className="h-16 w-16 text-muted-foreground" />
+                      <Badge variant={typeInfo.supported ? "secondary" : "outline"}>
+                        {typeInfo.name}
+                      </Badge>
                     </div>
-                    {plan.project && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        {plan.project.name}
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Uploaded {format(new Date(plan.created_at), 'MMM d, yyyy')}
-                    </p>
-                  </div>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="text-destructive">
-                        <Trash2 className="h-4 w-4" />
+                  )}
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    {typeInfo.supported ? (
+                      <Button 
+                        size="sm" 
+                        variant="secondary"
+                        onClick={() => handleViewFloorPlan(plan)}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        View 3D
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Floor Plan?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => deleteFloorPlanMutation.mutate(plan.id)}>
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                    ) : (
+                      <Badge variant="outline" className="bg-background">
+                        Preview not available
+                      </Badge>
+                    )}
+                    <Button 
+                      size="sm" 
+                      variant="secondary"
+                      onClick={() => handleDownload(plan)}
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      Download
+                    </Button>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-semibold">{plan.name}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge 
+                          variant={typeInfo.supported ? "default" : "outline"}
+                          className={typeInfo.supported ? "bg-green-500/10 text-green-600 border-green-500/20" : ""}
+                        >
+                          {typeInfo.supported ? <CheckCircle className="h-3 w-3 mr-1" /> : <XCircle className="h-3 w-3 mr-1" />}
+                          {typeInfo.name}
+                        </Badge>
+                        {plan.floor_number && (
+                          <Badge variant="outline">Floor {plan.floor_number}</Badge>
+                        )}
+                      </div>
+                      {plan.project && (
+                        <p className="text-sm text-muted-foreground mt-2">
+                          {plan.project.name}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Uploaded {format(new Date(plan.created_at), 'MMM d, yyyy')}
+                      </p>
+                    </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Floor Plan?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteFloorPlanMutation.mutate(plan.id)}>
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -495,7 +624,10 @@ export default function FloorPlansPage() {
       {/* 3D Viewer Dialog */}
       <Dialog open={isViewerOpen} onOpenChange={(open) => {
         setIsViewerOpen(open);
-        if (!open) setSelectedFloorPlan(null);
+        if (!open) {
+          setSelectedFloorPlan(null);
+          setSignedModelUrl(null);
+        }
       }}>
         <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 gap-0">
           <DialogHeader className="p-4 pb-2">
@@ -503,24 +635,48 @@ export default function FloorPlansPage() {
               <Box className="h-5 w-5" />
               {selectedFloorPlan?.name || 'Loading...'}
             </DialogTitle>
+            <DialogDescription>
+              {selectedFloorPlan && formatInfo[selectedFloorPlan.model_type?.toLowerCase()]?.description}
+            </DialogDescription>
           </DialogHeader>
           <div className="flex-1 min-h-0 px-4 pb-4">
-            <Suspense fallback={
+            {isLoadingUrl ? (
               <div className="flex-1 flex items-center justify-center h-full bg-muted rounded-lg">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto mb-4" />
-                  <p className="text-muted-foreground">Loading 3D viewer...</p>
+                  <p className="text-muted-foreground">Preparing model...</p>
                 </div>
               </div>
-            }>
-              {selectedFloorPlan && isViewerOpen && (
+            ) : signedModelUrl && selectedFloorPlan ? (
+              <Suspense fallback={
+                <div className="flex-1 flex items-center justify-center h-full bg-muted rounded-lg">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto mb-4" />
+                    <p className="text-muted-foreground">Loading 3D viewer...</p>
+                  </div>
+                </div>
+              }>
                 <Model3DViewer 
-                  modelUrl={selectedFloorPlan.model_url}
+                  modelUrl={signedModelUrl}
                   modelType={selectedFloorPlan.model_type}
                   modelName={selectedFloorPlan.name}
                 />
-              )}
-            </Suspense>
+              </Suspense>
+            ) : (
+              <div className="flex-1 flex items-center justify-center h-full bg-muted rounded-lg">
+                <div className="text-center p-8">
+                  <XCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-4">Failed to load model</p>
+                  <Button 
+                    variant="outline"
+                    onClick={() => selectedFloorPlan && handleDownload(selectedFloorPlan)}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Instead
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
