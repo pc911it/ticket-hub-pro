@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffectiveCompanyId } from "@/hooks/useEffectiveCompanyId";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ interface Supplier {
 
 export default function SuppliersPage() {
   const { user, isCompanyOwner, isSuperAdmin, isCompanyAdmin } = useAuth();
+  const { effectiveCompanyId, isPlatformView, isLoading: companyLoading } = useEffectiveCompanyId();
   const canDelete = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
@@ -42,46 +44,31 @@ export default function SuppliersPage() {
     notes: "",
   });
 
-  // Get user's company
-  const { data: userCompany } = useQuery({
-    queryKey: ["user-company-suppliers", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return null;
-      const { data } = await supabase
-        .from("company_members")
-        .select("company_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      return data;
-    },
-    enabled: !!user?.id,
-  });
-
   const { data: suppliers, isLoading } = useQuery({
-    queryKey: ["suppliers", userCompany?.company_id],
+    queryKey: ["suppliers", effectiveCompanyId],
     queryFn: async () => {
-      if (!userCompany?.company_id) return [];
+      if (!effectiveCompanyId) return [];
       const { data, error } = await supabase
         .from("suppliers")
         .select("*")
-        .eq("company_id", userCompany.company_id)
+        .eq("company_id", effectiveCompanyId)
         .is("deleted_at", null) // Only show non-deleted suppliers
         .order("name");
       if (error) throw error;
       return data as Supplier[];
     },
-    enabled: !!userCompany?.company_id,
+    enabled: !!effectiveCompanyId,
   });
 
   // Get inventory items count per supplier
   const { data: inventoryBySupplier } = useQuery({
-    queryKey: ["inventory-by-supplier", userCompany?.company_id],
+    queryKey: ["inventory-by-supplier", effectiveCompanyId],
     queryFn: async () => {
-      if (!userCompany?.company_id) return {};
+      if (!effectiveCompanyId) return {};
       const { data, error } = await supabase
         .from("inventory_items")
         .select("supplier_id")
-        .eq("company_id", userCompany.company_id)
+        .eq("company_id", effectiveCompanyId)
         .not("supplier_id", "is", null);
       if (error) throw error;
       
@@ -93,15 +80,15 @@ export default function SuppliersPage() {
       });
       return counts;
     },
-    enabled: !!userCompany?.company_id,
+    enabled: !!effectiveCompanyId,
   });
 
   const addSupplierMutation = useMutation({
     mutationFn: async (supplier: typeof newSupplier) => {
-      if (!userCompany?.company_id) throw new Error("No company found");
+      if (!effectiveCompanyId) throw new Error("Please select a company first");
       const { error } = await supabase.from("suppliers").insert({
         ...supplier,
-        company_id: userCompany.company_id,
+        company_id: effectiveCompanyId,
       });
       if (error) throw error;
     },
