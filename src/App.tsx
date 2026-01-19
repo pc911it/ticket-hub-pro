@@ -41,6 +41,7 @@ import SuperAdminBillingPage from "./pages/admin/SuperAdminBillingPage";
 import SupportTicketsPage from "./pages/admin/SupportTicketsPage";
 import CompanySupportPage from "./pages/admin/CompanySupportPage";
 import LiveChatsPage from "./pages/admin/LiveChatsPage";
+import CompanyLiveChatsPage from "./pages/admin/CompanyLiveChatsPage";
 import AgentJobPage from "./pages/AgentJobPage";
 import ClientDashboard from "./pages/ClientDashboard";
 import EmployeePortal from "./pages/EmployeePortal";
@@ -436,6 +437,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AdminLayout>
                     <CompanySupportPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/company-live-support"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <CompanyLiveChatsPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }
