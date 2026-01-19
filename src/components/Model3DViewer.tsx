@@ -1,4 +1,4 @@
-import { Suspense, useRef, useState, useEffect } from 'react';
+import { Suspense, useRef, useState, useEffect, Component, ReactNode } from 'react';
 import { Canvas, useLoader } from '@react-three/fiber';
 import { OrbitControls, Environment, useGLTF, Center, Html, useProgress } from '@react-three/drei';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
@@ -8,7 +8,7 @@ import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader.js';
 import * as THREE from 'three';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, RotateCcw, ZoomIn, ZoomOut, Maximize2, Box, AlertCircle } from 'lucide-react';
+import { ExternalLink, RotateCcw, ZoomIn, ZoomOut, Maximize2, Box, AlertCircle, Download } from 'lucide-react';
 
 interface Model3DViewerProps {
   modelUrl: string;
@@ -26,6 +26,32 @@ const formatInfo: Record<string, { name: string; supported: boolean; description
   dae: { name: 'Collada', supported: true, description: 'COLLADA - Digital asset exchange' },
   ifc: { name: 'IFC', supported: false, description: 'Industry Foundation Classes - BIM format (requires specialized viewer)' },
 };
+
+// Error Boundary Class Component
+class ErrorBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode; fallback: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('3D Viewer Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
 
 function Loader() {
   const { progress } = useProgress();
@@ -55,7 +81,6 @@ function GLTFModel({ url }: { url: string }) {
   const { scene } = useGLTF(url);
   
   useEffect(() => {
-    // Clone the scene to avoid issues with reuse
     scene.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         child.castShadow = true;
@@ -66,7 +91,7 @@ function GLTFModel({ url }: { url: string }) {
 
   return (
     <Center>
-      <primitive object={scene} />
+      <primitive object={scene.clone()} />
     </Center>
   );
 }
@@ -92,7 +117,7 @@ function OBJModel({ url }: { url: string }) {
 
   return (
     <Center>
-      <primitive object={obj} />
+      <primitive object={obj.clone()} />
     </Center>
   );
 }
@@ -127,7 +152,6 @@ function FBXModel({ url }: { url: string }) {
       }
     });
     
-    // Scale down FBX models as they're often very large
     const box = new THREE.Box3().setFromObject(fbx);
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
@@ -139,7 +163,7 @@ function FBXModel({ url }: { url: string }) {
 
   return (
     <Center>
-      <primitive object={fbx} />
+      <primitive object={fbx.clone()} />
     </Center>
   );
 }
@@ -165,7 +189,7 @@ function DAEModel({ url }: { url: string }) {
 
   return (
     <Center>
-      <primitive object={collada.scene} />
+      <primitive object={collada.scene.clone()} />
     </Center>
   );
 }
@@ -182,7 +206,7 @@ function UnsupportedFormatMessage({
   const info = formatInfo[modelType] || { name: modelType?.toUpperCase(), supported: false, description: 'Unknown format' };
   
   return (
-    <div className="flex-1 bg-muted rounded-lg flex items-center justify-center">
+    <div className="flex-1 bg-muted rounded-lg flex items-center justify-center min-h-[400px]">
       <div className="text-center p-8">
         <Box className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
         <h3 className="text-lg font-medium mb-2">Preview Not Available</h3>
@@ -195,7 +219,7 @@ function UnsupportedFormatMessage({
         <div className="flex gap-2 justify-center">
           <Button asChild>
             <a href={modelUrl} target="_blank" rel="noopener noreferrer" download={modelName}>
-              <ExternalLink className="h-4 w-4 mr-2" />
+              <Download className="h-4 w-4 mr-2" />
               Download Model
             </a>
           </Button>
@@ -206,7 +230,7 @@ function UnsupportedFormatMessage({
 }
 
 function ModelRenderer({ url, type }: { url: string; type: string | null }) {
-  switch (type) {
+  switch (type?.toLowerCase()) {
     case 'gltf':
     case 'glb':
       return <GLTFModel url={url} />;
@@ -223,19 +247,77 @@ function ModelRenderer({ url, type }: { url: string; type: string | null }) {
   }
 }
 
+function Scene({ 
+  modelUrl, 
+  modelType, 
+  autoRotate,
+  controlsRef,
+  onError
+}: { 
+  modelUrl: string; 
+  modelType: string | null;
+  autoRotate: boolean;
+  controlsRef: React.RefObject<any>;
+  onError: () => void;
+}) {
+  return (
+    <>
+      <ambientLight intensity={0.6} />
+      <directionalLight 
+        position={[10, 10, 5]} 
+        intensity={1} 
+        castShadow
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+      />
+      <directionalLight position={[-10, -10, -5]} intensity={0.3} />
+      <pointLight position={[0, 10, 0]} intensity={0.5} />
+      
+      <ErrorBoundary fallback={<ErrorBoundaryFallback error="Could not load the 3D model. The file may be corrupted or in an incompatible format." />}>
+        <Suspense fallback={<Loader />}>
+          <ModelRenderer url={modelUrl} type={modelType} />
+        </Suspense>
+      </ErrorBoundary>
+      
+      <OrbitControls 
+        ref={controlsRef}
+        autoRotate={autoRotate}
+        autoRotateSpeed={1}
+        enablePan={true}
+        enableZoom={true}
+        enableRotate={true}
+        minDistance={0.5}
+        maxDistance={200}
+      />
+      <Environment preset="city" />
+      
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
+        <planeGeometry args={[100, 100]} />
+        <shadowMaterial opacity={0.2} />
+      </mesh>
+    </>
+  );
+}
+
 export default function Model3DViewer({ modelUrl, modelType, modelName }: Model3DViewerProps) {
   const controlsRef = useRef<any>(null);
   const [autoRotate, setAutoRotate] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [isCanvasReady, setIsCanvasReady] = useState(false);
   
-  // Get format info
-  const info = formatInfo[modelType || ''] || { name: modelType?.toUpperCase() || 'Unknown', supported: false, description: '' };
+  const info = formatInfo[modelType?.toLowerCase() || ''] || { name: modelType?.toUpperCase() || 'Unknown', supported: false, description: '' };
   
-  // Supported formats for in-browser viewing
   const supportedFormats = ['gltf', 'glb', 'obj', 'stl', 'fbx', 'dae'];
-  const isSupported = supportedFormats.includes(modelType || '');
+  const isSupported = supportedFormats.includes(modelType?.toLowerCase() || '');
   
-  // For unsupported formats, show download message
+  useEffect(() => {
+    // Reset error state when model changes
+    setHasError(false);
+    setIsCanvasReady(false);
+    const timer = setTimeout(() => setIsCanvasReady(true), 100);
+    return () => clearTimeout(timer);
+  }, [modelUrl, modelType]);
+  
   if (!isSupported) {
     return (
       <UnsupportedFormatMessage 
@@ -243,6 +325,32 @@ export default function Model3DViewer({ modelUrl, modelType, modelName }: Model3
         modelType={modelType || ''} 
         modelName={modelName} 
       />
+    );
+  }
+
+  if (hasError) {
+    return (
+      <div className="flex-1 bg-muted rounded-lg flex items-center justify-center min-h-[400px]">
+        <div className="text-center p-8">
+          <AlertCircle className="h-16 w-16 text-destructive mx-auto mb-4" />
+          <h3 className="text-lg font-medium mb-2">Failed to Load Model</h3>
+          <p className="text-muted-foreground mb-4 max-w-md">
+            The model could not be loaded. This may be due to CORS restrictions, 
+            file corruption, or an incompatible format.
+          </p>
+          <div className="flex gap-2 justify-center">
+            <Button variant="outline" onClick={() => setHasError(false)}>
+              Try Again
+            </Button>
+            <Button asChild>
+              <a href={modelUrl} target="_blank" rel="noopener noreferrer" download={modelName}>
+                <Download className="h-4 w-4 mr-2" />
+                Download Instead
+              </a>
+            </Button>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -255,21 +363,21 @@ export default function Model3DViewer({ modelUrl, modelType, modelName }: Model3
   const handleZoomIn = () => {
     if (controlsRef.current) {
       const controls = controlsRef.current;
-      const currentDistance = controls.getDistance();
-      controls.dollyTo(currentDistance * 0.7, true);
+      const currentDistance = controls.getDistance?.() || 10;
+      controls.dollyTo?.(currentDistance * 0.7, true);
     }
   };
 
   const handleZoomOut = () => {
     if (controlsRef.current) {
       const controls = controlsRef.current;
-      const currentDistance = controls.getDistance();
-      controls.dollyTo(currentDistance * 1.3, true);
+      const currentDistance = controls.getDistance?.() || 10;
+      controls.dollyTo?.(currentDistance * 1.3, true);
     }
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full min-h-0">
+    <div className="flex-1 flex flex-col h-full min-h-[400px]">
       {/* Toolbar */}
       <div className="flex items-center justify-between p-2 border-b bg-background/50 flex-wrap gap-2">
         <div className="flex items-center gap-2 flex-wrap">
@@ -302,50 +410,46 @@ export default function Model3DViewer({ modelUrl, modelType, modelName }: Model3
       </div>
 
       {/* 3D Canvas */}
-      <div className="flex-1 bg-gradient-to-b from-slate-900 to-slate-800 rounded-b-lg overflow-hidden min-h-0">
-        <Canvas
-          camera={{ position: [5, 5, 5], fov: 50 }}
-          style={{ width: '100%', height: '100%' }}
-          shadows
-          onError={() => setHasError(true)}
-        >
-          <Suspense fallback={<Loader />}>
-            <ambientLight intensity={0.6} />
-            <directionalLight 
-              position={[10, 10, 5]} 
-              intensity={1} 
-              castShadow
-              shadow-mapSize-width={1024}
-              shadow-mapSize-height={1024}
-            />
-            <directionalLight position={[-10, -10, -5]} intensity={0.3} />
-            <pointLight position={[0, 10, 0]} intensity={0.5} />
-            
-            {hasError ? (
-              <ErrorBoundaryFallback error="Could not load the 3D model. The file may be corrupted or in an incompatible format." />
-            ) : (
-              <ModelRenderer url={modelUrl} type={modelType} />
-            )}
-            
-            <OrbitControls 
-              ref={controlsRef}
-              autoRotate={autoRotate}
-              autoRotateSpeed={1}
-              enablePan={true}
-              enableZoom={true}
-              enableRotate={true}
-              minDistance={0.5}
-              maxDistance={200}
-            />
-            <Environment preset="city" />
-            
-            {/* Ground plane for context */}
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-              <planeGeometry args={[100, 100]} />
-              <shadowMaterial opacity={0.2} />
-            </mesh>
-          </Suspense>
-        </Canvas>
+      <div className="flex-1 bg-gradient-to-b from-slate-900 to-slate-800 rounded-b-lg overflow-hidden relative">
+        {isCanvasReady && (
+          <ErrorBoundary
+            fallback={
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center p-8">
+                  <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+                  <p className="text-white mb-4">Failed to initialize 3D viewer</p>
+                  <Button asChild variant="secondary">
+                    <a href={modelUrl} target="_blank" rel="noopener noreferrer" download={modelName}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Download Model
+                    </a>
+                  </Button>
+                </div>
+              </div>
+            }
+          >
+            <Canvas
+              camera={{ position: [5, 5, 5], fov: 50 }}
+              style={{ width: '100%', height: '100%' }}
+              shadows
+              onCreated={() => console.log('Canvas created')}
+              gl={{ antialias: true, alpha: false }}
+            >
+              <Scene
+                modelUrl={modelUrl}
+                modelType={modelType}
+                autoRotate={autoRotate}
+                controlsRef={controlsRef}
+                onError={() => setHasError(true)}
+              />
+            </Canvas>
+          </ErrorBoundary>
+        )}
+        {!isCanvasReady && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
       </div>
 
       <p className="text-xs text-muted-foreground p-2 text-center bg-background/50">
