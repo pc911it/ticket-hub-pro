@@ -193,7 +193,10 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, onUpdate }: Tick
       });
 
       setShowSignature(false);
+      // Call onUpdate to refresh ticket data in parent
       onUpdate();
+      // Close the sheet after successful signature
+      onOpenChange(false);
     } catch (error) {
       console.error('Error saving signature:', error);
       toast({
