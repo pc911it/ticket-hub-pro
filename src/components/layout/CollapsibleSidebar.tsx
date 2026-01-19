@@ -85,6 +85,7 @@ interface CollapsibleSidebarProps {
   onClose: () => void;
   supportUnreadCount: number;
   liveChatCount?: number;
+  companyLiveSupportCount?: number;
 }
 
 // Pages restricted to admins only
@@ -219,6 +220,7 @@ const createNavigationGroups = (hasFeature: (key: string) => boolean, isAdminLev
 const superAdminNavigation: NavItem[] = [
   { nameKey: 'sidebar.platformOverview', href: '/admin/super-dashboard', icon: LayoutDashboard },
   { nameKey: 'sidebar.companyFeatures', href: '/admin/company-features', icon: Settings },
+  { nameKey: 'sidebar.companyLiveSupport', href: '/admin/company-live-support', icon: Headphones },
   { nameKey: 'sidebar.liveChats', href: '/admin/live-chats', icon: HeadphonesIcon },
   { nameKey: 'sidebar.chatTickets', href: '/admin/chat-tickets', icon: MessageSquare },
   { nameKey: 'sidebar.createCompany', href: '/admin/create-company', icon: Plus },
@@ -239,7 +241,7 @@ const staffNavigation: NavItem[] = [
   { nameKey: 'sidebar.employeePortal', href: '/employee', icon: Briefcase },
 ];
 
-export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount, liveChatCount = 0 }: CollapsibleSidebarProps) => {
+export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount, liveChatCount = 0, companyLiveSupportCount = 0 }: CollapsibleSidebarProps) => {
   const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebar-collapsed');
@@ -316,6 +318,9 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount, liveCh
     }
     if (item.href === '/admin/live-chats' && isSuperAdmin) {
       return { ...item, badge: liveChatCount };
+    }
+    if (item.href === '/admin/company-live-support' && isSuperAdmin) {
+      return { ...item, badge: companyLiveSupportCount };
     }
     return item;
   };

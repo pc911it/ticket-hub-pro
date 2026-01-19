@@ -7,8 +7,10 @@ import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { useSupportTicketNotifications } from '@/hooks/useSupportTicketNotifications';
 import { useSuperAdminNotifications } from '@/hooks/useSuperAdminNotifications';
 import { useLiveChatNotifications } from '@/hooks/useLiveChatNotifications';
+import { useCompanyLiveSupportNotifications } from '@/hooks/useCompanyLiveSupportNotifications';
 import { LiveAlertsBanner } from '@/components/LiveAlertsBanner';
 import { GlobalProjectChat } from '@/components/GlobalProjectChat';
+import { CompanyLiveSupportChat } from '@/components/CompanyLiveSupportChat';
 import { NotificationToggle, NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
 import { BillingAlertBanner } from '@/components/BillingAlertBanner';
 import { PasswordResetReminder } from '@/components/PasswordResetReminder';
@@ -41,6 +43,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   // Live chat notifications (for super admins)
   const { activeChatCount: liveChatCount } = useLiveChatNotifications();
   
+  // Company live support notifications (for super admins)
+  const { waitingChatCount: companyLiveSupportCount } = useCompanyLiveSupportNotifications();
+  
   // Session timeout warning
   const { SessionTimeoutDialog } = useSessionTimeout();
 
@@ -71,6 +76,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           onClose={() => setSidebarOpen(false)}
           supportUnreadCount={supportUnreadCount}
           liveChatCount={liveChatCount}
+          companyLiveSupportCount={companyLiveSupportCount}
         />
 
         {/* Main content */}
@@ -125,6 +131,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
           {/* Global Chat Button */}
           <GlobalProjectChat />
+          
+          {/* Company Live Support Chat */}
+          <CompanyLiveSupportChat />
         </div>
         
         {/* Session Timeout Warning */}

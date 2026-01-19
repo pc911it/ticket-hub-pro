@@ -1619,6 +1619,85 @@ export type Database = {
           },
         ]
       }
+      company_support_chat_messages: {
+        Row: {
+          chat_id: string
+          created_at: string
+          id: string
+          message: string
+          sender_id: string
+          sender_type: string
+        }
+        Insert: {
+          chat_id: string
+          created_at?: string
+          id?: string
+          message: string
+          sender_id: string
+          sender_type: string
+        }
+        Update: {
+          chat_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          sender_id?: string
+          sender_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_support_chat_messages_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "company_support_chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_support_chats: {
+        Row: {
+          assigned_admin: string | null
+          closed_at: string | null
+          company_id: string
+          created_at: string
+          id: string
+          initiated_by: string
+          status: string
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_admin?: string | null
+          closed_at?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          initiated_by: string
+          status?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_admin?: string | null
+          closed_at?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          initiated_by?: string
+          status?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_support_chats_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contracts: {
         Row: {
           amount: number | null
