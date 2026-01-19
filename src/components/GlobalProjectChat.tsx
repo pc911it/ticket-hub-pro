@@ -11,6 +11,7 @@ import { ProjectChat } from './ProjectChat';
 import { CompanyPartnerships } from './CompanyPartnerships';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useFloatingWidgets } from '@/contexts/FloatingWidgetsContext';
 
 interface Project {
   id: string;
@@ -36,6 +37,7 @@ interface PendingPartnership {
 
 export function GlobalProjectChat() {
   const { user } = useAuth();
+  const { hideWidgets } = useFloatingWidgets();
   const [isOpen, setIsOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [pendingPartnerships, setPendingPartnerships] = useState<PendingPartnership[]>([]);
@@ -44,6 +46,9 @@ export function GlobalProjectChat() {
   const [mainView, setMainView] = useState<'projects' | 'invitations'>('projects');
   const [loading, setLoading] = useState(false);
   const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
+
+  // Hide when dialogs are open
+  if (hideWidgets && !isOpen) return null;
 
   useEffect(() => {
     if (isOpen && user) {

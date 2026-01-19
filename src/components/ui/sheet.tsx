@@ -4,8 +4,22 @@ import { X } from "lucide-react";
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { useFloatingWidgets } from "@/contexts/FloatingWidgetsContext";
 
-const Sheet = SheetPrimitive.Root;
+const Sheet = ({ children, ...props }: SheetPrimitive.DialogProps) => {
+  const { setHideWidgets } = useFloatingWidgets();
+  
+  React.useEffect(() => {
+    if (props.open) {
+      setHideWidgets(true);
+    } else {
+      setHideWidgets(false);
+    }
+    return () => setHideWidgets(false);
+  }, [props.open, setHideWidgets]);
+
+  return <SheetPrimitive.Root {...props}>{children}</SheetPrimitive.Root>;
+};
 
 const SheetTrigger = SheetPrimitive.Trigger;
 
