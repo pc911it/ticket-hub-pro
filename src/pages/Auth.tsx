@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useToast } from '@/hooks/use-toast';
-import { Ticket, ArrowLeft, Mail, Lock, User, Shield, Phone, Loader2 } from 'lucide-react';
+import { Ticket, ArrowLeft, Mail, Lock, User, Shield, Phone, Loader2, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { validatePassword } from '@/lib/passwordValidation';
@@ -35,6 +35,12 @@ const Auth = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [verifyingOtp, setVerifyingOtp] = useState(false);
+  
+  // Email verification states (for Super Admin signup)
+  const [emailVerificationPending, setEmailVerificationPending] = useState(false);
+  const [emailVerificationCode, setEmailVerificationCode] = useState('');
+  const [sendingEmailCode, setSendingEmailCode] = useState(false);
+  const [verifyingEmailCode, setVerifyingEmailCode] = useState(false);
 
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
@@ -106,42 +112,48 @@ const Auth = () => {
         });
         return;
       }
+      
+      // Send verification code first before creating account
+      setSendingEmailCode(true);
+      try {
+        const { error } = await supabase.functions.invoke('send-verification-code', {
+          body: { email: email.toLowerCase(), type: 'email' }
+        });
+        
+        if (error) throw error;
+        
+        setEmailVerificationPending(true);
+        toast({
+          title: 'Verification code sent!',
+          description: 'Please check your email for the 6-digit verification code.',
+        });
+      } catch (err: any) {
+        toast({
+          variant: 'destructive',
+          title: 'Failed to send verification code',
+          description: err.message || 'Please try again.',
+        });
+      } finally {
+        setSendingEmailCode(false);
+      }
+      return;
     }
     
     setIsLoading(true);
 
     try {
-      if (isSignUp && isFirstUser) {
-        const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-        const { error } = await signUp(email, password, fullName);
-        if (error) {
-          toast({
-            variant: 'destructive',
-            title: 'Sign up failed',
-            description: error.message,
-          });
-        } else {
-          toast({
-            title: 'Super Admin account created!',
-            description: 'You can now sign in with your credentials.',
-          });
-          setIsSignUp(false);
-          setIsFirstUser(false);
-        }
+      const { error } = await signIn(email, password);
+      if (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Login failed',
+          description: error.message,
+        });
       } else {
-        const { error } = await signIn(email, password);
-        if (error) {
-          toast({
-            variant: 'destructive',
-            title: 'Login failed',
-            description: error.message,
-          });
-        } else {
-          toast({
-            title: 'Welcome back!',
-            description: 'You have been logged in successfully.',
-          });
-        }
+        toast({
+          title: 'Welcome back!',
+          description: 'You have been logged in successfully.',
+        });
       }
     } catch (err) {
       toast({
@@ -151,6 +163,78 @@ const Auth = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  const handleVerifyEmailCode = async () => {
+    if (emailVerificationCode.length !== 6) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please enter the 6-digit code.' });
+      return;
+    }
+    
+    setVerifyingEmailCode(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-code', {
+        body: { identifier: email.toLowerCase(), code: emailVerificationCode, type: 'email' }
+      });
+      
+      if (error || !data?.success) {
+        throw new Error(data?.error || error?.message || 'Verification failed');
+      }
+      
+      // Email verified, now create the account
+      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+      const { error: signUpError } = await signUp(email, password, fullName);
+      
+      if (signUpError) {
+        toast({
+          variant: 'destructive',
+          title: 'Sign up failed',
+          description: signUpError.message,
+        });
+      } else {
+        toast({
+          title: 'Super Admin account created!',
+          description: 'You can now sign in with your credentials.',
+        });
+        setIsSignUp(false);
+        setIsFirstUser(false);
+        setEmailVerificationPending(false);
+        setEmailVerificationCode('');
+      }
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Verification failed',
+        description: err.message || 'Invalid code. Please try again.',
+      });
+    } finally {
+      setVerifyingEmailCode(false);
+    }
+  };
+  
+  const handleResendEmailCode = async () => {
+    setSendingEmailCode(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-verification-code', {
+        body: { email: email.toLowerCase(), type: 'email' }
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: 'Code resent!',
+        description: 'Please check your email for the new verification code.',
+      });
+      setEmailVerificationCode('');
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Failed to resend code',
+        description: err.message || 'Please try again.',
+      });
+    } finally {
+      setSendingEmailCode(false);
     }
   };
 
@@ -271,71 +355,129 @@ const Auth = () => {
           <CardContent className="space-y-4">
             {/* Super Admin Setup - Email Only */}
             {isSignUp && isFirstUser ? (
-              <form onSubmit={handleEmailSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
+              emailVerificationPending ? (
+                <div className="space-y-4">
+                  <div className="text-center space-y-2">
+                    <Mail className="h-12 w-12 mx-auto text-primary" />
+                    <h3 className="font-semibold">Verify Your Email</h3>
+                    <p className="text-sm text-muted-foreground">
+                      We've sent a 6-digit code to <strong>{email}</strong>
+                    </p>
+                  </div>
                   <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Label>Enter Verification Code</Label>
+                    <div className="flex justify-center">
+                      <InputOTP maxLength={6} value={emailVerificationCode} onChange={setEmailVerificationCode}>
+                        <InputOTPGroup>
+                          <InputOTPSlot index={0} />
+                          <InputOTPSlot index={1} />
+                          <InputOTPSlot index={2} />
+                          <InputOTPSlot index={3} />
+                          <InputOTPSlot index={4} />
+                          <InputOTPSlot index={5} />
+                        </InputOTPGroup>
+                      </InputOTP>
+                    </div>
+                  </div>
+                  <Button 
+                    type="button" 
+                    onClick={handleVerifyEmailCode} 
+                    className="w-full" 
+                    size="lg" 
+                    disabled={verifyingEmailCode || emailVerificationCode.length !== 6}
+                  >
+                    {verifyingEmailCode ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Verify & Create Account
+                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={handleResendEmailCode} 
+                      className="flex-1"
+                      disabled={sendingEmailCode}
+                    >
+                      {sendingEmailCode ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                      Resend Code
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      onClick={() => { setEmailVerificationPending(false); setEmailVerificationCode(''); }} 
+                      className="flex-1"
+                    >
+                      Change Email
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleEmailSubmit} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">First Name</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="firstName"
+                          type="text"
+                          placeholder="John"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          className="pl-10"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name</Label>
                       <Input
-                        id="firstName"
+                        id="lastName"
                         type="text"
-                        placeholder="John"
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
+                        placeholder="Doe"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                         className="pl-10"
                         required
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input
-                      id="lastName"
-                      type="text"
-                      placeholder="Doe"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      required
-                    />
+                    <Label htmlFor="password">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="pl-10"
+                        required
+                        minLength={8}
+                      />
+                    </div>
+                    <PasswordStrengthIndicator password={password} />
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="pl-10"
-                      required
-                      minLength={8}
-                    />
-                  </div>
-                  <PasswordStrengthIndicator password={password} />
-                </div>
-                <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
-                  {isLoading ? 'Please wait...' : 'Create Super Admin'}
-                </Button>
-              </form>
+                  <Button type="submit" className="w-full" size="lg" disabled={sendingEmailCode}>
+                    {sendingEmailCode ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    {sendingEmailCode ? 'Sending verification code...' : 'Create Super Admin'}
+                  </Button>
+                </form>
+              )
             ) : (
               /* Normal Sign-In with Multiple Options */
               <Tabs value={authMethod} onValueChange={(v) => setAuthMethod(v as AuthMethod)} className="w-full">

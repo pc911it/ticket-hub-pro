@@ -3,6 +3,10 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
+// Get verified domain from env, fallback to resend.dev for testing
+const VERIFIED_DOMAIN = Deno.env.get("RESEND_FROM_DOMAIN") || "resend.dev";
+const FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || `onboarding@${VERIFIED_DOMAIN}`;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -32,8 +36,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending welcome email to ${employeeEmail}`);
 
+    // Construct from address with company name
+    const fromAddress = VERIFIED_DOMAIN === "resend.dev" 
+      ? `${companyName} <onboarding@resend.dev>`
+      : `${companyName} <noreply@${VERIFIED_DOMAIN}>`;
+
     const emailResponse = await resend.emails.send({
-      from: `${companyName} <onboarding@resend.dev>`,
+      from: fromAddress,
       to: [employeeEmail],
       subject: `Welcome to ${companyName} - Your Employee Portal Access`,
       html: `
@@ -96,7 +105,27 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log("Welcome email sent successfully:", emailResponse);
+    console.log("Welcome email response:", emailResponse);
+    
+    // Check if email failed due to domain verification
+    if (emailResponse.error) {
+      const errorMessage = emailResponse.error.message || 'Unknown error';
+      console.error("Resend error:", errorMessage);
+      
+      // If it's a domain verification error, return specific message
+      if (errorMessage.includes('verify a domain') || errorMessage.includes('testing emails')) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Email domain not verified. Please verify a domain at resend.com/domains to send emails to external recipients.',
+            requiresDomainVerification: true 
+          }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
+      throw new Error(errorMessage);
+    }
 
     return new Response(JSON.stringify({ success: true, data: emailResponse }), {
       status: 200,

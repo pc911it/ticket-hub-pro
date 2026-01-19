@@ -3,6 +3,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
+// Get verified domain from env, fallback to resend.dev for testing
+const VERIFIED_DOMAIN = Deno.env.get("RESEND_FROM_DOMAIN") || "resend.dev";
+const FROM_EMAIL = VERIFIED_DOMAIN === "resend.dev" 
+  ? "Verification <onboarding@resend.dev>"
+  : `Verification <noreply@${VERIFIED_DOMAIN}>`;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -59,7 +65,7 @@ const handler = async (req: Request): Promise<Response> => {
           "Authorization": `Bearer ${RESEND_API_KEY}`,
         },
         body: JSON.stringify({
-          from: "Verification <onboarding@resend.dev>",
+          from: FROM_EMAIL,
           to: [email],
           subject: "Your Verification Code",
           html: `
@@ -93,7 +99,20 @@ const handler = async (req: Request): Promise<Response> => {
       if (!emailResponse.ok) {
         const errorData = await emailResponse.json();
         console.error("Email send error:", errorData);
-        throw new Error("Failed to send verification email");
+        
+        // Check for domain verification error
+        if (errorData.message?.includes('verify a domain') || errorData.message?.includes('testing emails')) {
+          return new Response(
+            JSON.stringify({ 
+              success: false,
+              error: 'Email domain not verified. Please verify a domain at resend.com/domains to send emails to external recipients.',
+              requiresDomainVerification: true 
+            }),
+            { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+        
+        throw new Error(errorData.message || "Failed to send verification email");
       }
 
       console.log("Email sent successfully");
