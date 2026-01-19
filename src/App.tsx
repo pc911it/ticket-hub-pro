@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { SuperAdminCompanyProvider } from "@/contexts/SuperAdminCompanyContext";
+import { FloatingWidgetsProvider } from "@/contexts/FloatingWidgetsContext";
 import { SubscriptionGuard } from "@/components/SubscriptionGuard";
 import { ApprovalGuard } from "@/components/ApprovalGuard";
 import { AIAssistantProvider } from "@/components/ai";
@@ -109,6 +110,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <FloatingWidgetsProvider>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -576,6 +578,7 @@ const App = () => (
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
+    </FloatingWidgetsProvider>
   </QueryClientProvider>
 );
 

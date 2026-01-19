@@ -3,8 +3,22 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useFloatingWidgets } from "@/contexts/FloatingWidgetsContext";
 
-const Dialog = DialogPrimitive.Root;
+const Dialog = ({ children, ...props }: DialogPrimitive.DialogProps) => {
+  const { setHideWidgets } = useFloatingWidgets();
+  
+  React.useEffect(() => {
+    if (props.open) {
+      setHideWidgets(true);
+    } else {
+      setHideWidgets(false);
+    }
+    return () => setHideWidgets(false);
+  }, [props.open, setHideWidgets]);
+
+  return <DialogPrimitive.Root {...props}>{children}</DialogPrimitive.Root>;
+};
 
 const DialogTrigger = DialogPrimitive.Trigger;
 

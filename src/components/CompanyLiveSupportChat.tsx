@@ -10,6 +10,7 @@ import { Headphones, Send, X, Minimize2, Maximize2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { useFloatingWidgets } from "@/contexts/FloatingWidgetsContext";
 
 interface ChatMessage {
   id: string;
@@ -32,6 +33,7 @@ interface SupportChat {
 
 export function CompanyLiveSupportChat() {
   const { user } = useAuth();
+  const { hideWidgets } = useFloatingWidgets();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -215,6 +217,9 @@ export function CompanyLiveSupportChat() {
   };
 
   if (!companyId) return null;
+
+  // Hide when dialogs are open
+  if (hideWidgets && !isOpen) return null;
 
   // Floating button when closed
   if (!isOpen) {

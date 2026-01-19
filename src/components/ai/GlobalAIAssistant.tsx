@@ -6,6 +6,7 @@ import { useAIAssistant } from '@/hooks/useAIAssistant';
 import { Bot, Send, X, Loader2, User, Minimize2, Maximize2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLocation } from 'react-router-dom';
+import { useFloatingWidgets } from '@/contexts/FloatingWidgetsContext';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -30,6 +31,7 @@ const pageContextMap: Record<string, string> = {
 };
 
 export function GlobalAIAssistant() {
+  const { hideWidgets } = useFloatingWidgets();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [input, setInput] = useState('');
@@ -93,6 +95,9 @@ export function GlobalAIAssistant() {
     'What features are available?',
     'Help me get started',
   ];
+
+  // Hide when dialogs are open
+  if (hideWidgets && !isOpen) return null;
 
   if (!isOpen) {
     return (
