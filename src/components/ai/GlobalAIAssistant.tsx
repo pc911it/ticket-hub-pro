@@ -98,7 +98,7 @@ export function GlobalAIAssistant() {
     return (
       <Button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-24 right-6 h-14 w-14 rounded-full shadow-lg z-50 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 border-2 border-primary-foreground/20"
+        className="fixed bottom-40 right-6 h-14 w-14 rounded-full shadow-lg z-50 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 border-2 border-primary-foreground/20"
         size="icon"
         title="AI Assistant"
       >
@@ -112,8 +112,8 @@ export function GlobalAIAssistant() {
       className={cn(
         'fixed z-50 bg-background border rounded-lg shadow-2xl transition-all duration-200',
         isMinimized
-          ? 'bottom-24 right-6 w-72 h-14'
-          : 'bottom-24 right-6 w-96 h-[500px] max-h-[80vh]'
+          ? 'bottom-40 right-6 w-72 h-14'
+          : 'bottom-40 right-6 w-96 h-[500px] max-h-[80vh]'
       )}
     >
       {/* Header */}

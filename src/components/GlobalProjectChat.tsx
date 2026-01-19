@@ -209,8 +209,8 @@ export function GlobalProjectChat() {
         <Button
           size="lg"
           className={cn(
-            "fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50",
-            "bg-primary hover:bg-primary/90 text-primary-foreground",
+            "fixed bottom-24 right-6 h-14 w-14 rounded-full shadow-lg z-50",
+            "bg-secondary hover:bg-secondary/90 text-secondary-foreground",
             "transition-all duration-200 hover:scale-105"
           )}
         >
