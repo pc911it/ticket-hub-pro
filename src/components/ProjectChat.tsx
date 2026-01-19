@@ -341,12 +341,9 @@ export function ProjectChat({ projectId }: ProjectChatProps) {
       throw uploadError;
     }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('project-chat-files')
-      .getPublicUrl(fileName);
-
+    // Store the file path, not the public URL (bucket is private)
     return {
-      url: publicUrl,
+      url: fileName, // Store path for signed URL generation later
       name: file.name,
       type: file.type,
       size: file.size

@@ -52,6 +52,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { SignedFileLink } from '@/components/SignedFile';
 
 interface SubmittalDetailSheetProps {
   submittal: any;
@@ -243,14 +244,11 @@ export function SubmittalDetailSheet({ submittal, open, onOpenChange }: Submitta
 
         if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('submittal-attachments')
-          .getPublicUrl(filePath);
-
+        // Store the file path, not the public URL (bucket is private)
         await supabase.from('submittal_attachments').insert({
           submittal_id: submittal.id,
           file_name: file.name,
-          file_url: publicUrl,
+          file_url: filePath, // Store path for signed URL generation
           file_type: file.type,
           file_size: file.size,
           uploaded_by: user?.id,
@@ -511,11 +509,14 @@ export function SubmittalDetailSheet({ submittal, open, onOpenChange }: Submitta
                             </p>
                           </div>
                         </div>
-                        <Button variant="ghost" size="sm" asChild>
-                          <a href={attachment.file_url} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
-                        </Button>
+                        <SignedFileLink
+                          bucket="submittal-attachments"
+                          path={attachment.file_url}
+                          fileName={attachment.file_name}
+                          showIcon={false}
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </SignedFileLink>
                       </div>
                     ))}
                   </div>
