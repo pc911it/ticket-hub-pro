@@ -2,6 +2,7 @@ import { useState, useRef, lazy, Suspense, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const Model3DViewer = lazy(() => import('@/components/Model3DViewer'));
+const CADViewer = lazy(() => import('@/components/CADViewer'));
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
 import { useAuth } from '@/hooks/useAuth';
@@ -57,14 +58,16 @@ import { toast } from 'sonner';
 import { extractPathFromUrl } from '@/lib/secureStorage';
 
 // Supported format info
-const formatInfo: Record<string, { name: string; supported: boolean; description: string }> = {
-  gltf: { name: 'glTF', supported: true, description: 'GL Transmission Format - Web optimized' },
-  glb: { name: 'GLB', supported: true, description: 'Binary glTF - Compact web format' },
-  obj: { name: 'OBJ', supported: true, description: 'Wavefront OBJ - Universal 3D format' },
-  stl: { name: 'STL', supported: true, description: 'Stereolithography - 3D printing format' },
-  fbx: { name: 'FBX', supported: true, description: 'Autodesk FBX - Animation format' },
-  dae: { name: 'Collada', supported: true, description: 'COLLADA - Digital asset exchange' },
-  ifc: { name: 'IFC', supported: false, description: 'Industry Foundation Classes - BIM format' },
+const formatInfo: Record<string, { name: string; supported: boolean; description: string; category: 'model' | 'cad' }> = {
+  gltf: { name: 'glTF', supported: true, description: 'GL Transmission Format - Web optimized', category: 'model' },
+  glb: { name: 'GLB', supported: true, description: 'Binary glTF - Compact web format', category: 'model' },
+  obj: { name: 'OBJ', supported: true, description: 'Wavefront OBJ - Universal 3D format', category: 'model' },
+  stl: { name: 'STL', supported: true, description: 'Stereolithography - 3D printing format', category: 'model' },
+  fbx: { name: 'FBX', supported: true, description: 'Autodesk FBX - Animation format', category: 'model' },
+  dae: { name: 'Collada', supported: true, description: 'COLLADA - Digital asset exchange', category: 'model' },
+  ifc: { name: 'IFC', supported: false, description: 'Industry Foundation Classes - BIM format', category: 'model' },
+  dxf: { name: 'DXF', supported: true, description: 'AutoCAD Drawing Exchange Format - 2D/3D CAD', category: 'cad' },
+  dwg: { name: 'DWG', supported: false, description: 'AutoCAD Drawing - Requires DXF export', category: 'cad' },
 };
 
 export default function FloorPlansPage() {
@@ -629,29 +632,29 @@ export default function FloorPlansPage() {
                 className="mt-2 border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary transition-colors"
                 onClick={() => fileInputRef.current?.click()}
               >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".obj,.gltf,.glb,.ifc,.fbx,.dae,.stl"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-                {modelFile ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <Box className="h-6 w-6 text-primary" />
-                    <span className="font-medium">{modelFile.name}</span>
-                  </div>
-                ) : (
-                  <>
-                    <Box className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      Click to upload 3D model
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Supported: OBJ, GLTF, GLB, IFC, FBX, DAE, STL
-                    </p>
-                  </>
-                )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".obj,.gltf,.glb,.ifc,.fbx,.dae,.stl,.dxf,.dwg"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  {modelFile ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <Box className="h-6 w-6 text-primary" />
+                      <span className="font-medium">{modelFile.name}</span>
+                    </div>
+                  ) : (
+                    <>
+                      <Box className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        Click to upload 3D model or CAD file
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        3D: OBJ, GLTF, GLB, FBX, DAE, STL | CAD: DXF, DWG
+                      </p>
+                    </>
+                  )}
               </div>
             </div>
 
@@ -700,15 +703,24 @@ export default function FloorPlansPage() {
                 <div className="flex-1 flex items-center justify-center h-full bg-muted rounded-lg">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto mb-4" />
-                    <p className="text-muted-foreground">Loading 3D viewer...</p>
+                    <p className="text-muted-foreground">Loading viewer...</p>
                   </div>
                 </div>
               }>
-                <Model3DViewer 
-                  modelUrl={signedModelUrl}
-                  modelType={selectedFloorPlan.model_type}
-                  modelName={selectedFloorPlan.name}
-                />
+                {/* Use CADViewer for DXF/DWG files, Model3DViewer for others */}
+                {['dxf', 'dwg'].includes(selectedFloorPlan.model_type?.toLowerCase()) ? (
+                  <CADViewer 
+                    modelUrl={signedModelUrl}
+                    modelType={selectedFloorPlan.model_type}
+                    modelName={selectedFloorPlan.name}
+                  />
+                ) : (
+                  <Model3DViewer 
+                    modelUrl={signedModelUrl}
+                    modelType={selectedFloorPlan.model_type}
+                    modelName={selectedFloorPlan.name}
+                  />
+                )}
               </Suspense>
             ) : (
               <div className="flex-1 flex items-center justify-center h-full bg-muted rounded-lg">
