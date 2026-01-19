@@ -165,8 +165,8 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
       const { data: userData, error: userError } = await supabase.functions.invoke('create-user', {
         body: {
           email: ownerEmail,
-          password: tempPassword || undefined,
-          full_name: ownerName,
+          password: tempPassword || 'TempPass123!',
+          fullName: ownerName,
           role: 'admin',
         }
       });
