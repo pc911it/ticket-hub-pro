@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
@@ -14,15 +14,19 @@ import {
   Download,
   FileText,
   Image as ImageIcon,
-  ExternalLink
+  ExternalLink,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getSignedFileUrl } from '@/components/SignedFile';
 
 interface Document {
   id: string;
   file_name: string;
   file_url: string;
   file_type: string;
+  bucket?: string; // Optional bucket name for signed URLs
 }
 
 interface DocumentViewerProps {
@@ -30,13 +34,15 @@ interface DocumentViewerProps {
   initialIndex?: number;
   open: boolean;
   onClose: () => void;
+  bucket?: string; // Default bucket for all documents
 }
 
 export const DocumentViewer = ({ 
   documents, 
   initialIndex = 0, 
   open, 
-  onClose 
+  onClose,
+  bucket = 'ticket-attachments' // Default bucket
 }: DocumentViewerProps) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [zoom, setZoom] = useState(1);
@@ -46,15 +52,37 @@ export const DocumentViewer = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [useGoogleViewer, setUseGoogleViewer] = useState(true);
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [loadingUrl, setLoadingUrl] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const currentDoc = documents[currentIndex];
   const isImage = currentDoc?.file_type?.startsWith('image/');
   const isPdf = currentDoc?.file_type === 'application/pdf' || currentDoc?.file_name?.endsWith('.pdf');
+  const currentBucket = currentDoc?.bucket || bucket;
 
-  // Google Docs Viewer URL for PDFs
-  const googleViewerUrl = isPdf 
-    ? `https://docs.google.com/viewer?url=${encodeURIComponent(currentDoc?.file_url || '')}&embedded=true`
+  // Fetch signed URL when document changes
+  const fetchSignedUrl = useCallback(async () => {
+    if (!currentDoc?.file_url) {
+      setSignedUrl(null);
+      return;
+    }
+    
+    setLoadingUrl(true);
+    const url = await getSignedFileUrl(currentBucket, currentDoc.file_url);
+    setSignedUrl(url);
+    setLoadingUrl(false);
+  }, [currentDoc?.file_url, currentBucket]);
+
+  useEffect(() => {
+    if (open && currentDoc) {
+      fetchSignedUrl();
+    }
+  }, [open, currentIndex, fetchSignedUrl]);
+
+  // Google Docs Viewer URL for PDFs (using signed URL)
+  const googleViewerUrl = isPdf && signedUrl
+    ? `https://docs.google.com/viewer?url=${encodeURIComponent(signedUrl)}&embedded=true`
     : null;
 
   useEffect(() => {
@@ -204,14 +232,15 @@ export const DocumentViewer = ({
     setIsDragging(false);
   };
 
-  const handleDownload = () => {
-    const link = document.createElement('a');
-    link.href = currentDoc.file_url;
-    link.download = currentDoc.file_name;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = async () => {
+    if (!signedUrl) {
+      const url = await getSignedFileUrl(currentBucket, currentDoc.file_url);
+      if (url) {
+        window.open(url, '_blank');
+      }
+      return;
+    }
+    window.open(signedUrl, '_blank');
   };
 
   if (!currentDoc) return null;
@@ -251,9 +280,9 @@ export const DocumentViewer = ({
           </div>
           
           <div className="flex items-center gap-1">
-            {isPdf && (
+            {isPdf && signedUrl && (
               <a
-                href={currentDoc.file_url}
+                href={signedUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
@@ -293,9 +322,22 @@ export const DocumentViewer = ({
           onTouchEnd={handleTouchEnd}
           style={{ cursor: zoom > 1 && isImage ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
         >
-          {isImage ? (
+          {loadingUrl ? (
+            <div className="flex flex-col items-center gap-4 text-white">
+              <Loader2 className="h-12 w-12 animate-spin" />
+              <p>Loading document...</p>
+            </div>
+          ) : !signedUrl ? (
+            <div className="flex flex-col items-center gap-4 text-white p-8 text-center">
+              <AlertCircle className="h-16 w-16 text-destructive" />
+              <p className="text-lg font-medium">Failed to load document</p>
+              <Button variant="secondary" onClick={fetchSignedUrl}>
+                Try Again
+              </Button>
+            </div>
+          ) : isImage ? (
             <img
-              src={currentDoc.file_url}
+              src={signedUrl}
               alt={currentDoc.file_name}
               className="max-w-full max-h-full object-contain select-none transition-transform duration-200"
               style={{
@@ -321,7 +363,7 @@ export const DocumentViewer = ({
                   </p>
                   <div className="flex gap-3 mt-4">
                     <a
-                      href={currentDoc.file_url}
+                      href={signedUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}

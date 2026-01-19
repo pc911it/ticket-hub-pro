@@ -13,8 +13,9 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
   FileQuestion, Clock, CheckCircle, Send, MessageSquare, XCircle,
-  Upload, Paperclip, User, Calendar, FileText, AlertCircle, Loader2
+  Upload, Paperclip, User, Calendar, FileText, AlertCircle, Loader2, Download
 } from 'lucide-react';
+import { SignedFileLink } from '@/components/SignedFile';
 
 interface RFI {
   id: string;
@@ -240,14 +241,11 @@ export function RFIDetailSheet({ rfi, open, onOpenChange, onUpdate }: RFIDetailS
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('rfi-attachments')
-        .getPublicUrl(filePath);
-
+      // Store the file path, not the public URL (bucket is private)
       const { error: dbError } = await supabase.from('rfi_attachments').insert({
         rfi_id: rfi.id,
         file_name: file.name,
-        file_url: publicUrl,
+        file_url: filePath, // Store path for signed URL generation
         file_type: file.type,
         file_size: file.size,
         uploaded_by: user.id,
@@ -510,11 +508,8 @@ export function RFIDetailSheet({ rfi, open, onOpenChange, onUpdate }: RFIDetailS
 
                 <div className="space-y-2">
                   {attachments.map((att) => (
-                    <a
+                    <div
                       key={att.id}
-                      href={att.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
                       className="flex items-center gap-3 p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
                     >
                       <Paperclip className="h-4 w-4 text-muted-foreground" />
@@ -524,7 +519,15 @@ export function RFIDetailSheet({ rfi, open, onOpenChange, onUpdate }: RFIDetailS
                           {att.file_size ? `${(att.file_size / 1024).toFixed(1)} KB` : ''} • {format(new Date(att.created_at), 'MMM d, yyyy')}
                         </p>
                       </div>
-                    </a>
+                      <SignedFileLink
+                        bucket="rfi-attachments"
+                        path={att.file_url}
+                        fileName={att.file_name}
+                        className="text-primary hover:underline flex items-center gap-1"
+                      >
+                        <Download className="h-4 w-4" />
+                      </SignedFileLink>
+                    </div>
                   ))}
                   {attachments.length === 0 && (
                     <p className="text-sm text-muted-foreground text-center py-8">No attachments</p>
