@@ -258,28 +258,35 @@ serve(async (req) => {
     }
 
     // Send email via Resend
+    let emailSent = false;
     if (resendApiKey) {
-      const emailResponse = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${resendApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: "Platform Alerts <alerts@resend.dev>",
-          to: adminEmails,
-          subject: subject,
-          html: htmlContent,
-        }),
-      });
+      try {
+        const emailResponse = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${resendApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: "Platform Alerts <alerts@resend.dev>",
+            to: adminEmails,
+            subject: subject,
+            html: htmlContent,
+          }),
+        });
 
-      if (!emailResponse.ok) {
-        const errorText = await emailResponse.text();
-        console.error("Failed to send email:", errorText);
-        throw new Error(`Email sending failed: ${errorText}`);
+        if (!emailResponse.ok) {
+          const errorText = await emailResponse.text();
+          console.log("Email sending failed (non-critical):", errorText);
+          // Don't throw - just log and continue
+        } else {
+          emailSent = true;
+          console.log("Email notification sent successfully to:", adminEmails);
+        }
+      } catch (emailError: any) {
+        console.log("Email error (non-critical):", emailError.message);
+        // Don't throw - notification is non-critical
       }
-
-      console.log("Email notification sent successfully to:", adminEmails);
     } else {
       console.log("RESEND_API_KEY not configured, skipping email notification");
     }
