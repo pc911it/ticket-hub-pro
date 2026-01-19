@@ -725,6 +725,8 @@
     "platformBilling": "Platform Billing",
     "promoCodes": "Promo Codes",
     "employeePortal": "Employee Portal",
-    "superAdmin": "Super Admin"
+    "superAdmin": "Super Admin",
+    "aiTools": "AI Tools",
+    "aiAssistant": "AI Assistant"
   }
 }

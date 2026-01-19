@@ -725,6 +725,8 @@
     "platformBilling": "Facturación",
     "promoCodes": "Códigos Promocionales",
     "employeePortal": "Portal de Empleados",
-    "superAdmin": "Super Admin"
+    "superAdmin": "Super Admin",
+    "aiTools": "Herramientas IA",
+    "aiAssistant": "Asistente IA"
   }
 }
