@@ -493,24 +493,35 @@ export default function FloorPlansPage() {
       </Dialog>
 
       {/* 3D Viewer Dialog */}
-      <Dialog open={isViewerOpen} onOpenChange={setIsViewerOpen}>
-        <DialogContent className="max-w-5xl h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>{selectedFloorPlan?.name}</DialogTitle>
+      <Dialog open={isViewerOpen} onOpenChange={(open) => {
+        setIsViewerOpen(open);
+        if (!open) setSelectedFloorPlan(null);
+      }}>
+        <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="p-4 pb-2">
+            <DialogTitle className="flex items-center gap-2">
+              <Box className="h-5 w-5" />
+              {selectedFloorPlan?.name || 'Loading...'}
+            </DialogTitle>
           </DialogHeader>
-          <Suspense fallback={
-            <div className="flex-1 flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-            </div>
-          }>
-            {selectedFloorPlan && (
-              <Model3DViewer 
-                modelUrl={selectedFloorPlan.model_url}
-                modelType={selectedFloorPlan.model_type}
-                modelName={selectedFloorPlan.name}
-              />
-            )}
-          </Suspense>
+          <div className="flex-1 min-h-0 px-4 pb-4">
+            <Suspense fallback={
+              <div className="flex-1 flex items-center justify-center h-full bg-muted rounded-lg">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto mb-4" />
+                  <p className="text-muted-foreground">Loading 3D viewer...</p>
+                </div>
+              </div>
+            }>
+              {selectedFloorPlan && isViewerOpen && (
+                <Model3DViewer 
+                  modelUrl={selectedFloorPlan.model_url}
+                  modelType={selectedFloorPlan.model_type}
+                  modelName={selectedFloorPlan.name}
+                />
+              )}
+            </Suspense>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
