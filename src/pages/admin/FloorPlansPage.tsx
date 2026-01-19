@@ -206,8 +206,19 @@ export default function FloorPlansPage() {
   };
 
   const handleCreate = async () => {
-    if (!effectiveCompanyId || !name.trim() || !modelFile) {
-      toast.error('Please fill in required fields and upload a model');
+    // Detailed validation with specific error messages
+    if (!effectiveCompanyId) {
+      toast.error('No company selected. Please refresh and try again.');
+      return;
+    }
+    
+    if (!name.trim()) {
+      toast.error('Please enter a name for the floor plan');
+      return;
+    }
+    
+    if (!modelFile) {
+      toast.error('Please select a 3D model file to upload');
       return;
     }
 
