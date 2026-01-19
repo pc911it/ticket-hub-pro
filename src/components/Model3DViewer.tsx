@@ -304,6 +304,7 @@ export default function Model3DViewer({ modelUrl, modelType, modelName }: Model3
   const [autoRotate, setAutoRotate] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [isCanvasReady, setIsCanvasReady] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
   
   const info = formatInfo[modelType?.toLowerCase() || ''] || { name: modelType?.toUpperCase() || 'Unknown', supported: false, description: '' };
   
@@ -313,8 +314,17 @@ export default function Model3DViewer({ modelUrl, modelType, modelName }: Model3
   useEffect(() => {
     // Reset error state when model changes
     setHasError(false);
+    setInitError(null);
     setIsCanvasReady(false);
-    const timer = setTimeout(() => setIsCanvasReady(true), 100);
+    
+    // Validate URL before attempting to load
+    if (!modelUrl) {
+      setInitError('No model URL provided');
+      return;
+    }
+    
+    // Give canvas time to initialize
+    const timer = setTimeout(() => setIsCanvasReady(true), 200);
     return () => clearTimeout(timer);
   }, [modelUrl, modelType]);
   
@@ -325,6 +335,24 @@ export default function Model3DViewer({ modelUrl, modelType, modelName }: Model3
         modelType={modelType || ''} 
         modelName={modelName} 
       />
+    );
+  }
+
+  if (initError) {
+    return (
+      <div className="flex-1 bg-muted rounded-lg flex items-center justify-center min-h-[400px]">
+        <div className="text-center p-8">
+          <AlertCircle className="h-16 w-16 text-destructive mx-auto mb-4" />
+          <h3 className="text-lg font-medium mb-2">Cannot Load Model</h3>
+          <p className="text-muted-foreground mb-4 max-w-md">{initError}</p>
+          <Button asChild>
+            <a href={modelUrl} target="_blank" rel="noopener noreferrer" download={modelName}>
+              <Download className="h-4 w-4 mr-2" />
+              Download Instead
+            </a>
+          </Button>
+        </div>
+      </div>
     );
   }
 
@@ -339,7 +367,11 @@ export default function Model3DViewer({ modelUrl, modelType, modelName }: Model3
             file corruption, or an incompatible format.
           </p>
           <div className="flex gap-2 justify-center">
-            <Button variant="outline" onClick={() => setHasError(false)}>
+            <Button variant="outline" onClick={() => {
+              setHasError(false);
+              setIsCanvasReady(false);
+              setTimeout(() => setIsCanvasReady(true), 200);
+            }}>
               Try Again
             </Button>
             <Button asChild>
@@ -411,13 +443,14 @@ export default function Model3DViewer({ modelUrl, modelType, modelName }: Model3
 
       {/* 3D Canvas */}
       <div className="flex-1 bg-gradient-to-b from-slate-900 to-slate-800 rounded-b-lg overflow-hidden relative">
-        {isCanvasReady && (
+        {isCanvasReady && modelUrl && (
           <ErrorBoundary
             fallback={
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center p-8">
                   <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-                  <p className="text-white mb-4">Failed to initialize 3D viewer</p>
+                  <p className="text-white mb-2">Failed to initialize 3D viewer</p>
+                  <p className="text-white/60 text-sm mb-4">Your browser may not support WebGL or the model format.</p>
                   <Button asChild variant="secondary">
                     <a href={modelUrl} target="_blank" rel="noopener noreferrer" download={modelName}>
                       <Download className="h-4 w-4 mr-2" />
@@ -432,8 +465,16 @@ export default function Model3DViewer({ modelUrl, modelType, modelName }: Model3
               camera={{ position: [5, 5, 5], fov: 50 }}
               style={{ width: '100%', height: '100%' }}
               shadows
-              onCreated={() => console.log('Canvas created')}
-              gl={{ antialias: true, alpha: false }}
+              gl={{ 
+                antialias: true, 
+                alpha: false,
+                powerPreference: 'high-performance',
+                failIfMajorPerformanceCaveat: false
+              }}
+              onError={(e) => {
+                console.error('Canvas error:', e);
+                setHasError(true);
+              }}
             >
               <Scene
                 modelUrl={modelUrl}
@@ -447,7 +488,10 @@ export default function Model3DViewer({ modelUrl, modelType, modelName }: Model3
         )}
         {!isCanvasReady && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <div className="text-center">
+              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-white/60 text-sm">Initializing 3D viewer...</p>
+            </div>
           </div>
         )}
       </div>

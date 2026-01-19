@@ -92,13 +92,17 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, onUpdate }: Tick
   const [showSignature, setShowSignature] = useState(false);
   const [signingLoading, setSigningLoading] = useState(false);
   const [liveStatus, setLiveStatus] = useState(ticket?.status || 'pending');
+  const [liveSignatureUrl, setLiveSignatureUrl] = useState<string | null>(ticket?.client_signature_url || null);
+  const [liveApprovedAt, setLiveApprovedAt] = useState<string | null>(ticket?.client_approved_at || null);
 
   useEffect(() => {
     if (ticket) {
       setLiveStatus(ticket.status);
+      setLiveSignatureUrl(ticket.client_signature_url || null);
+      setLiveApprovedAt(ticket.client_approved_at || null);
       fetchJobUpdates();
     }
-  }, [ticket?.id]);
+  }, [ticket?.id, ticket?.client_signature_url, ticket?.status]);
 
   // Real-time subscription for ticket status updates
   useEffect(() => {
@@ -164,6 +168,7 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, onUpdate }: Tick
       const blob = await response.blob();
       
       const fileName = `${ticket.id}-${Date.now()}.png`;
+      const nowIso = new Date().toISOString();
       
       // Upload to storage
       const { error: uploadError } = await supabase.storage
@@ -180,23 +185,25 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, onUpdate }: Tick
         .from('tickets')
         .update({
           client_signature_url: fileName,
-          client_approved_at: new Date().toISOString(),
+          client_approved_at: nowIso,
           client_approved_by: user.id,
         })
         .eq('id', ticket.id);
 
       if (updateError) throw updateError;
 
+      // Update local state immediately so UI reflects the change
+      setLiveSignatureUrl(fileName);
+      setLiveApprovedAt(nowIso);
+
       toast({
         title: 'Signature Saved',
-        description: 'The ticket has been signed and can now be completed.',
+        description: 'The ticket has been signed successfully. You can now complete it.',
       });
 
       setShowSignature(false);
       // Call onUpdate to refresh ticket data in parent
       onUpdate();
-      // Close the sheet after successful signature
-      onOpenChange(false);
     } catch (error) {
       console.error('Error saving signature:', error);
       toast({
@@ -212,13 +219,22 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, onUpdate }: Tick
   const handleCompleteTicket = async () => {
     if (!ticket?.id) return;
 
-    if (!ticket.client_signature_url) {
-      toast({
-        variant: 'destructive',
-        title: 'Signature Required',
-        description: 'Please capture a signature before completing this ticket.',
-      });
-      return;
+    // Use live signature state first, fall back to checking database
+    if (!liveSignatureUrl) {
+      const { data: currentTicket } = await supabase
+        .from('tickets')
+        .select('client_signature_url')
+        .eq('id', ticket.id)
+        .single();
+
+      if (!currentTicket?.client_signature_url) {
+        toast({
+          variant: 'destructive',
+          title: 'Signature Required',
+          description: 'Please capture a signature before completing this ticket.',
+        });
+        return;
+      }
     }
 
     const { error } = await supabase
@@ -229,6 +245,7 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, onUpdate }: Tick
     if (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to complete ticket.' });
     } else {
+      setLiveStatus('completed');
       toast({ title: 'Completed', description: 'Ticket has been marked as completed.' });
       onUpdate();
       onOpenChange(false);
@@ -239,7 +256,7 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, onUpdate }: Tick
 
   const currentStatusIndex = getStatusIndex(liveStatus);
   const progressPercent = liveStatus === 'cancelled' ? 0 : ((currentStatusIndex + 1) / STATUS_STEPS.length) * 100;
-  const isSigned = !!ticket.client_signature_url;
+  const isSigned = !!liveSignatureUrl;
   const canComplete = isSigned && liveStatus !== 'completed' && liveStatus !== 'cancelled';
 
   const getStatusIcon = (status: string) => {
@@ -424,13 +441,13 @@ export function TicketDetailSheet({ ticket, open, onOpenChange, onUpdate }: Tick
                   <div>
                     <p className="text-sm font-medium text-success">Signature Captured</p>
                     <p className="text-xs text-muted-foreground">
-                      Signed on {ticket.client_approved_at && format(new Date(ticket.client_approved_at), 'MMM d, yyyy h:mm a')}
+                      Signed on {liveApprovedAt && format(new Date(liveApprovedAt), 'MMM d, yyyy h:mm a')}
                     </p>
                   </div>
                 </div>
                 <SignedImage 
                   bucket="client-signatures"
-                  path={ticket.client_signature_url!} 
+                  path={liveSignatureUrl!} 
                   alt="Client signature" 
                   className="max-h-24 border rounded-lg bg-white"
                 />
