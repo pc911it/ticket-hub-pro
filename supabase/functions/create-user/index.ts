@@ -85,15 +85,12 @@ serve(async (req) => {
     // Determine which company to add the user to
     const targetCompanyId = isSuperAdmin ? companyId : adminCompanyId;
 
-    if (!targetCompanyId) {
-      return new Response(
-        JSON.stringify({ error: "No company specified for user creation" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // For super admins creating a user without a company (e.g., for new company creation),
+    // we allow it - they just create the user without company membership
+    const skipCompanyMembership = isSuperAdmin && !targetCompanyId;
 
-    // Prevent creating additional admins (only one admin per company)
-    if (role === "admin") {
+    // Prevent creating additional admins (only one admin per company) - only if adding to company
+    if (!skipCompanyMembership && role === "admin" && targetCompanyId) {
       const { data: existingAdmins, error: adminCheckError } = await adminClient
         .from("company_members")
         .select("id")
@@ -112,7 +109,8 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Admin ${requestingUser.email} creating user: ${email} with role: ${role} for company: ${targetCompanyId}`);
+    console.log(`Admin ${requestingUser.email} creating user: ${email} with role: ${role}${targetCompanyId ? ` for company: ${targetCompanyId}` : ' (no company)'}`);
+
 
     // Check if user already exists
     const { data: existingUsers } = await adminClient.auth.admin.listUsers();
@@ -203,67 +201,71 @@ serve(async (req) => {
       console.log(`Profile created/updated for user: ${userId}`);
     }
 
-    // Add user to the company
-    const { error: memberInsertError } = await adminClient
-      .from("company_members")
-      .insert({
-        company_id: targetCompanyId,
-        user_id: userId,
-        role: role || "user",
-      });
+    // Add user to the company (only if we have a company to add to)
+    if (!skipCompanyMembership && targetCompanyId) {
+      const { error: memberInsertError } = await adminClient
+        .from("company_members")
+        .insert({
+          company_id: targetCompanyId,
+          user_id: userId,
+          role: role || "user",
+        });
 
-    if (memberInsertError) {
-      console.log("Failed to add user to company:", memberInsertError.message);
-      return new Response(
-        JSON.stringify({ error: "Failed to add user to company: " + memberInsertError.message }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+      if (memberInsertError) {
+        console.log("Failed to add user to company:", memberInsertError.message);
+        return new Response(
+          JSON.stringify({ error: "Failed to add user to company: " + memberInsertError.message }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
-    console.log(`User added to company ${targetCompanyId} with role: ${role}`);
+      console.log(`User added to company ${targetCompanyId} with role: ${role}`);
 
-    // If role is "client", also add to clients table (only if not already exists)
-    if (role === "client") {
-      // Check if client already exists with this email
-      const { data: existingClient } = await adminClient
-        .from("clients")
-        .select("id")
-        .eq("email", email)
-        .eq("company_id", targetCompanyId)
-        .maybeSingle();
-
-      if (!existingClient) {
-        const { error: clientError } = await adminClient
+      // If role is "client", also add to clients table (only if not already exists)
+      if (role === "client") {
+        // Check if client already exists with this email
+        const { data: existingClient } = await adminClient
           .from("clients")
-          .insert({
-            company_id: targetCompanyId,
-            full_name: fullName,
-            email: email,
-          });
+          .select("id")
+          .eq("email", email)
+          .eq("company_id", targetCompanyId)
+          .maybeSingle();
 
-        if (clientError) {
-          console.log("Failed to add to clients table:", clientError.message);
-          // Continue anyway, main user creation succeeded
+        if (!existingClient) {
+          const { error: clientError } = await adminClient
+            .from("clients")
+            .insert({
+              company_id: targetCompanyId,
+              full_name: fullName,
+              email: email,
+            });
+
+          if (clientError) {
+            console.log("Failed to add to clients table:", clientError.message);
+            // Continue anyway, main user creation succeeded
+          } else {
+            console.log(`Client entry created for: ${email}`);
+          }
         } else {
-          console.log(`Client entry created for: ${email}`);
+          console.log(`Client already exists for email: ${email}`);
         }
-      } else {
-        console.log(`Client already exists for email: ${email}`);
       }
-    }
 
-    // Update the user_roles table if not default "user"
-    if (role && role !== "user") {
-      const { error: updateRoleError } = await adminClient
-        .from("user_roles")
-        .update({ role })
-        .eq("user_id", userId);
+      // Update the user_roles table if not default "user"
+      if (role && role !== "user") {
+        const { error: updateRoleError } = await adminClient
+          .from("user_roles")
+          .update({ role })
+          .eq("user_id", userId);
 
-      if (updateRoleError) {
-        console.log("Failed to update user_roles:", updateRoleError.message);
-      } else {
-        console.log(`user_roles updated to: ${role}`);
+        if (updateRoleError) {
+          console.log("Failed to update user_roles:", updateRoleError.message);
+        } else {
+          console.log(`user_roles updated to: ${role}`);
+        }
       }
+    } else {
+      console.log(`User created without company membership (super admin creating for new company)`);
     }
 
     return new Response(
