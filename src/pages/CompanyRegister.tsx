@@ -127,6 +127,12 @@ const CompanyRegister = () => {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
+  // Email verification states
+  const [emailVerificationPending, setEmailVerificationPending] = useState(false);
+  const [emailVerificationCode, setEmailVerificationCode] = useState('');
+  const [sendingEmailCode, setSendingEmailCode] = useState(false);
+  const [verifyingEmailCode, setVerifyingEmailCode] = useState(false);
+
   // Phone auth fields
   const [phoneNumber, setPhoneNumber] = useState('');
   const [phoneFirstName, setPhoneFirstName] = useState('');
@@ -231,14 +237,75 @@ const CompanyRegister = () => {
         return;
       }
 
-      setAccountComplete(true);
-      setAccountOpen(false);
-      setCompanyOpen(true);
-      toast({ title: 'Account created!', description: 'Now complete your company registration.' });
+      // Send email verification code
+      setSendingEmailCode(true);
+      const { error: sendError } = await supabase.functions.invoke('send-verification-code', {
+        body: { email: email.toLowerCase(), type: 'email' }
+      });
+
+      if (sendError) {
+        console.error('Error sending verification code:', sendError);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to send verification code. Please try again.' });
+        return;
+      }
+
+      setEmailVerificationPending(true);
+      toast({ title: 'Verification code sent!', description: 'Check your email for the 6-digit code.' });
     } catch {
       toast({ variant: 'destructive', title: 'Error', description: 'An unexpected error occurred.' });
     } finally {
       setIsLoading(false);
+      setSendingEmailCode(false);
+    }
+  };
+
+  const handleVerifyEmailCode = async () => {
+    if (emailVerificationCode.length !== 6) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please enter the 6-digit code.' });
+      return;
+    }
+
+    setVerifyingEmailCode(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-code', {
+        body: { identifier: email.toLowerCase(), code: emailVerificationCode, type: 'email' }
+      });
+
+      if (error || !data?.success) {
+        toast({ variant: 'destructive', title: 'Verification failed', description: data?.error || 'Invalid code. Please try again.' });
+        return;
+      }
+
+      setAccountComplete(true);
+      setAccountOpen(false);
+      setCompanyOpen(true);
+      setEmailVerificationPending(false);
+      toast({ title: 'Email verified! ✓', description: 'Now complete your company registration.' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message || 'Verification failed.' });
+    } finally {
+      setVerifyingEmailCode(false);
+    }
+  };
+
+  const handleResendEmailCode = async () => {
+    setSendingEmailCode(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-verification-code', {
+        body: { email: email.toLowerCase(), type: 'email' }
+      });
+
+      if (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to resend code.' });
+        return;
+      }
+
+      setEmailVerificationCode('');
+      toast({ title: 'Code resent!', description: 'Check your email for the new code.' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to resend code.' });
+    } finally {
+      setSendingEmailCode(false);
     }
   };
 
@@ -550,94 +617,156 @@ const CompanyRegister = () => {
                     </TabsList>
 
                     <TabsContent value="email" className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="firstName">First Name *</Label>
-                          <div className="relative">
-                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input id="firstName" placeholder="John" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="pl-10" />
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="lastName">Last Name *</Label>
-                          <Input id="lastName" placeholder="Doe" value={lastName} onChange={(e) => setLastName(e.target.value)} />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email *</Label>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input 
-                            id="email" 
-                            type="email" 
-                            placeholder="you@example.com" 
-                            value={email} 
-                            onChange={(e) => setEmail(e.target.value)} 
-                            className={`pl-10 ${emailError ? 'border-destructive' : email && !emailError ? 'border-green-500' : ''}`} 
-                          />
-                          {email && (
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                              {emailError ? <AlertCircle className="h-4 w-4 text-destructive" /> : <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                      {!emailVerificationPending ? (
+                        <>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="firstName">First Name *</Label>
+                              <div className="relative">
+                                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input id="firstName" placeholder="John" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="pl-10" />
+                              </div>
                             </div>
-                          )}
-                        </div>
-                        {emailError && <p className="text-xs text-destructive">{emailError}</p>}
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="password">Password *</Label>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" minLength={8} />
-                        </div>
-                        {password && (
-                          <div className="space-y-1 mt-2">
-                            <div className="flex items-center gap-2 text-xs">
-                              {passwordRequirements.minLength ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : <AlertCircle className="h-3 w-3 text-muted-foreground" />}
-                              <span className={passwordRequirements.minLength ? 'text-green-600' : 'text-muted-foreground'}>At least 8 characters</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs">
-                              {passwordRequirements.hasUppercase ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : <AlertCircle className="h-3 w-3 text-muted-foreground" />}
-                              <span className={passwordRequirements.hasUppercase ? 'text-green-600' : 'text-muted-foreground'}>One uppercase letter</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs">
-                              {passwordRequirements.hasLowercase ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : <AlertCircle className="h-3 w-3 text-muted-foreground" />}
-                              <span className={passwordRequirements.hasLowercase ? 'text-green-600' : 'text-muted-foreground'}>One lowercase letter</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs">
-                              {passwordRequirements.hasNumber ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : <AlertCircle className="h-3 w-3 text-muted-foreground" />}
-                              <span className={passwordRequirements.hasNumber ? 'text-green-600' : 'text-muted-foreground'}>One number</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs">
-                              {passwordRequirements.hasSymbol ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : <AlertCircle className="h-3 w-3 text-muted-foreground" />}
-                              <span className={passwordRequirements.hasSymbol ? 'text-green-600' : 'text-muted-foreground'}>One symbol (!@#$%^&*...)</span>
+                            <div className="space-y-2">
+                              <Label htmlFor="lastName">Last Name *</Label>
+                              <Input id="lastName" placeholder="Doe" value={lastName} onChange={(e) => setLastName(e.target.value)} />
                             </div>
                           </div>
-                        )}
-                        {!password && <p className="text-xs text-muted-foreground">Min 8 chars: uppercase, lowercase, number, symbol</p>}
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input 
-                            id="confirmPassword" 
-                            type="password" 
-                            placeholder="••••••••" 
-                            value={confirmPassword} 
-                            onChange={(e) => setConfirmPassword(e.target.value)} 
-                            className={`pl-10 ${passwordError ? 'border-destructive' : confirmPassword && !passwordError ? 'border-green-500' : ''}`} 
-                          />
-                          {confirmPassword && (
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                              {passwordError ? <AlertCircle className="h-4 w-4 text-destructive" /> : <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                          <div className="space-y-2">
+                            <Label htmlFor="email">Email *</Label>
+                            <div className="relative">
+                              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input 
+                                id="email" 
+                                type="email" 
+                                placeholder="you@example.com" 
+                                value={email} 
+                                onChange={(e) => setEmail(e.target.value)} 
+                                className={`pl-10 ${emailError ? 'border-destructive' : email && !emailError ? 'border-primary' : ''}`} 
+                              />
+                              {email && (
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                  {emailError ? <AlertCircle className="h-4 w-4 text-destructive" /> : <CheckCircle2 className="h-4 w-4 text-primary" />}
+                                </div>
+                              )}
                             </div>
-                          )}
+                            {emailError && <p className="text-xs text-destructive">{emailError}</p>}
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="password">Password *</Label>
+                            <div className="relative">
+                              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" minLength={8} />
+                            </div>
+                            {password && (
+                              <div className="space-y-1 mt-2">
+                                <div className="flex items-center gap-2 text-xs">
+                                  {passwordRequirements.minLength ? <CheckCircle2 className="h-3 w-3 text-primary" /> : <AlertCircle className="h-3 w-3 text-muted-foreground" />}
+                                  <span className={passwordRequirements.minLength ? 'text-primary' : 'text-muted-foreground'}>At least 8 characters</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-xs">
+                                  {passwordRequirements.hasUppercase ? <CheckCircle2 className="h-3 w-3 text-primary" /> : <AlertCircle className="h-3 w-3 text-muted-foreground" />}
+                                  <span className={passwordRequirements.hasUppercase ? 'text-primary' : 'text-muted-foreground'}>One uppercase letter</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-xs">
+                                  {passwordRequirements.hasLowercase ? <CheckCircle2 className="h-3 w-3 text-primary" /> : <AlertCircle className="h-3 w-3 text-muted-foreground" />}
+                                  <span className={passwordRequirements.hasLowercase ? 'text-primary' : 'text-muted-foreground'}>One lowercase letter</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-xs">
+                                  {passwordRequirements.hasNumber ? <CheckCircle2 className="h-3 w-3 text-primary" /> : <AlertCircle className="h-3 w-3 text-muted-foreground" />}
+                                  <span className={passwordRequirements.hasNumber ? 'text-primary' : 'text-muted-foreground'}>One number</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-xs">
+                                  {passwordRequirements.hasSymbol ? <CheckCircle2 className="h-3 w-3 text-primary" /> : <AlertCircle className="h-3 w-3 text-muted-foreground" />}
+                                  <span className={passwordRequirements.hasSymbol ? 'text-primary' : 'text-muted-foreground'}>One symbol (!@#$%^&*...)</span>
+                                </div>
+                              </div>
+                            )}
+                            {!password && <p className="text-xs text-muted-foreground">Min 8 chars: uppercase, lowercase, number, symbol</p>}
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                            <div className="relative">
+                              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input 
+                                id="confirmPassword" 
+                                type="password" 
+                                placeholder="••••••••" 
+                                value={confirmPassword} 
+                                onChange={(e) => setConfirmPassword(e.target.value)} 
+                                className={`pl-10 ${passwordError ? 'border-destructive' : confirmPassword && !passwordError ? 'border-primary' : ''}`} 
+                              />
+                              {confirmPassword && (
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                  {passwordError ? <AlertCircle className="h-4 w-4 text-destructive" /> : <CheckCircle2 className="h-4 w-4 text-primary" />}
+                                </div>
+                              )}
+                            </div>
+                            {passwordError && <p className="text-xs text-destructive">{passwordError}</p>}
+                          </div>
+                          <Button className="w-full" onClick={handleEmailSignUp} disabled={isLoading || sendingEmailCode || !!emailError || !!passwordError}>
+                            {isLoading || sendingEmailCode ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating Account...</> : 'Continue with Email'}
+                          </Button>
+                        </>
+                      ) : (
+                        /* Email Verification Code Entry */
+                        <div className="space-y-4">
+                          <div className="text-center">
+                            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+                              <Mail className="h-8 w-8 text-primary" />
+                            </div>
+                            <h3 className="text-lg font-semibold mb-2">Verify Your Email</h3>
+                            <p className="text-sm text-muted-foreground mb-4">
+                              We sent a 6-digit code to<br />
+                              <span className="font-medium text-foreground">{email}</span>
+                            </p>
+                          </div>
+                          
+                          <div className="flex justify-center">
+                            <InputOTP maxLength={6} value={emailVerificationCode} onChange={setEmailVerificationCode}>
+                              <InputOTPGroup className="justify-center">
+                                <InputOTPSlot index={0} />
+                                <InputOTPSlot index={1} />
+                                <InputOTPSlot index={2} />
+                                <InputOTPSlot index={3} />
+                                <InputOTPSlot index={4} />
+                                <InputOTPSlot index={5} />
+                              </InputOTPGroup>
+                            </InputOTP>
+                          </div>
+
+                          <Button 
+                            className="w-full" 
+                            onClick={handleVerifyEmailCode} 
+                            disabled={verifyingEmailCode || emailVerificationCode.length !== 6}
+                          >
+                            {verifyingEmailCode ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Verifying...</> : 'Verify Email'}
+                          </Button>
+
+                          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                            <span>Didn't receive the code?</span>
+                            <Button 
+                              variant="link" 
+                              className="p-0 h-auto" 
+                              onClick={handleResendEmailCode}
+                              disabled={sendingEmailCode}
+                            >
+                              {sendingEmailCode ? 'Sending...' : 'Resend'}
+                            </Button>
+                          </div>
+
+                          <Button 
+                            variant="ghost" 
+                            className="w-full" 
+                            onClick={() => { 
+                              setEmailVerificationPending(false); 
+                              setEmailVerificationCode(''); 
+                            }}
+                          >
+                            Use a different email
+                          </Button>
                         </div>
-                        {passwordError && <p className="text-xs text-destructive">{passwordError}</p>}
-                      </div>
-                      <Button className="w-full" onClick={handleEmailSignUp} disabled={isLoading || !!emailError || !!passwordError}>
-                        {isLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating Account...</> : 'Continue with Email'}
-                      </Button>
+                      )}
                     </TabsContent>
 
                     <TabsContent value="phone" className="space-y-4">
