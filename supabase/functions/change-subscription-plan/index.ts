@@ -6,11 +6,35 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const PLAN_PRICES = {
-  professional: 349,
-  advanced: 899,
-  enterprise: 0, // Custom pricing
+// Default plan prices (fallback if database fetch fails)
+const DEFAULT_PLAN_PRICES: Record<string, number> = {
+  professional: 34900,
+  advanced: 89900,
+  enterprise: 0,
 };
+
+// Helper to fetch plan prices from database
+async function getPlanPrices(supabase: any): Promise<Record<string, number>> {
+  try {
+    const { data, error } = await supabase
+      .from("subscription_plans")
+      .select("id, monthly_price");
+    
+    if (error || !data) {
+      console.warn("Failed to fetch plan prices, using defaults:", error);
+      return DEFAULT_PLAN_PRICES;
+    }
+    
+    const prices: Record<string, number> = {};
+    for (const plan of data) {
+      prices[plan.id] = plan.monthly_price;
+    }
+    return prices;
+  } catch (err) {
+    console.warn("Error fetching plan prices:", err);
+    return DEFAULT_PLAN_PRICES;
+  }
+}
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -44,8 +68,15 @@ serve(async (req) => {
       );
     }
 
-    // Validate plan
-    if (!["professional", "advanced", "enterprise"].includes(newPlan)) {
+    // Fetch valid plans from database
+    const { data: validPlans } = await supabase
+      .from("subscription_plans")
+      .select("id")
+      .eq("is_active", true);
+    
+    const validPlanIds = validPlans?.map((p: any) => p.id) || ["professional", "advanced", "enterprise"];
+    
+    if (!validPlanIds.includes(newPlan)) {
       return new Response(
         JSON.stringify({ error: "Invalid plan" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -84,9 +115,12 @@ serve(async (req) => {
       );
     }
 
+    // Fetch plan prices from database
+    const PLAN_PRICES = await getPlanPrices(supabase);
+    
     const currentPlan = company.subscription_plan || "professional";
-    const currentPrice = PLAN_PRICES[currentPlan as keyof typeof PLAN_PRICES] || 349;
-    const newPrice = PLAN_PRICES[newPlan as keyof typeof PLAN_PRICES];
+    const currentPrice = PLAN_PRICES[currentPlan] || DEFAULT_PLAN_PRICES.professional;
+    const newPrice = PLAN_PRICES[newPlan] || 0;
 
     // Determine if upgrade or downgrade
     const isUpgrade = newPrice > currentPrice;

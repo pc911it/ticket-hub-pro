@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Check, Zap, Shield, Users, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSubscriptionPlans } from '@/hooks/useSubscriptionPlans';
 
 export interface PricingPlan {
   id: string;
@@ -43,14 +44,28 @@ export function PricingPlans({
 }: PricingPlansProps) {
   const { t } = useTranslation();
   const [isYearly, setIsYearly] = useState(false);
+  
+  // Fetch plans from database
+  const { plans: dbPlans, settings, isLoading } = useSubscriptionPlans();
 
-  // Define plans with translation keys
+  // Map database plans to UI plans, using database prices
+  const getDbPlanPrice = (planId: string) => {
+    const dbPlan = dbPlans.find(p => p.id === planId);
+    return dbPlan ? {
+      monthly: dbPlan.monthly_price / 100,
+      yearly: dbPlan.yearly_price / 100,
+      isCustom: dbPlan.is_custom_pricing,
+      isPopular: dbPlan.is_popular,
+    } : null;
+  };
+
+  // Define plans with translation keys and DB prices
   const plans: PricingPlan[] = [
     {
       id: 'professional',
       name: t('pricing.professional.name'),
-      monthlyPrice: 349,
-      yearlyPrice: 2990,
+      monthlyPrice: getDbPlanPrice('professional')?.monthly || 349,
+      yearlyPrice: getDbPlanPrice('professional')?.yearly || 2990,
       description: t('pricing.professional.description'),
       icon: 'professional',
       features: [
@@ -80,11 +95,11 @@ export function PricingPlans({
     {
       id: 'advanced',
       name: t('pricing.advanced.name'),
-      monthlyPrice: 899,
-      yearlyPrice: 7490,
+      monthlyPrice: getDbPlanPrice('advanced')?.monthly || 899,
+      yearlyPrice: getDbPlanPrice('advanced')?.yearly || 7490,
       description: t('pricing.advanced.description'),
       icon: 'advanced',
-      popular: true,
+      popular: getDbPlanPrice('advanced')?.isPopular ?? true,
       features: [
         t('pricing.advanced.features.unlimitedTickets'),
         t('pricing.advanced.features.unlimitedProjects'),
@@ -122,11 +137,11 @@ export function PricingPlans({
     {
       id: 'enterprise',
       name: t('pricing.enterprise.name'),
-      monthlyPrice: 0,
-      yearlyPrice: 0,
+      monthlyPrice: getDbPlanPrice('enterprise')?.monthly || 0,
+      yearlyPrice: getDbPlanPrice('enterprise')?.yearly || 0,
       description: t('pricing.enterprise.description'),
       icon: 'enterprise',
-      isCustomPricing: true,
+      isCustomPricing: getDbPlanPrice('enterprise')?.isCustom ?? true,
       features: [
         t('pricing.enterprise.features.unlimitedTickets'),
         t('pricing.enterprise.features.multiCompany'),
