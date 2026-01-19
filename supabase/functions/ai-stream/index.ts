@@ -16,6 +16,7 @@ interface StreamRequest {
   type: "support" | "bid" | "document" | "summary" | "chat";
   messages: Message[];
   context?: Record<string, unknown>;
+  language?: string;
 }
 
 const systemPrompts: Record<string, string> = {
@@ -60,16 +61,22 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const { type = "chat", messages, context }: StreamRequest = await req.json();
+    const { type = "chat", messages, context, language = "en" }: StreamRequest = await req.json();
 
     const systemPrompt = systemPrompts[type] || systemPrompts.chat;
+    
+    // Build language instruction
+    const languageInstruction = language === "es" 
+      ? "\n\nIMPORTANT: You MUST respond entirely in Spanish (Español). All your responses should be in Spanish."
+      : "";
+    
     let contextMessage = "";
     if (context) {
       contextMessage = "\n\nContext:\n" + JSON.stringify(context, null, 2);
     }
 
     const finalMessages: Message[] = [
-      { role: "system", content: systemPrompt + contextMessage },
+      { role: "system", content: systemPrompt + languageInstruction + contextMessage },
       ...messages,
     ];
 
