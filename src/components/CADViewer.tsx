@@ -531,17 +531,21 @@ export default function CADViewer({ modelUrl, modelType, modelName }: CADViewerP
 
   // Parse DXF file
   useEffect(() => {
+    console.log('CADViewer: modelUrl=', modelUrl, 'modelType=', modelType);
+    
     const loadDxf = async () => {
       setLoading(true);
       setError(null);
       
       try {
+        console.log('CADViewer: Fetching DXF from', modelUrl);
         const response = await fetch(modelUrl);
         if (!response.ok) {
           throw new Error(`Failed to fetch CAD file: ${response.statusText}`);
         }
         
         const text = await response.text();
+        console.log('CADViewer: Received text length', text.length);
         const parser = new DxfParser();
         const parsed = parser.parse(text) as ParsedDxf;
         
@@ -570,11 +574,14 @@ export default function CADViewer({ modelUrl, modelType, modelName }: CADViewerP
       }
     };
     
-    if (modelUrl && (modelType?.toLowerCase() === 'dxf')) {
+    if (modelUrl && modelType?.toLowerCase() === 'dxf') {
       loadDxf();
     } else if (modelType?.toLowerCase() === 'dwg') {
       setLoading(false);
       setError('DWG files require conversion. Please export as DXF from AutoCAD or use a conversion service.');
+    } else {
+      setLoading(false);
+      setError('Unsupported CAD file type');
     }
   }, [modelUrl, modelType]);
 

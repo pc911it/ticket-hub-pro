@@ -323,6 +323,8 @@ export default function FloorPlansPage() {
       fbx: 'FBX',
       dae: 'Collada',
       stl: 'STL',
+      dxf: 'DXF',
+      dwg: 'DWG',
     };
     return types[type || ''] || type?.toUpperCase() || 'Unknown';
   };
