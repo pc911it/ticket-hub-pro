@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,6 +61,7 @@ const statusOptions = [
 
 const PurchaseOrdersPage = () => {
   const { user, isCompanyOwner, isSuperAdmin } = useAuth();
+  const { effectiveCompanyId, isPlatformView, isLoading: companyLoading } = useEffectiveCompanyId();
   const canDelete = isCompanyOwner || isSuperAdmin;
   const { toast } = useToast();
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
@@ -67,7 +69,6 @@ const PurchaseOrdersPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [companyId, setCompanyId] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string>('');
 
   // Dialog states
@@ -86,41 +87,39 @@ const PurchaseOrdersPage = () => {
   const [selectedItems, setSelectedItems] = useState<{ itemId: string; quantity: number; unitCost: number }[]>([]);
 
   useEffect(() => {
-    fetchData();
-  }, [user]);
+    if (effectiveCompanyId) {
+      fetchData();
+    } else if (!companyLoading) {
+      setLoading(false);
+    }
+  }, [effectiveCompanyId, companyLoading]);
 
   const fetchData = async () => {
-    if (!user) return;
+    if (!effectiveCompanyId) {
+      setLoading(false);
+      return;
+    }
 
-    // Get company
-    const { data: memberData } = await supabase
-      .from('company_members')
-      .select('company_id')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    // Get company name
+    const { data: companyData } = await supabase
+      .from('companies')
+      .select('name')
+      .eq('id', effectiveCompanyId)
+      .single();
+    
+    if (companyData) setCompanyName(companyData.name);
 
-    if (memberData) {
-      setCompanyId(memberData.company_id);
+    // Fetch orders
+    const { data: ordersData } = await supabase
+      .from('purchase_orders')
+      .select('*')
+      .eq('company_id', effectiveCompanyId)
+      .order('created_at', { ascending: false });
 
-      // Get company name
-      const { data: companyData } = await supabase
-        .from('companies')
-        .select('name')
-        .eq('id', memberData.company_id)
-        .single();
-      
-      if (companyData) setCompanyName(companyData.name);
-
-      // Fetch orders
-      const { data: ordersData } = await supabase
-        .from('purchase_orders')
-        .select('*')
-        .eq('company_id', memberData.company_id)
-        .order('created_at', { ascending: false });
-
-      if (ordersData) {
-        // Get item counts
-        const orderIds = ordersData.map(o => o.id);
+    if (ordersData) {
+      // Get item counts
+      const orderIds = ordersData.map(o => o.id);
+      if (orderIds.length > 0) {
         const { data: itemsData } = await supabase
           .from('purchase_order_items')
           .select('purchase_order_id')
@@ -132,17 +131,19 @@ const PurchaseOrdersPage = () => {
         });
 
         setOrders(ordersData.map(o => ({ ...o, items_count: countsMap[o.id] || 0 })));
+      } else {
+        setOrders([]);
       }
-
-      // Fetch inventory for suggestions
-      const { data: invData } = await supabase
-        .from('inventory_items')
-        .select('id, name, quantity_in_stock, minimum_stock, cost_per_unit, supplier')
-        .eq('company_id', memberData.company_id)
-        .order('name');
-
-      if (invData) setInventory(invData);
     }
+
+    // Fetch inventory for suggestions
+    const { data: invData } = await supabase
+      .from('inventory_items')
+      .select('id, name, quantity_in_stock, minimum_stock, cost_per_unit, supplier')
+      .eq('company_id', effectiveCompanyId)
+      .order('name');
+
+    if (invData) setInventory(invData);
 
     setLoading(false);
   };
@@ -185,7 +186,7 @@ const PurchaseOrdersPage = () => {
   };
 
   const createOrder = async () => {
-    if (!companyId || selectedItems.length === 0) return;
+    if (!effectiveCompanyId || selectedItems.length === 0) return;
 
     const orderNumber = generateOrderNumber();
     const totalCost = calculateTotal();
@@ -193,7 +194,7 @@ const PurchaseOrdersPage = () => {
     const { data: orderData, error: orderError } = await supabase
       .from('purchase_orders')
       .insert({
-        company_id: companyId,
+        company_id: effectiveCompanyId,
         order_number: orderNumber,
         supplier: formData.supplier || null,
         notes: formData.notes || null,

@@ -8,12 +8,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Mail, Phone, MapPin, Edit2, Trash2, KeyRound, UserPlus, CheckCircle, Ship, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Search, Mail, Phone, MapPin, Edit2, Trash2, KeyRound, UserPlus, CheckCircle, Ship, ChevronDown, ChevronUp, Building2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
 import { DeleteConfirmationDialog } from '@/components/DeleteConfirmationDialog';
 import { VesselManagement } from '@/components/VesselManagement';
 
@@ -33,6 +34,7 @@ interface Client {
 
 const ClientsPage = () => {
   const { user, isCompanyOwner, isSuperAdmin } = useAuth();
+  const { effectiveCompanyId, isPlatformView, isLoading: companyLoading } = useEffectiveCompanyId();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -62,7 +64,6 @@ const ClientsPage = () => {
   });
   const { toast } = useToast();
 
-  const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
   const [companyType, setCompanyType] = useState<string>('other');
   const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
   
@@ -71,52 +72,49 @@ const ClientsPage = () => {
   const canCreateLogin = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
 
   useEffect(() => {
-    if (user) {
-      if (isSuperAdmin) {
-        // Super admin can see all clients
-        fetchClients();
-      } else {
-        fetchUserCompany();
-      }
-    }
-  }, [user, isSuperAdmin]);
-
-  useEffect(() => {
-    if (userCompanyId) {
+    if (effectiveCompanyId) {
       fetchClients();
-    }
-  }, [userCompanyId]);
-
-  const fetchUserCompany = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from('company_members')
-      .select('company_id, role')
-      .eq('user_id', user.id)
-      .limit(1)
-      .maybeSingle();
-    if (data) {
-      setUserCompanyId(data.company_id);
-      setIsCompanyAdmin(data.role === 'admin');
-      
-      // Fetch company type
-      const { data: companyData } = await supabase
-        .from('companies')
-        .select('type')
-        .eq('id', data.company_id)
-        .single();
-      if (companyData?.type) {
-        setCompanyType(companyData.type);
-      }
-    } else {
+      fetchCompanyType();
+    } else if (!companyLoading) {
       setLoading(false);
+    }
+  }, [effectiveCompanyId, companyLoading]);
+
+  const fetchCompanyType = async () => {
+    if (!effectiveCompanyId) return;
+    const { data: companyData } = await supabase
+      .from('companies')
+      .select('type')
+      .eq('id', effectiveCompanyId)
+      .single();
+    if (companyData?.type) {
+      setCompanyType(companyData.type);
+    }
+    
+    // Check if current user is admin of this company
+    if (user && !isSuperAdmin) {
+      const { data: memberData } = await supabase
+        .from('company_members')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('company_id', effectiveCompanyId)
+        .maybeSingle();
+      setIsCompanyAdmin(memberData?.role === 'admin');
+    } else if (isSuperAdmin) {
+      setIsCompanyAdmin(true); // Super admins have admin privileges
     }
   };
 
   const fetchClients = async () => {
+    if (!effectiveCompanyId) {
+      setLoading(false);
+      return;
+    }
+    
     const { data, error } = await supabase
       .from('clients')
       .select('id, full_name, email, phone, address, notes, company_id, created_at, portal_user_id, temp_password_created_at, must_change_password')
+      .eq('company_id', effectiveCompanyId)
       .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
@@ -206,7 +204,7 @@ const ClientsPage = () => {
 
   const handleCreateLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedClientForLogin || !userCompanyId) return;
+    if (!selectedClientForLogin || !effectiveCompanyId) return;
 
     if (loginPassword.length < 6) {
       toast({ variant: 'destructive', title: 'Error', description: 'Password must be at least 6 characters.' });
@@ -228,7 +226,7 @@ const ClientsPage = () => {
           password: loginPassword,
           fullName: selectedClientForLogin.full_name.trim(),
           role: 'client',
-          companyId: userCompanyId,
+          companyId: effectiveCompanyId,
         },
       });
 
@@ -276,8 +274,8 @@ const ClientsPage = () => {
         .eq('email', formData.email.trim().toLowerCase())
         .is('deleted_at', null);
       
-      if (userCompanyId) {
-        duplicateQuery.eq('company_id', userCompanyId);
+      if (effectiveCompanyId) {
+        duplicateQuery.eq('company_id', effectiveCompanyId);
       }
       
       const { data: existingClients, error: checkError } = await duplicateQuery;
@@ -329,7 +327,7 @@ const ClientsPage = () => {
       const { data: newClient, error } = await supabase.from('clients').insert({
         ...formData,
         email: formData.email.trim().toLowerCase(),
-        company_id: userCompanyId,
+        company_id: effectiveCompanyId,
       }).select().single();
 
       if (error) {
@@ -366,7 +364,7 @@ const ClientsPage = () => {
                 password: newClientPassword,
                 fullName: formData.full_name.trim(),
                 role: 'client',
-                companyId: userCompanyId,
+                companyId: effectiveCompanyId,
               },
             });
 
@@ -881,7 +879,7 @@ const ClientsPage = () => {
                 </div>
 
                 {/* Vessel Management - Only for boat_services companies */}
-                {companyType === 'boat_services' && userCompanyId && (
+                {companyType === 'boat_services' && effectiveCompanyId && (
                   <Collapsible
                     open={expandedClientId === client.id}
                     onOpenChange={(open) => setExpandedClientId(open ? client.id : null)}
@@ -901,7 +899,7 @@ const ClientsPage = () => {
                       </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="pt-4">
-                      <VesselManagement clientId={client.id} companyId={userCompanyId} />
+                      <VesselManagement clientId={client.id} companyId={effectiveCompanyId} />
                     </CollapsibleContent>
                   </Collapsible>
                 )}
