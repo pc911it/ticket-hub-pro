@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffectiveCompanyId } from "@/hooks/useEffectiveCompanyId";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,28 +27,15 @@ import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isW
 
 export default function EmployeeTimeReportsPage() {
   const { user } = useAuth();
+  const { effectiveCompanyId, isPlatformView, isLoading: companyLoading } = useEffectiveCompanyId();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [periodFilter, setPeriodFilter] = useState<"week" | "month" | "all">("week");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  // Get user's company ID
-  const { data: userCompany } = useQuery({
-    queryKey: ["user-company", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return null;
-      const { data } = await supabase
-        .from("company_members")
-        .select("company_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      return data?.company_id;
-    },
-    enabled: !!user?.id,
-  });
-
-  const companyId = userCompany;
+  // Use effectiveCompanyId directly
+  const companyId = effectiveCompanyId;
 
   // Fetch all agents in company
   const { data: agents, isLoading: agentsLoading } = useQuery({

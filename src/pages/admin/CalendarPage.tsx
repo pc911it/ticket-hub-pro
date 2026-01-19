@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Clock, ExternalLink, Building2, Ticket as TicketIcon } from 'lucide-react';
@@ -20,22 +21,30 @@ interface Ticket {
 
 const CalendarPage = () => {
   const navigate = useNavigate();
+  const { effectiveCompanyId, isLoading: companyLoading } = useEffectiveCompanyId();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchTickets();
-  }, [currentMonth]);
+    if (effectiveCompanyId) {
+      fetchTickets();
+    } else if (!companyLoading) {
+      setLoading(false);
+    }
+  }, [currentMonth, effectiveCompanyId, companyLoading]);
 
   const fetchTickets = async () => {
+    if (!effectiveCompanyId) return;
+    
     const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
     const end = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
 
     const { data, error } = await supabase
       .from('tickets')
       .select('*, clients(full_name), projects(name)')
+      .eq('company_id', effectiveCompanyId)
       .gte('scheduled_date', start)
       .lte('scheduled_date', end)
       .order('scheduled_time', { ascending: true });

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -70,7 +71,8 @@ import { EstimateDetailSheet } from '@/components/billing/EstimateDetailSheet';
 import { LineItem } from '@/components/billing/InvoiceLineItems';
 
 const ClientBillingPage = () => {
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
+  const { effectiveCompanyId, isPlatformView, isLoading: companyLoading } = useEffectiveCompanyId();
   const queryClient = useQueryClient();
   const [showAddPlan, setShowAddPlan] = useState(false);
   const [showCreateInvoice, setShowCreateInvoice] = useState(false);
@@ -102,20 +104,8 @@ const ClientBillingPage = () => {
     payment_method: 'invoice',
   });
 
-  // Fetch company
-  const { data: company } = useQuery({
-    queryKey: ['user-company-billing', user?.id],
-    queryFn: async () => {
-      if (!user) return null;
-      const { data: membership } = await supabase
-        .from('company_members')
-        .select('company_id')
-        .eq('user_id', user.id)
-        .single();
-      return membership?.company_id || null;
-    },
-    enabled: !!user,
-  });
+  // Use effectiveCompanyId directly
+  const company = effectiveCompanyId;
 
   // Fetch payment plans
   const { data: paymentPlans, isLoading: plansLoading } = useQuery({
