@@ -476,7 +476,7 @@ export default function PlanManagementPage() {
                   {hasDiscount && isDiscountValid && (
                     <Badge className="absolute -top-2 left-4 bg-green-600">
                       <Tag className="h-3 w-3 mr-1" />
-                      {plan.discount_label || `${plan.discount_percent}% OFF`}
+                      {plan.discount_label || (plan.discount_percent && plan.discount_percent > 0 ? `${plan.discount_percent}% OFF` : `$${(plan.discount_fixed_amount || 0) / 100} OFF`)}
                     </Badge>
                   )}
                   <CardHeader>
