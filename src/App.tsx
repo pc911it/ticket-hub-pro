@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { SuperAdminCompanyProvider } from "@/contexts/SuperAdminCompanyContext";
 import { SubscriptionGuard } from "@/components/SubscriptionGuard";
 import { ApprovalGuard } from "@/components/ApprovalGuard";
+import { AIAssistantProvider } from "@/components/ai";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import CompanyRegister from "./pages/CompanyRegister";
@@ -111,6 +112,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <AIAssistantProvider>
           <SuperAdminCompanyProvider>
           <Routes>
             <Route path="/" element={<Index />} />
@@ -548,6 +550,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
           </SuperAdminCompanyProvider>
+          </AIAssistantProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
