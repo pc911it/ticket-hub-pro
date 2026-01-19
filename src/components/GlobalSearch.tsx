@@ -70,112 +70,128 @@ export function GlobalSearch() {
 
       setIsLoading(true);
       const searchResults: SearchResult[] = [];
-      const searchTerm = `%${query.toLowerCase()}%`;
+      const searchTerm = `%${query}%`;
 
       try {
         // Search companies (super admin only)
         if (isSuperAdmin) {
-          const { data: companies } = await supabase
+          const { data: companies, error: companyError } = await supabase
             .from('companies')
             .select('id, name, email')
             .or(`name.ilike.${searchTerm},email.ilike.${searchTerm}`)
+            .is('deleted_at', null)
             .limit(5);
 
-          companies?.forEach(c => {
-            searchResults.push({
-              id: c.id,
-              type: 'company',
-              title: c.name,
-              subtitle: c.email,
-              url: `/admin/dashboard`,
+          if (!companyError && companies) {
+            companies.forEach(c => {
+              searchResults.push({
+                id: c.id,
+                type: 'company',
+                title: c.name,
+                subtitle: c.email,
+                url: `/admin/dashboard`,
+              });
             });
-          });
+          }
         }
 
         // Search users/profiles
-        const { data: profiles } = await supabase
+        const { data: profiles, error: profileError } = await supabase
           .from('profiles')
           .select('id, user_id, full_name, email')
           .or(`full_name.ilike.${searchTerm},email.ilike.${searchTerm}`)
           .limit(5);
 
-        profiles?.forEach(p => {
-          searchResults.push({
-            id: p.id,
-            type: 'user',
-            title: p.full_name || 'Unknown',
-            subtitle: p.email || undefined,
-            url: '/admin/users',
+        if (!profileError && profiles) {
+          profiles.forEach(p => {
+            searchResults.push({
+              id: p.id,
+              type: 'user',
+              title: p.full_name || 'Unknown',
+              subtitle: p.email || undefined,
+              url: '/admin/users',
+            });
           });
-        });
+        }
 
         // Search projects
-        const { data: projects } = await supabase
+        const { data: projects, error: projectError } = await supabase
           .from('projects')
           .select('id, name, description')
           .or(`name.ilike.${searchTerm},description.ilike.${searchTerm}`)
+          .is('deleted_at', null)
           .limit(5);
 
-        projects?.forEach(p => {
-          searchResults.push({
-            id: p.id,
-            type: 'project',
-            title: p.name,
-            subtitle: p.description?.substring(0, 50) || undefined,
-            url: `/admin/projects/${p.id}`,
+        if (!projectError && projects) {
+          projects.forEach(p => {
+            searchResults.push({
+              id: p.id,
+              type: 'project',
+              title: p.name,
+              subtitle: p.description?.substring(0, 50) || undefined,
+              url: `/admin/projects/${p.id}`,
+            });
           });
-        });
+        }
 
         // Search tickets
-        const { data: tickets } = await supabase
+        const { data: tickets, error: ticketError } = await supabase
           .from('tickets')
           .select('id, title, status')
-          .or(`title.ilike.${searchTerm}`)
+          .ilike('title', searchTerm)
+          .is('deleted_at', null)
           .limit(5);
 
-        tickets?.forEach(t => {
-          searchResults.push({
-            id: t.id,
-            type: 'ticket',
-            title: t.title,
-            subtitle: `Status: ${t.status}`,
-            url: '/admin/tickets',
+        if (!ticketError && tickets) {
+          tickets.forEach(t => {
+            searchResults.push({
+              id: t.id,
+              type: 'ticket',
+              title: t.title,
+              subtitle: `Status: ${t.status}`,
+              url: '/admin/tickets',
+            });
           });
-        });
+        }
 
         // Search clients
-        const { data: clients } = await supabase
+        const { data: clients, error: clientError } = await supabase
           .from('clients')
           .select('id, full_name, email')
           .or(`full_name.ilike.${searchTerm},email.ilike.${searchTerm}`)
+          .is('deleted_at', null)
           .limit(5);
 
-        clients?.forEach(c => {
-          searchResults.push({
-            id: c.id,
-            type: 'client',
-            title: c.full_name,
-            subtitle: c.email || undefined,
-            url: '/admin/clients',
+        if (!clientError && clients) {
+          clients.forEach(c => {
+            searchResults.push({
+              id: c.id,
+              type: 'client',
+              title: c.full_name,
+              subtitle: c.email || undefined,
+              url: '/admin/clients',
+            });
           });
-        });
+        }
 
         // Search invoices
-        const { data: invoices } = await supabase
+        const { data: invoices, error: invoiceError } = await supabase
           .from('client_invoices')
           .select('id, invoice_number, amount, status')
           .ilike('invoice_number', searchTerm)
           .limit(5);
 
-        invoices?.forEach(i => {
-          searchResults.push({
-            id: i.id,
-            type: 'invoice',
-            title: `Invoice ${i.invoice_number}`,
-            subtitle: `$${(i.amount / 100).toFixed(2)} - ${i.status}`,
-            url: '/admin/billing',
+        if (!invoiceError && invoices) {
+          invoices.forEach(i => {
+            searchResults.push({
+              id: i.id,
+              type: 'invoice',
+              title: `Invoice ${i.invoice_number}`,
+              subtitle: `$${(i.amount / 100).toFixed(2)} - ${i.status}`,
+              url: '/admin/billing',
+            });
           });
-        });
+        }
 
         setResults(searchResults);
         setSelectedIndex(0);
