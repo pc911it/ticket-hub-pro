@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -71,65 +72,55 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.C
 
 const DispatcherDashboard = () => {
   const { user } = useAuth();
+  const { effectiveCompanyId, isPlatformView, isLoading: companyLoading } = useEffectiveCompanyId();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [recentUpdates, setRecentUpdates] = useState<JobUpdate[]>([]);
   const [activeCalls, setActiveCalls] = useState<ActiveCall[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // Get user's company
-  const { data: userCompany } = useQuery({
-    queryKey: ["user-company-dashboard", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return null;
-      const { data } = await supabase
-        .from("company_members")
-        .select("company_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      return data;
-    },
-    enabled: !!user?.id,
-  });
-
   // Fetch low stock items
   const { data: lowStockItems } = useQuery({
-    queryKey: ["low-stock-dashboard", userCompany?.company_id],
+    queryKey: ["low-stock-dashboard", effectiveCompanyId],
     queryFn: async () => {
-      if (!userCompany?.company_id) return [];
+      if (!effectiveCompanyId) return [];
       const { data, error } = await supabase
         .from("inventory_items")
         .select("id, name, quantity_in_stock, minimum_stock, unit")
-        .eq("company_id", userCompany.company_id)
+        .eq("company_id", effectiveCompanyId)
         .not("minimum_stock", "is", null);
       if (error) throw error;
       return data.filter(item => item.minimum_stock && item.quantity_in_stock <= item.minimum_stock);
     },
-    enabled: !!userCompany?.company_id,
+    enabled: !!effectiveCompanyId,
   });
 
   // Fetch pending purchase orders
   const { data: pendingOrders } = useQuery({
-    queryKey: ["pending-orders-dashboard", userCompany?.company_id],
+    queryKey: ["pending-orders-dashboard", effectiveCompanyId],
     queryFn: async () => {
-      if (!userCompany?.company_id) return [];
+      if (!effectiveCompanyId) return [];
       const { data, error } = await supabase
         .from("purchase_orders")
         .select("id, order_number, supplier, status, total_cost, created_at")
-        .eq("company_id", userCompany.company_id)
+        .eq("company_id", effectiveCompanyId)
         .in("status", ["draft", "submitted", "ordered", "shipped"])
         .order("created_at", { ascending: false })
         .limit(5);
       if (error) throw error;
       return data;
     },
-    enabled: !!userCompany?.company_id,
+    enabled: !!effectiveCompanyId,
   });
 
   useEffect(() => {
-    fetchDashboardData();
-    setupRealtimeSubscriptions();
-  }, []);
+    if (effectiveCompanyId) {
+      fetchDashboardData();
+      setupRealtimeSubscriptions();
+    } else if (!companyLoading) {
+      setLoading(false);
+    }
+  }, [effectiveCompanyId, companyLoading]);
 
   const fetchDashboardData = async () => {
     try {
@@ -282,7 +273,7 @@ const DispatcherDashboard = () => {
       </div>
 
       {/* Live Agent Map */}
-      <LiveAgentMap companyId={userCompany?.company_id || null} />
+      <LiveAgentMap companyId={effectiveCompanyId || null} />
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Agents Panel */}
