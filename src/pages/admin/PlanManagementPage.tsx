@@ -460,8 +460,8 @@ export default function PlanManagementPage() {
           {/* Plans Grid */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {plans.map((plan) => {
-              const hasDiscount = (plan.discount_percent && plan.discount_percent > 0) || 
-                                 (plan.discount_fixed_amount && plan.discount_fixed_amount > 0);
+              const hasDiscount = Boolean((plan.discount_percent && plan.discount_percent > 0) || 
+                                 (plan.discount_fixed_amount && plan.discount_fixed_amount > 0));
               const discountedMonthly = plan.monthly_price * (1 - (plan.discount_percent || 0) / 100) - (plan.discount_fixed_amount || 0);
               const isDiscountValid = !plan.discount_valid_until || new Date(plan.discount_valid_until) > new Date();
               
@@ -554,8 +554,8 @@ export default function PlanManagementPage() {
                 </TableHeader>
                 <TableBody>
                   {plans.map((plan) => {
-                    const hasDiscount = (plan.discount_percent && plan.discount_percent > 0) || 
-                                       (plan.discount_fixed_amount && plan.discount_fixed_amount > 0);
+                    const hasDiscount = Boolean((plan.discount_percent && plan.discount_percent > 0) || 
+                                       (plan.discount_fixed_amount && plan.discount_fixed_amount > 0));
                     const isDiscountValid = !plan.discount_valid_until || new Date(plan.discount_valid_until) > new Date();
                     
                     return (
