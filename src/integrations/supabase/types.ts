@@ -3582,6 +3582,42 @@ export type Database = {
           },
         ]
       }
+      pricing_settings: {
+        Row: {
+          allow_monthly_billing: boolean | null
+          allow_yearly_billing: boolean | null
+          created_at: string
+          default_trial_days: number | null
+          id: string
+          payment_processing_fee_fixed: number | null
+          payment_processing_fee_percent: number | null
+          updated_at: string
+          yearly_discount_percent: number | null
+        }
+        Insert: {
+          allow_monthly_billing?: boolean | null
+          allow_yearly_billing?: boolean | null
+          created_at?: string
+          default_trial_days?: number | null
+          id?: string
+          payment_processing_fee_fixed?: number | null
+          payment_processing_fee_percent?: number | null
+          updated_at?: string
+          yearly_discount_percent?: number | null
+        }
+        Update: {
+          allow_monthly_billing?: boolean | null
+          allow_yearly_billing?: boolean | null
+          created_at?: string
+          default_trial_days?: number | null
+          id?: string
+          payment_processing_fee_fixed?: number | null
+          payment_processing_fee_percent?: number | null
+          updated_at?: string
+          yearly_discount_percent?: number | null
+        }
+        Relationships: []
+      }
       product_catalogs: {
         Row: {
           category: string | null
@@ -5541,6 +5577,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      subscription_plans: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_custom_pricing: boolean | null
+          is_popular: boolean | null
+          monthly_price: number
+          name: string
+          sort_order: number | null
+          trial_days: number | null
+          updated_at: string
+          yearly_price: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id: string
+          is_active?: boolean | null
+          is_custom_pricing?: boolean | null
+          is_popular?: boolean | null
+          monthly_price?: number
+          name: string
+          sort_order?: number | null
+          trial_days?: number | null
+          updated_at?: string
+          yearly_price?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_custom_pricing?: boolean | null
+          is_popular?: boolean | null
+          monthly_price?: number
+          name?: string
+          sort_order?: number | null
+          trial_days?: number | null
+          updated_at?: string
+          yearly_price?: number
+        }
+        Relationships: []
       }
       suppliers: {
         Row: {

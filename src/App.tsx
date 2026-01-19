@@ -62,6 +62,7 @@ import LeadsPage from "./pages/admin/LeadsPage";
 import ChangeOrdersPage from "./pages/admin/ChangeOrdersPage";
 import DailyLogsPage from "./pages/admin/DailyLogsPage";
 import PromoCodesPage from "./pages/admin/PromoCodesPage";
+import PlanManagementPage from "./pages/admin/PlanManagementPage";
 import WorkOrdersPage from "./pages/admin/WorkOrdersPage";
 import PunchListsPage from "./pages/admin/PunchListsPage";
 import InspectionsPage from "./pages/admin/InspectionsPage";
@@ -417,6 +418,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AdminLayout>
                     <CompanyFeaturesPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/plan-management"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <PlanManagementPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }

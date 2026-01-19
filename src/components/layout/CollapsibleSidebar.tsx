@@ -219,6 +219,7 @@ const createNavigationGroups = (hasFeature: (key: string) => boolean, isAdminLev
 
 const superAdminNavigation: NavItem[] = [
   { nameKey: 'sidebar.platformOverview', href: '/admin/super-dashboard', icon: LayoutDashboard },
+  { nameKey: 'sidebar.planManagement', href: '/admin/plan-management', icon: CreditCard },
   { nameKey: 'sidebar.companyFeatures', href: '/admin/company-features', icon: Settings },
   { nameKey: 'sidebar.companyLiveSupport', href: '/admin/company-live-support', icon: Headphones },
   { nameKey: 'sidebar.liveChats', href: '/admin/live-chats', icon: HeadphonesIcon },
