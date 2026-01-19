@@ -9,17 +9,13 @@ export interface SubscriptionPlanData {
   yearly_price: number;
   is_custom_pricing: boolean;
   is_popular: boolean;
-  is_active: boolean;
   trial_days: number;
   sort_order: number;
 }
 
 export interface PricingSettingsData {
-  id: string;
   yearly_discount_percent: number;
   default_trial_days: number;
-  payment_processing_fee_percent: number;
-  payment_processing_fee_fixed: number;
   allow_monthly_billing: boolean;
   allow_yearly_billing: boolean;
 }
@@ -34,7 +30,6 @@ const defaultPlans: SubscriptionPlanData[] = [
     yearly_price: 299000,
     is_custom_pricing: false,
     is_popular: false,
-    is_active: true,
     trial_days: 14,
     sort_order: 1,
   },
@@ -46,7 +41,6 @@ const defaultPlans: SubscriptionPlanData[] = [
     yearly_price: 749000,
     is_custom_pricing: false,
     is_popular: true,
-    is_active: true,
     trial_days: 14,
     sort_order: 2,
   },
@@ -58,31 +52,24 @@ const defaultPlans: SubscriptionPlanData[] = [
     yearly_price: 0,
     is_custom_pricing: true,
     is_popular: false,
-    is_active: true,
     trial_days: 14,
     sort_order: 3,
   },
 ];
 
 const defaultSettings: PricingSettingsData = {
-  id: 'default',
   yearly_discount_percent: 17,
   default_trial_days: 14,
-  payment_processing_fee_percent: 2.9,
-  payment_processing_fee_fixed: 30,
   allow_monthly_billing: true,
   allow_yearly_billing: true,
 };
 
 export function useSubscriptionPlans() {
+  // Use secure RPC function instead of direct table query
   const { data: plans = defaultPlans, isLoading: plansLoading, error: plansError } = useQuery({
     queryKey: ['subscription-plans-public'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('subscription_plans')
-        .select('*')
-        .eq('is_active', true)
-        .order('sort_order');
+      const { data, error } = await supabase.rpc('get_public_subscription_plans');
       
       if (error) {
         console.warn('Failed to fetch subscription plans, using defaults:', error);
@@ -95,21 +82,20 @@ export function useSubscriptionPlans() {
     retry: 1,
   });
 
+  // Use secure RPC function - excludes payment processing fees
   const { data: settings = defaultSettings, isLoading: settingsLoading } = useQuery({
     queryKey: ['pricing-settings-public'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('pricing_settings')
-        .select('*')
-        .limit(1)
-        .single();
+      const { data, error } = await supabase.rpc('get_public_pricing_settings');
       
       if (error) {
         console.warn('Failed to fetch pricing settings, using defaults:', error);
         return defaultSettings;
       }
       
-      return (data as PricingSettingsData) || defaultSettings;
+      // RPC returns array, get first item
+      const result = Array.isArray(data) ? data[0] : data;
+      return (result as PricingSettingsData) || defaultSettings;
     },
     staleTime: 5 * 60 * 1000,
     retry: 1,

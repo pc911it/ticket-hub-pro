@@ -4354,6 +4354,36 @@ export type Database = {
           },
         ]
       }
+      promo_validation_attempts: {
+        Row: {
+          attempted_code: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          is_valid: boolean
+          session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          attempted_code: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          is_valid?: boolean
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          attempted_code?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          is_valid?: boolean
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       punch_list_items: {
         Row: {
           assigned_to: string | null
@@ -6986,6 +7016,15 @@ export type Database = {
         Args: { client_uuid: string }
         Returns: boolean
       }
+      create_verification_code: {
+        Args: {
+          _code: string
+          _expires_at: string
+          _identifier: string
+          _type: string
+        }
+        Returns: string
+      }
       get_agent_locations: {
         Args: { _company_id: string }
         Returns: {
@@ -6996,6 +7035,29 @@ export type Database = {
           is_available: boolean
           is_online: boolean
           last_location_update: string
+        }[]
+      }
+      get_public_pricing_settings: {
+        Args: never
+        Returns: {
+          allow_monthly_billing: boolean
+          allow_yearly_billing: boolean
+          default_trial_days: number
+          yearly_discount_percent: number
+        }[]
+      }
+      get_public_subscription_plans: {
+        Args: never
+        Returns: {
+          description: string
+          id: string
+          is_custom_pricing: boolean
+          is_popular: boolean
+          monthly_price: number
+          name: string
+          sort_order: number
+          trial_days: number
+          yearly_price: number
         }[]
       }
       get_user_company_ids: { Args: { _user_id: string }; Returns: string[] }
@@ -7014,6 +7076,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_promo_usage: {
+        Args: { _promo_code_id: string }
+        Returns: undefined
+      }
       is_company_admin:
         | { Args: { _company_id: string; _user_id: string }; Returns: boolean }
         | { Args: { company_uuid: string }; Returns: boolean }
@@ -7031,8 +7097,36 @@ export type Database = {
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_support_admin: { Args: { _user_id: string }; Returns: boolean }
+      log_promo_validation: {
+        Args: {
+          _code: string
+          _ip_address: string
+          _is_valid: boolean
+          _session_id: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
       purge_old_deleted_items: { Args: never; Returns: undefined }
       reject_company: { Args: { _company_id: string }; Returns: boolean }
+      validate_promo_code: {
+        Args: { _code: string; _plan?: string }
+        Returns: {
+          discount_type: string
+          discount_value: number
+          error_message: string
+          is_valid: boolean
+          promo_code_id: string
+          trial_extension_days: number
+        }[]
+      }
+      verify_code_internal: {
+        Args: { _code: string; _identifier: string; _type: string }
+        Returns: {
+          error_message: string
+          success: boolean
+        }[]
+      }
     }
     Enums: {
       app_role:
