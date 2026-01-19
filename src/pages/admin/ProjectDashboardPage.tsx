@@ -12,6 +12,7 @@ import { ProjectMilestones } from '@/components/ProjectMilestones';
 import { ProjectActivityTimeline } from '@/components/ProjectActivityTimeline';
 import { CompanyPartnerships } from '@/components/CompanyPartnerships';
 import { ProjectGanttChart } from '@/components/ProjectGanttChart';
+import { TicketDetailSheet } from '@/components/TicketDetailSheet';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -27,7 +28,8 @@ import {
   Users,
   FileText,
   GanttChart,
-  Plus
+  Plus,
+  Eye
 } from 'lucide-react';
 import { format, differenceInDays, isAfter, isBefore } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -49,12 +51,19 @@ interface Project {
 interface ProjectTicket {
   id: string;
   title: string;
+  description: string | null;
   status: string | null;
   priority: string | null;
   scheduled_date: string;
   scheduled_time: string;
   duration_minutes: number | null;
+  total_time_minutes: number | null;
+  client_signature_url: string | null;
+  client_approved_at: string | null;
+  call_started_at: string | null;
+  call_ended_at: string | null;
   clients: { full_name: string } | null;
+  projects: { name: string } | null;
   agents: { full_name: string } | null;
 }
 
@@ -72,6 +81,8 @@ const ProjectDashboardPage = () => {
   const [tickets, setTickets] = useState<ProjectTicket[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedTicket, setSelectedTicket] = useState<ProjectTicket | null>(null);
+  const [ticketSheetOpen, setTicketSheetOpen] = useState(false);
 
   useEffect(() => {
     if (projectId) {
@@ -88,7 +99,7 @@ const ProjectDashboardPage = () => {
         .single(),
       supabase
         .from('tickets')
-        .select('id, title, status, priority, scheduled_date, scheduled_time, duration_minutes, clients(full_name), agents:assigned_agent_id(full_name)')
+        .select('id, title, description, status, priority, scheduled_date, scheduled_time, duration_minutes, total_time_minutes, client_signature_url, client_approved_at, call_started_at, call_ended_at, clients(full_name), projects(name), agents:assigned_agent_id(full_name)')
         .eq('project_id', projectId)
         .order('scheduled_date', { ascending: true }),
       supabase
@@ -526,7 +537,11 @@ const ProjectDashboardPage = () => {
                   {tickets.map((ticket) => (
                     <div
                       key={ticket.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
+                      onClick={() => {
+                        setSelectedTicket(ticket);
+                        setTicketSheetOpen(true);
+                      }}
                     >
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{ticket.title}</p>
@@ -555,6 +570,18 @@ const ProjectDashboardPage = () => {
                         >
                           {ticket.status || 'pending'}
                         </Badge>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-7 w-7"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedTicket(ticket);
+                            setTicketSheetOpen(true);
+                          }}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -562,6 +589,34 @@ const ProjectDashboardPage = () => {
               )}
             </CardContent>
           </Card>
+
+          {/* Ticket Detail Sheet */}
+          <TicketDetailSheet
+            ticket={selectedTicket ? {
+              ...selectedTicket,
+              status: selectedTicket.status || 'pending',
+              duration_minutes: selectedTicket.duration_minutes || 60,
+            } : null}
+            open={ticketSheetOpen}
+            onOpenChange={(open) => {
+              setTicketSheetOpen(open);
+              if (!open) setSelectedTicket(null);
+            }}
+            onUpdate={() => {
+              fetchProjectData();
+              // Update the selected ticket if still open
+              if (selectedTicket) {
+                supabase
+                  .from('tickets')
+                  .select('id, title, description, status, priority, scheduled_date, scheduled_time, duration_minutes, total_time_minutes, client_signature_url, client_approved_at, call_started_at, call_ended_at, clients(full_name), projects(name), agents:assigned_agent_id(full_name)')
+                  .eq('id', selectedTicket.id)
+                  .single()
+                  .then(({ data }) => {
+                    if (data) setSelectedTicket(data as ProjectTicket);
+                  });
+              }
+            }}
+          />
         </TabsContent>
       </Tabs>
     </div>
