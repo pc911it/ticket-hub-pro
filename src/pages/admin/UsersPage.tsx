@@ -560,6 +560,9 @@ export default function UsersPage() {
                             {(isSuperAdmin || user.role === "admin") && (
                               <SelectItem value="admin">Admin</SelectItem>
                             )}
+                            {isSuperAdmin && (
+                              <SelectItem value="super_admin">Super Admin</SelectItem>
+                            )}
                           </SelectContent>
                         </Select>
                         {/* Reset password button - visible to super admins and company admins (for non-admin users) */}
