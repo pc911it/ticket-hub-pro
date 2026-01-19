@@ -364,12 +364,12 @@ const TicketsPage = () => {
       }
     }
 
-    // Statuses that require location verification
-    const locationRequiredStatuses = ['on_site', 'working', 'completed'];
+    // Statuses that require location verification (for field workers, not admins)
+    const locationRequiredStatuses = ['on_site', 'working'];
     let location: { lat: number; lng: number } | null = null;
 
-    // Request location for on-site statuses
-    if (locationRequiredStatuses.includes(newStatus)) {
+    // Request location for on-site statuses - but allow admins to skip
+    if (locationRequiredStatuses.includes(newStatus) && !canRollbackStatus) {
       try {
         const position = await new Promise<GeolocationPosition>((resolve, reject) => {
           if (!navigator.geolocation) {
@@ -387,25 +387,17 @@ const TicketsPage = () => {
           lng: position.coords.longitude
         };
       } catch (error) {
-        // For admin users, allow skipping location
-        if (canRollbackStatus) {
-          const proceed = window.confirm(
-            `Location unavailable. As an admin, you can proceed without location verification. Continue?`
-          );
-          if (!proceed) return;
-        } else {
-          toast({ 
-            variant: 'destructive', 
-            title: 'Location Required', 
-            description: `Please enable location services to mark as "${newStatus.replace('_', ' ')}". This verifies you are on site.`
-          });
-          return;
-        }
+        toast({ 
+          variant: 'destructive', 
+          title: 'Location Required', 
+          description: `Please enable location services to mark as "${newStatus.replace('_', ' ')}". This verifies you are on site.`
+        });
+        return;
       }
     }
 
     // Build update object with timestamps
-    const updateData: any = { status: newStatus };
+    const updateData: Record<string, any> = { status: newStatus };
     
     // Set call_started_at when status becomes en_route (first time)
     if (newStatus === 'en_route' && !ticket.call_started_at) {
@@ -429,23 +421,25 @@ const TicketsPage = () => {
       return;
     }
 
+    // Update local state immediately for responsive UI
+    setTickets(prev => prev.map(t => 
+      t.id === ticketId ? { ...t, status: newStatus } : t
+    ));
+
     // Create job_update record to track progress
     if (ticket.assigned_agent_id) {
-      const jobUpdateData: any = {
+      const jobUpdatePayload = {
         ticket_id: ticketId,
         agent_id: ticket.assigned_agent_id,
-        status: newStatus as any,
+        status: newStatus as 'assigned' | 'cancelled' | 'completed' | 'en_route' | 'on_site' | 'working',
         notes: `Status changed to ${newStatus.replace('_', ' ')} by ${canRollbackStatus ? 'admin' : 'staff'}`,
+        location_lat: location?.lat,
+        location_lng: location?.lng,
       };
-
-      if (location) {
-        jobUpdateData.location_lat = location.lat;
-        jobUpdateData.location_lng = location.lng;
-      }
 
       const { error: updateError } = await supabase
         .from('job_updates')
-        .insert(jobUpdateData);
+        .insert([jobUpdatePayload]);
 
       if (updateError) {
         console.error('Job update tracking error:', updateError);
@@ -457,7 +451,6 @@ const TicketsPage = () => {
       title: 'Status Updated', 
       description: `Ticket status changed to ${newStatus.replace('_', ' ')}.${location ? ' Location verified.' : ''}`
     });
-    fetchData();
   };
 
   const handleDelete = async () => {
