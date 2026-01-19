@@ -5582,6 +5582,10 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          discount_fixed_amount: number | null
+          discount_label: string | null
+          discount_percent: number | null
+          discount_valid_until: string | null
           id: string
           is_active: boolean | null
           is_custom_pricing: boolean | null
@@ -5596,6 +5600,10 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          discount_fixed_amount?: number | null
+          discount_label?: string | null
+          discount_percent?: number | null
+          discount_valid_until?: string | null
           id: string
           is_active?: boolean | null
           is_custom_pricing?: boolean | null
@@ -5610,6 +5618,10 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          discount_fixed_amount?: number | null
+          discount_label?: string | null
+          discount_percent?: number | null
+          discount_valid_until?: string | null
           id?: string
           is_active?: boolean | null
           is_custom_pricing?: boolean | null

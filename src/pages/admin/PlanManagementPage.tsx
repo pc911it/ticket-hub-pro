@@ -24,7 +24,9 @@ import {
   Star,
   CreditCard,
   TrendingUp,
-  ShieldAlert
+  ShieldAlert,
+  Tag,
+  Clock
 } from "lucide-react";
 
 interface SubscriptionPlan {
@@ -38,6 +40,10 @@ interface SubscriptionPlan {
   is_active: boolean;
   trial_days: number;
   sort_order: number;
+  discount_percent: number | null;
+  discount_fixed_amount: number | null;
+  discount_label: string | null;
+  discount_valid_until: string | null;
 }
 
 interface PricingSettings {
@@ -172,7 +178,13 @@ export default function PlanManagementPage() {
       is_active: plan?.is_active ?? true,
       trial_days: plan?.trial_days || 14,
       sort_order: plan?.sort_order || 0,
+      discount_percent: plan?.discount_percent || 0,
+      discount_fixed_amount: plan ? (plan.discount_fixed_amount || 0) / 100 : 0,
+      discount_label: plan?.discount_label || '',
+      discount_valid_until: plan?.discount_valid_until ? plan.discount_valid_until.split('T')[0] : '',
     });
+
+    const hasDiscount = formData.discount_percent > 0 || formData.discount_fixed_amount > 0;
 
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
@@ -180,6 +192,9 @@ export default function PlanManagementPage() {
         ...formData,
         monthly_price: Math.round(formData.monthly_price * 100),
         yearly_price: Math.round(formData.yearly_price * 100),
+        discount_fixed_amount: Math.round(formData.discount_fixed_amount * 100),
+        discount_label: formData.discount_label || null,
+        discount_valid_until: formData.discount_valid_until ? new Date(formData.discount_valid_until).toISOString() : null,
       });
     };
 
@@ -267,6 +282,82 @@ export default function PlanManagementPage() {
               onChange={(e) => setFormData(prev => ({ ...prev, sort_order: parseInt(e.target.value) || 0 }))}
             />
           </div>
+        </div>
+
+        {/* Discount Section */}
+        <div className="border rounded-lg p-4 bg-muted/30 space-y-4">
+          <div className="flex items-center gap-2">
+            <Tag className="h-4 w-4 text-green-600" />
+            <Label className="font-semibold">Plan Discount</Label>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="discount_percent">Discount Percentage (%)</Label>
+              <Input
+                id="discount_percent"
+                type="number"
+                min="0"
+                max="100"
+                value={formData.discount_percent}
+                onChange={(e) => setFormData(prev => ({ ...prev, discount_percent: parseInt(e.target.value) || 0 }))}
+                disabled={formData.is_custom_pricing}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="discount_fixed_amount">Fixed Discount ($)</Label>
+              <Input
+                id="discount_fixed_amount"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.discount_fixed_amount}
+                onChange={(e) => setFormData(prev => ({ ...prev, discount_fixed_amount: parseFloat(e.target.value) || 0 }))}
+                disabled={formData.is_custom_pricing}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="discount_label">Discount Label</Label>
+              <Input
+                id="discount_label"
+                value={formData.discount_label}
+                onChange={(e) => setFormData(prev => ({ ...prev, discount_label: e.target.value }))}
+                placeholder="e.g., Summer Sale, Early Bird"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="discount_valid_until">Valid Until</Label>
+              <Input
+                id="discount_valid_until"
+                type="date"
+                value={formData.discount_valid_until}
+                onChange={(e) => setFormData(prev => ({ ...prev, discount_valid_until: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          {hasDiscount && !formData.is_custom_pricing && (
+            <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Original Monthly:</span>
+                <span className="line-through">${formData.monthly_price.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="font-medium">Discounted Monthly:</span>
+                <span className="text-lg font-bold text-green-600">
+                  ${(formData.monthly_price * (1 - formData.discount_percent / 100) - formData.discount_fixed_amount).toFixed(2)}
+                </span>
+              </div>
+              {formData.discount_label && (
+                <Badge className="mt-2 bg-green-100 text-green-700 hover:bg-green-100">
+                  {formData.discount_label}
+                </Badge>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-6">
@@ -368,51 +459,80 @@ export default function PlanManagementPage() {
 
           {/* Plans Grid */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {plans.map((plan) => (
-              <Card key={plan.id} className={`relative ${!plan.is_active ? 'opacity-60' : ''}`}>
-                {plan.is_popular && (
-                  <Badge className="absolute -top-2 -right-2 bg-primary">
-                    <Star className="h-3 w-3 mr-1" />
-                    Popular
-                  </Badge>
-                )}
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      {plan.name}
-                      {!plan.is_active && <Badge variant="secondary">Inactive</Badge>}
-                    </CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setEditingPlan(plan)}
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <CardDescription>{plan.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {plan.is_custom_pricing ? (
-                    <div className="text-2xl font-bold">Custom Pricing</div>
-                  ) : (
-                    <div className="space-y-1">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-bold">${formatPrice(plan.monthly_price)}</span>
-                        <span className="text-muted-foreground">/month</span>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        or ${formatPrice(plan.yearly_price)}/year
-                      </div>
-                    </div>
+            {plans.map((plan) => {
+              const hasDiscount = (plan.discount_percent && plan.discount_percent > 0) || 
+                                 (plan.discount_fixed_amount && plan.discount_fixed_amount > 0);
+              const discountedMonthly = plan.monthly_price * (1 - (plan.discount_percent || 0) / 100) - (plan.discount_fixed_amount || 0);
+              const isDiscountValid = !plan.discount_valid_until || new Date(plan.discount_valid_until) > new Date();
+              
+              return (
+                <Card key={plan.id} className={`relative ${!plan.is_active ? 'opacity-60' : ''}`}>
+                  {plan.is_popular && (
+                    <Badge className="absolute -top-2 -right-2 bg-primary">
+                      <Star className="h-3 w-3 mr-1" />
+                      Popular
+                    </Badge>
                   )}
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    {plan.trial_days} day trial
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  {hasDiscount && isDiscountValid && (
+                    <Badge className="absolute -top-2 left-4 bg-green-600">
+                      <Tag className="h-3 w-3 mr-1" />
+                      {plan.discount_label || `${plan.discount_percent}% OFF`}
+                    </Badge>
+                  )}
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        {plan.name}
+                        {!plan.is_active && <Badge variant="secondary">Inactive</Badge>}
+                      </CardTitle>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditingPlan(plan)}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <CardDescription>{plan.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {plan.is_custom_pricing ? (
+                      <div className="text-2xl font-bold">Custom Pricing</div>
+                    ) : (
+                      <div className="space-y-1">
+                        {hasDiscount && isDiscountValid ? (
+                          <>
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-3xl font-bold text-green-600">${formatPrice(Math.max(0, discountedMonthly))}</span>
+                              <span className="text-lg line-through text-muted-foreground">${formatPrice(plan.monthly_price)}</span>
+                              <span className="text-muted-foreground">/month</span>
+                            </div>
+                            {plan.discount_valid_until && (
+                              <div className="flex items-center gap-1 text-xs text-orange-600">
+                                <Clock className="h-3 w-3" />
+                                Expires {new Date(plan.discount_valid_until).toLocaleDateString()}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-3xl font-bold">${formatPrice(plan.monthly_price)}</span>
+                            <span className="text-muted-foreground">/month</span>
+                          </div>
+                        )}
+                        <div className="text-sm text-muted-foreground">
+                          or ${formatPrice(plan.yearly_price)}/year
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Calendar className="h-4 w-4" />
+                      {plan.trial_days} day trial
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
 
           {/* Plans Table for Quick View */}
@@ -427,16 +547,17 @@ export default function PlanManagementPage() {
                     <TableHead>Plan</TableHead>
                     <TableHead>Monthly</TableHead>
                     <TableHead>Yearly</TableHead>
-                    <TableHead>Yearly Savings</TableHead>
+                    <TableHead>Discount</TableHead>
                     <TableHead>Trial</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {plans.map((plan) => {
-                    const yearlySavings = plan.is_custom_pricing 
-                      ? 0 
-                      : (plan.monthly_price * 12) - plan.yearly_price;
+                    const hasDiscount = (plan.discount_percent && plan.discount_percent > 0) || 
+                                       (plan.discount_fixed_amount && plan.discount_fixed_amount > 0);
+                    const isDiscountValid = !plan.discount_valid_until || new Date(plan.discount_valid_until) > new Date();
+                    
                     return (
                       <TableRow key={plan.id}>
                         <TableCell className="font-medium">
@@ -450,10 +571,14 @@ export default function PlanManagementPage() {
                           {plan.is_custom_pricing ? 'Custom' : `$${formatPrice(plan.yearly_price)}`}
                         </TableCell>
                         <TableCell>
-                          {plan.is_custom_pricing ? '-' : (
-                            <span className="text-green-600">
-                              ${formatPrice(yearlySavings)} ({Math.round((yearlySavings / (plan.monthly_price * 12)) * 100)}%)
-                            </span>
+                          {hasDiscount && isDiscountValid ? (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                              <Tag className="h-3 w-3 mr-1" />
+                              {plan.discount_percent ? `${plan.discount_percent}%` : `$${formatPrice(plan.discount_fixed_amount || 0)}`}
+                              {plan.discount_label && ` (${plan.discount_label})`}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
                           )}
                         </TableCell>
                         <TableCell>{plan.trial_days} days</TableCell>
