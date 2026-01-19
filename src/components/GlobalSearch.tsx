@@ -91,130 +91,197 @@ export function GlobalSearch() {
   const location = useLocation();
   const { isSuperAdmin } = useAuth();
 
-  // Function to search visible page content
+  // Helper function for fuzzy/flexible matching
+  const matchesQuery = useCallback((text: string, searchTerms: string[]): boolean => {
+    const lowerText = text.toLowerCase();
+    // Match if ALL terms are found anywhere in the text (allows flexible word order)
+    return searchTerms.every(term => lowerText.includes(term));
+  }, []);
+
+  // Function to get match score for ranking
+  const getMatchScore = useCallback((text: string, searchTerms: string[], originalQuery: string): number => {
+    const lowerText = text.toLowerCase();
+    let score = 0;
+    
+    // Exact match gets highest score
+    if (lowerText.includes(originalQuery.toLowerCase())) {
+      score += 100;
+    }
+    
+    // Starting with query gets high score
+    if (lowerText.startsWith(originalQuery.toLowerCase())) {
+      score += 50;
+    }
+    
+    // Each term found adds to score
+    searchTerms.forEach(term => {
+      if (lowerText.includes(term)) {
+        score += 10;
+        // Bonus if word starts with term
+        if (lowerText.split(/\s+/).some(word => word.startsWith(term))) {
+          score += 5;
+        }
+      }
+    });
+    
+    // Shorter matches are often more relevant
+    score -= Math.min(text.length / 10, 20);
+    
+    return score;
+  }, []);
+
+  // Function to search visible page content - comprehensive search
   const searchPageContent = useCallback((searchQuery: string): SearchResult[] => {
-    const lowerQuery = searchQuery.toLowerCase();
+    const lowerQuery = searchQuery.toLowerCase().trim();
+    const searchTerms = lowerQuery.split(/\s+/).filter(term => term.length > 0);
     const pageResults: SearchResult[] = [];
     const seenTexts = new Set<string>();
     
-    // Search table rows
+    // Helper to add result with deduplication
+    const addResult = (id: string, type: SearchResult['type'], title: string, subtitle: string, element: Element, key: string) => {
+      if (!seenTexts.has(key) && title.length > 1) {
+        seenTexts.add(key);
+        pageResults.push({
+          id,
+          type,
+          title: title.substring(0, 80),
+          subtitle,
+          url: location.pathname,
+          element,
+          score: getMatchScore(title + ' ' + subtitle, searchTerms, lowerQuery),
+        } as SearchResult & { score: number });
+      }
+    };
+
+    // Search ALL visible text nodes on the page
+    const walker = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: (node) => {
+          const parent = node.parentElement;
+          if (!parent) return NodeFilter.FILTER_REJECT;
+          
+          // Skip hidden elements, scripts, styles
+          const style = window.getComputedStyle(parent);
+          if (style.display === 'none' || style.visibility === 'hidden') {
+            return NodeFilter.FILTER_REJECT;
+          }
+          if (['SCRIPT', 'STYLE', 'NOSCRIPT', 'META', 'LINK'].includes(parent.tagName)) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          
+          const text = node.textContent?.trim() || '';
+          if (text.length < 2 || text.length > 200) return NodeFilter.FILTER_REJECT;
+          
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      }
+    );
+
+    let textNode;
+    while ((textNode = walker.nextNode())) {
+      const text = textNode.textContent?.trim() || '';
+      if (matchesQuery(text, searchTerms)) {
+        const parent = textNode.parentElement!;
+        const tagName = parent.tagName.toLowerCase();
+        
+        // Determine type based on element
+        let type: SearchResult['type'] = 'text';
+        let subtitle = 'Text match';
+        
+        if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tagName)) {
+          type = 'page-content';
+          subtitle = 'Heading';
+        } else if (tagName === 'button' || parent.getAttribute('role') === 'button') {
+          type = 'text';
+          subtitle = 'Button';
+        } else if (tagName === 'a') {
+          type = 'text';
+          subtitle = 'Link';
+        } else if (tagName === 'label') {
+          type = 'text';
+          subtitle = 'Label';
+        } else if (parent.classList.toString().includes('badge') || parent.classList.toString().includes('Badge')) {
+          type = 'text';
+          subtitle = 'Badge';
+        }
+        
+        const key = `text-${text.substring(0, 50)}`;
+        addResult(`text-${seenTexts.size}`, type, text, subtitle, parent, key);
+      }
+    }
+
+    // Search table rows (comprehensive)
     const tableRows = document.querySelectorAll('table tbody tr');
     tableRows.forEach((row, index) => {
-      const rowText = row.textContent?.toLowerCase() || '';
-      if (rowText.includes(lowerQuery)) {
+      const rowText = row.textContent || '';
+      if (matchesQuery(rowText, searchTerms)) {
         const cells = row.querySelectorAll('td');
-        const firstCell = cells[0]?.textContent?.trim() || '';
-        const secondCell = cells[1]?.textContent?.trim() || '';
-        const title = firstCell || `Row ${index + 1}`;
-        const key = `table-${title}-${index}`;
-        
-        if (!seenTexts.has(key)) {
-          seenTexts.add(key);
-          pageResults.push({
-            id: `table-row-${index}`,
-            type: 'table-row',
-            title: title.substring(0, 60),
-            subtitle: secondCell ? secondCell.substring(0, 80) : 'Table row match',
-            url: location.pathname,
-            element: row as Element,
-          });
-        }
+        const cellTexts = Array.from(cells).map(c => c.textContent?.trim()).filter(Boolean);
+        const title = cellTexts[0] || `Row ${index + 1}`;
+        const subtitle = cellTexts.slice(1).join(' • ').substring(0, 80) || 'Table row';
+        const key = `table-${index}-${title.substring(0, 20)}`;
+        addResult(`table-row-${index}`, 'table-row', title, subtitle, row as Element, key);
       }
     });
 
-    // Search cards
+    // Search cards (comprehensive)
     const cards = document.querySelectorAll('[class*="card"], [class*="Card"]');
     cards.forEach((card, index) => {
-      const cardText = card.textContent?.toLowerCase() || '';
-      if (cardText.includes(lowerQuery)) {
+      const cardText = card.textContent || '';
+      if (matchesQuery(cardText, searchTerms)) {
         const heading = card.querySelector('h1, h2, h3, h4, h5, h6, [class*="title"], [class*="Title"]');
-        const title = heading?.textContent?.trim() || card.textContent?.trim().substring(0, 40) || `Card ${index + 1}`;
-        const key = `card-${title}`;
-        
-        if (!seenTexts.has(key) && title.length > 2) {
-          seenTexts.add(key);
-          pageResults.push({
-            id: `card-${index}`,
-            type: 'card',
-            title: title.substring(0, 60),
-            subtitle: 'Card content match',
-            url: location.pathname,
-            element: card as Element,
-          });
-        }
+        const title = heading?.textContent?.trim() || cardText.trim().substring(0, 50);
+        const key = `card-${title.substring(0, 30)}`;
+        addResult(`card-${index}`, 'card', title, 'Card content', card as Element, key);
       }
     });
 
-    // Search headings and important text
-    const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
-    headings.forEach((heading, index) => {
-      const headingText = heading.textContent?.toLowerCase() || '';
-      if (headingText.includes(lowerQuery)) {
-        const title = heading.textContent?.trim() || '';
-        const key = `heading-${title}`;
-        
-        if (!seenTexts.has(key) && title.length > 2) {
-          seenTexts.add(key);
-          pageResults.push({
-            id: `heading-${index}`,
-            type: 'page-content',
-            title: title.substring(0, 60),
-            subtitle: `Heading on this page`,
-            url: location.pathname,
-            element: heading as Element,
-          });
-        }
+    // Search list items
+    const listItems = document.querySelectorAll('li, [role="listitem"], [role="option"]');
+    listItems.forEach((item, index) => {
+      const itemText = item.textContent || '';
+      if (matchesQuery(itemText, searchTerms) && itemText.length < 150) {
+        const title = itemText.trim().substring(0, 80);
+        const key = `list-${title.substring(0, 30)}`;
+        addResult(`list-${index}`, 'text', title, 'List item', item as Element, key);
       }
     });
 
-    // Search buttons and links with text
-    const clickables = document.querySelectorAll('button, a, [role="button"]');
-    clickables.forEach((el, index) => {
-      const elText = el.textContent?.toLowerCase() || '';
-      if (elText.includes(lowerQuery) && elText.length > 2 && elText.length < 100) {
-        const title = el.textContent?.trim() || '';
-        const key = `clickable-${title}`;
-        
-        if (!seenTexts.has(key)) {
-          seenTexts.add(key);
-          pageResults.push({
-            id: `clickable-${index}`,
-            type: 'text',
-            title: title.substring(0, 60),
-            subtitle: 'Button/Link on this page',
-            url: location.pathname,
-            element: el as Element,
-          });
-        }
-      }
-    });
-
-    // Search labels, badges, and other text elements
-    const textElements = document.querySelectorAll('label, span, p, [class*="badge"], [class*="Badge"]');
-    textElements.forEach((el, index) => {
-      const elText = el.textContent?.toLowerCase() || '';
-      const directText = el.childNodes.length === 1 && el.childNodes[0].nodeType === Node.TEXT_NODE;
+    // Search input placeholders and values
+    const inputs = document.querySelectorAll('input, textarea, select');
+    inputs.forEach((input, index) => {
+      const el = input as HTMLInputElement;
+      const placeholder = el.placeholder || '';
+      const value = el.value || '';
+      const label = document.querySelector(`label[for="${el.id}"]`)?.textContent || '';
+      const combined = `${label} ${placeholder} ${value}`;
       
-      if (elText.includes(lowerQuery) && directText && elText.length > 2 && elText.length < 100) {
-        const title = el.textContent?.trim() || '';
-        const key = `text-${title}`;
-        
-        if (!seenTexts.has(key)) {
-          seenTexts.add(key);
-          pageResults.push({
-            id: `text-${index}`,
-            type: 'text',
-            title: title.substring(0, 60),
-            subtitle: 'Text on this page',
-            url: location.pathname,
-            element: el as Element,
-          });
-        }
+      if (matchesQuery(combined, searchTerms)) {
+        const title = label || placeholder || `Input field`;
+        const key = `input-${title.substring(0, 30)}`;
+        addResult(`input-${index}`, 'text', title, 'Form field', input as Element, key);
       }
     });
 
-    return pageResults.slice(0, 10);
-  }, [location.pathname]);
+    // Search data attributes that might contain searchable content
+    const dataElements = document.querySelectorAll('[data-label], [data-name], [data-title], [aria-label]');
+    dataElements.forEach((el, index) => {
+      const dataLabel = el.getAttribute('data-label') || el.getAttribute('data-name') || 
+                        el.getAttribute('data-title') || el.getAttribute('aria-label') || '';
+      if (matchesQuery(dataLabel, searchTerms)) {
+        const key = `data-${dataLabel.substring(0, 30)}`;
+        addResult(`data-${index}`, 'text', dataLabel, 'Element', el as Element, key);
+      }
+    });
+
+    // Sort by match score and return top results
+    return (pageResults as (SearchResult & { score: number })[])
+      .sort((a, b) => (b.score || 0) - (a.score || 0))
+      .slice(0, 20)
+      .map(({ score, ...result }) => result);
+  }, [location.pathname, matchesQuery, getMatchScore]);
 
   // Keyboard shortcut to open search
   useEffect(() => {
@@ -257,12 +324,12 @@ export function GlobalSearch() {
       const pageContentResults = searchPageContent(query);
       searchResults.push(...pageContentResults);
 
-      // Search pages/navigation (instant, no DB call)
-      const matchingPages = PAGES.filter(
-        page => 
-          page.title.toLowerCase().includes(lowerQuery) ||
-          page.subtitle?.toLowerCase().includes(lowerQuery)
-      ).slice(0, 5);
+      // Search pages/navigation with flexible matching (instant, no DB call)
+      const searchTerms = lowerQuery.split(/\s+/).filter(term => term.length > 0);
+      const matchingPages = PAGES.filter(page => {
+        const pageText = `${page.title} ${page.subtitle || ''}`.toLowerCase();
+        return searchTerms.every(term => pageText.includes(term));
+      }).slice(0, 5);
       searchResults.push(...matchingPages);
 
       try {
@@ -511,7 +578,7 @@ export function GlobalSearch() {
               <Search className="h-4 w-4 text-muted-foreground" />
               <Input
                 ref={inputRef}
-                placeholder="Search companies, users, projects, tickets..."
+                placeholder="Search everything... (try multiple words)"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
