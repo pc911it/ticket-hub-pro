@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Building2, Mail, Phone, MapPin, User, DollarSign, Percent, Calendar, Loader2, Gift, Shield, Sparkles, CreditCard, Clock } from "lucide-react";
+import { useSubscriptionPlans } from "@/hooks/useSubscriptionPlans";
 
 interface CreateCompanyDialogProps {
   open: boolean;
@@ -30,7 +31,8 @@ const COMPANY_TYPES = [
   { value: 'other', label: 'Other' },
 ];
 
-const SUBSCRIPTION_PLANS = [
+// Default fallback plans (used while loading from database)
+const DEFAULT_SUBSCRIPTION_PLANS = [
   { value: 'professional', label: 'Professional', monthlyPrice: 349, yearlyPrice: 2990, description: 'Growing teams ready to scale' },
   { value: 'advanced', label: 'Advanced', monthlyPrice: 899, yearlyPrice: 7490, description: 'High-volume organizations', popular: true },
   { value: 'enterprise', label: 'Enterprise', monthlyPrice: 0, yearlyPrice: 0, description: 'Custom pricing for large operations', isCustom: true },
@@ -38,6 +40,24 @@ const SUBSCRIPTION_PLANS = [
 
 export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCompanyDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Fetch dynamic plans from database
+  const { plans: dbPlans, isLoading: plansLoading } = useSubscriptionPlans();
+  
+  // Map database plans to component format
+  const SUBSCRIPTION_PLANS = useMemo(() => {
+    if (!dbPlans || dbPlans.length === 0) return DEFAULT_SUBSCRIPTION_PLANS;
+    
+    return dbPlans.map(plan => ({
+      value: plan.id,
+      label: plan.name,
+      monthlyPrice: plan.monthly_price / 100, // Convert cents to dollars
+      yearlyPrice: plan.yearly_price / 100,
+      description: plan.description || '',
+      popular: plan.is_popular,
+      isCustom: plan.is_custom_pricing,
+    }));
+  }, [dbPlans]);
   
   // Company Details
   const [companyName, setCompanyName] = useState("");
