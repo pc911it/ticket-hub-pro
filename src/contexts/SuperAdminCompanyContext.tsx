@@ -97,8 +97,19 @@ export const SuperAdminCompanyProvider = ({ children }: { children: ReactNode })
 
 export const useSuperAdminCompany = () => {
   const context = useContext(SuperAdminCompanyContext);
+  
+  // Return safe defaults if used outside provider (prevents React hook ordering issues)
   if (context === undefined) {
-    throw new Error('useSuperAdminCompany must be used within a SuperAdminCompanyProvider');
+    return {
+      companies: [],
+      selectedCompanyId: null,
+      selectedCompany: null,
+      setSelectedCompanyId: () => {},
+      isLoading: true,
+      isViewingAsCompany: false,
+      clearSelection: () => {},
+    };
   }
+  
   return context;
 };
