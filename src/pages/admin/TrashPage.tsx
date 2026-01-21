@@ -300,10 +300,32 @@ const TrashPage = () => {
 
   const totalDeletedItems = deletedProjects.length + deletedTickets.length + deletedClients.length + deletedInventory.length + deletedSuppliers.length + (isBoatCompany ? deletedVessels.length : 0) + deletedServiceTypes.length;
 
-  if (loading) {
+  if (companyLoading || loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (isPlatformView) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div>
+          <h1 className="text-3xl font-display font-bold text-foreground flex items-center gap-3">
+            <Trash2 className="h-8 w-8" />
+            Trash
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Deleted items are kept for 30 days before being permanently removed.
+          </p>
+        </div>
+        <Card className="border-0 shadow-md">
+          <CardContent className="py-12 text-center">
+            <AlertTriangle className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground">Please select a company to view its trash.</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
