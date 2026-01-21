@@ -622,9 +622,17 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount, liveCh
           )}>
             {!collapsed && (
               <div className="flex items-center gap-2 px-2 py-2 mb-2">
-                <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-medium shrink-0">
-                  {(companyData?.name || user?.email)?.charAt(0).toUpperCase()}
-                </div>
+                {companyData?.logo_url ? (
+                  <img 
+                    src={companyData.logo_url} 
+                    alt={companyData.name || 'Company'} 
+                    className="w-8 h-8 rounded-full object-cover shrink-0"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-medium shrink-0">
+                    {(companyData?.name || user?.email)?.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium truncate">{companyData?.name || user?.email}</p>
                   <div className="flex gap-1 mt-0.5">
