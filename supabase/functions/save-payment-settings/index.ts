@@ -123,38 +123,33 @@ serve(async (req) => {
       throw new Error("Missing required fields: company_id and provider");
     }
 
-    // Verify user is a member of this company with admin role
-    const { data: membership, error: memberError } = await supabaseClient
-      .from("company_members")
+    // SECURITY: Only company OWNERS or super admins can manage payment settings
+    // This is more restrictive than regular admin access for sensitive payment credentials
+    
+    // First check if user is super admin
+    const { data: userRole } = await supabaseClient
+      .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
-      .eq("company_id", company_id)
-      .single();
+      .eq("role", "super_admin")
+      .maybeSingle();
 
-    if (memberError || !membership) {
-      throw new Error("User is not a member of this company");
-    }
+    const isSuperAdmin = !!userRole;
 
-    if (membership.role !== "admin") {
-      // Check if user is company owner
+    if (!isSuperAdmin) {
+      // Check if user is the company OWNER (not just admin)
       const { data: company, error: companyError } = await supabaseClient
         .from("companies")
         .select("owner_id")
         .eq("id", company_id)
         .single();
 
-      if (companyError || company?.owner_id !== user.id) {
-        // Check if user is super admin
-        const { data: userRole, error: roleError } = await supabaseClient
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id)
-          .eq("role", "super_admin")
-          .maybeSingle();
+      if (companyError || !company) {
+        throw new Error("Company not found");
+      }
 
-        if (roleError || !userRole) {
-          throw new Error("Only company admins, owners, or super admins can update payment settings");
-        }
+      if (company.owner_id !== user.id) {
+        throw new Error("Only company owners or super admins can manage payment settings. Contact your company owner.");
       }
     }
 
