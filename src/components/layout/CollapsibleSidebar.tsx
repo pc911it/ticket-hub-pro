@@ -102,9 +102,10 @@ const createNavigationGroups = (hasFeature: (key: string) => boolean, isAdminLev
         { nameKey: 'sidebar.dashboard', href: '/admin', icon: LayoutDashboard },
         { nameKey: 'sidebar.dispatcher', href: '/admin/dispatcher', icon: Radio },
         { nameKey: 'sidebar.newCall', href: '/admin/new-call', icon: Plus },
-        { nameKey: 'sidebar.calendar', href: '/admin/calendar', icon: Calendar },
         { nameKey: 'sidebar.notifications', href: '/admin/notifications', icon: Bell },
         { nameKey: 'sidebar.updates', href: '/admin/updates', icon: LayoutDashboard },
+        { nameKey: 'sidebar.workOrders', href: '/admin/work-orders', icon: Hammer, featureKey: 'work_orders' },
+        { nameKey: 'sidebar.chatTickets', href: '/admin/chat-tickets', icon: MessageSquare },
       ]
     },
     {
@@ -113,6 +114,7 @@ const createNavigationGroups = (hasFeature: (key: string) => boolean, isAdminLev
       items: [
         { nameKey: 'sidebar.employees', href: '/admin/employees', icon: UserCircle },
         { nameKey: 'sidebar.timeReports', href: '/admin/time-reports', icon: Clock },
+        { nameKey: 'sidebar.calendar', href: '/admin/calendar', icon: Calendar },
       ]
     },
     {
@@ -131,35 +133,21 @@ const createNavigationGroups = (hasFeature: (key: string) => boolean, isAdminLev
       icon: Building2,
       items: [
         { nameKey: 'sidebar.projects', href: '/admin/projects', icon: Building2, featureKey: 'project_management' },
+        { nameKey: 'sidebar.tickets', href: '/admin/tickets', icon: Ticket },
         { nameKey: 'sidebar.changeOrders', href: '/admin/change-orders', icon: FileSignature, featureKey: 'change_orders' },
         { nameKey: 'sidebar.rfis', href: '/admin/rfis', icon: FileQuestion, featureKey: 'rfi_management' },
         { nameKey: 'sidebar.submittals', href: '/admin/submittals', icon: ClipboardList, featureKey: 'submittal_management' },
         { nameKey: 'sidebar.permits', href: '/admin/permits', icon: FileCheck, featureKey: 'permit_tracking' },
         { nameKey: 'sidebar.dailyLogs', href: '/admin/daily-logs', icon: NotebookPen, featureKey: 'daily_logs' },
-        { nameKey: 'sidebar.workOrders', href: '/admin/work-orders', icon: Hammer, featureKey: 'work_orders' },
         { nameKey: 'sidebar.punchLists', href: '/admin/punch-lists', icon: ClipboardCheck, featureKey: 'punch_lists' },
         { nameKey: 'sidebar.inspections', href: '/admin/inspections', icon: ClipboardCheck, featureKey: 'inspections' },
         { nameKey: 'sidebar.floorPlans3d', href: '/admin/floor-plans', icon: Box, featureKey: 'floor_plans_3d' },
         { nameKey: 'sidebar.plans', href: '/admin/plans', icon: FileText },
-      ]
-    },
-    {
-      nameKey: 'sidebar.financial',
-      icon: Wallet,
-      items: [
-        ...(isAdminLevel ? [{ nameKey: 'sidebar.clientBilling', href: '/admin/client-billing', icon: DollarSign }] : []),
-        { nameKey: 'sidebar.budgeting', href: '/admin/budgeting', icon: Calculator, featureKey: 'basic_budgeting' },
-        { nameKey: 'sidebar.costCalculator', href: '/admin/cost-calculator', icon: Calculator, featureKey: 'cost_estimating' },
-      ]
-    },
-    {
-      nameKey: 'sidebar.resources',
-      icon: Package,
-      items: [
+        { nameKey: 'sidebar.subcontractors', href: '/admin/subcontractors', icon: HardHat, featureKey: 'subcontractor_matching' },
         { nameKey: 'sidebar.inventory', href: '/admin/inventory', icon: Package, featureKey: 'inventory_management' },
         { nameKey: 'sidebar.equipment', href: '/admin/equipment', icon: Truck, featureKey: 'equipment_tracking' },
-        { nameKey: 'sidebar.subcontractors', href: '/admin/subcontractors', icon: HardHat, featureKey: 'subcontractor_matching' },
-        { nameKey: 'sidebar.productLibrary', href: '/admin/product-library', icon: Library, featureKey: 'product_library' },
+        { nameKey: 'sidebar.warranties', href: '/admin/warranties', icon: Shield, featureKey: 'warranties' },
+        { nameKey: 'sidebar.costCalculator', href: '/admin/cost-calculator', icon: Calculator, featureKey: 'cost_estimating' },
       ]
     },
     {
@@ -168,6 +156,15 @@ const createNavigationGroups = (hasFeature: (key: string) => boolean, isAdminLev
       items: [
         { nameKey: 'sidebar.selections', href: '/admin/selections', icon: Palette, featureKey: 'selections_allowances' },
         { nameKey: 'sidebar.moodBoards', href: '/admin/mood-boards', icon: Shapes, featureKey: 'mood_boards' },
+        { nameKey: 'sidebar.productLibrary', href: '/admin/product-library', icon: Library, featureKey: 'product_library' },
+      ]
+    },
+    {
+      nameKey: 'sidebar.financial',
+      icon: Wallet,
+      items: [
+        ...(isAdminLevel ? [{ nameKey: 'sidebar.clientBilling', href: '/admin/client-billing', icon: DollarSign }] : []),
+        { nameKey: 'sidebar.budgeting', href: '/admin/budgeting', icon: Calculator, featureKey: 'basic_budgeting' },
       ]
     },
     {
@@ -181,10 +178,7 @@ const createNavigationGroups = (hasFeature: (key: string) => boolean, isAdminLev
       nameKey: 'sidebar.support',
       icon: Headphones,
       items: [
-        { nameKey: 'sidebar.tickets', href: '/admin/tickets', icon: Ticket },
-        { nameKey: 'sidebar.chatTickets', href: '/admin/chat-tickets', icon: MessageSquare },
         { nameKey: 'sidebar.support', href: '/admin/support', icon: HeadphonesIcon },
-        { nameKey: 'sidebar.warranties', href: '/admin/warranties', icon: Shield, featureKey: 'warranties' },
       ]
     },
     {
