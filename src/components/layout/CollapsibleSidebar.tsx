@@ -102,6 +102,7 @@ const createNavigationGroups = (hasFeature: (key: string) => boolean, isAdminLev
         { nameKey: 'sidebar.dashboard', href: '/admin', icon: LayoutDashboard },
         { nameKey: 'sidebar.dispatcher', href: '/admin/dispatcher', icon: Radio },
         { nameKey: 'sidebar.newCall', href: '/admin/new-call', icon: Plus },
+        { nameKey: 'sidebar.calendar', href: '/admin/calendar', icon: Calendar },
         { nameKey: 'sidebar.notifications', href: '/admin/notifications', icon: Bell },
         { nameKey: 'sidebar.updates', href: '/admin/updates', icon: LayoutDashboard },
         { nameKey: 'sidebar.workOrders', href: '/admin/work-orders', icon: Hammer, featureKey: 'work_orders' },
@@ -114,7 +115,6 @@ const createNavigationGroups = (hasFeature: (key: string) => boolean, isAdminLev
       items: [
         { nameKey: 'sidebar.employees', href: '/admin/employees', icon: UserCircle },
         { nameKey: 'sidebar.timeReports', href: '/admin/time-reports', icon: Clock },
-        { nameKey: 'sidebar.calendar', href: '/admin/calendar', icon: Calendar },
       ]
     },
     {
@@ -122,7 +122,6 @@ const createNavigationGroups = (hasFeature: (key: string) => boolean, isAdminLev
       icon: TrendingUp,
       items: [
         { nameKey: 'sidebar.leads', href: '/admin/leads', icon: UserPlus, featureKey: 'leads_management' },
-        { nameKey: 'sidebar.clients', href: '/admin/clients', icon: Users },
         { nameKey: 'sidebar.bids', href: '/admin/bids', icon: Gavel, featureKey: 'bid_management' },
         { nameKey: 'sidebar.contracts', href: '/admin/contracts', icon: FileSignature, featureKey: 'contracts_esign' },
         { nameKey: 'sidebar.followUps', href: '/admin/follow-ups', icon: BellRing, featureKey: 'follow_ups' },
@@ -133,7 +132,9 @@ const createNavigationGroups = (hasFeature: (key: string) => boolean, isAdminLev
       icon: Building2,
       items: [
         { nameKey: 'sidebar.projects', href: '/admin/projects', icon: Building2, featureKey: 'project_management' },
+        { nameKey: 'sidebar.clients', href: '/admin/clients', icon: Users },
         { nameKey: 'sidebar.tickets', href: '/admin/tickets', icon: Ticket },
+        ...(isAdminLevel ? [{ nameKey: 'sidebar.clientBilling', href: '/admin/client-billing', icon: DollarSign }] : []),
         { nameKey: 'sidebar.changeOrders', href: '/admin/change-orders', icon: FileSignature, featureKey: 'change_orders' },
         { nameKey: 'sidebar.rfis', href: '/admin/rfis', icon: FileQuestion, featureKey: 'rfi_management' },
         { nameKey: 'sidebar.submittals', href: '/admin/submittals', icon: ClipboardList, featureKey: 'submittal_management' },
@@ -163,7 +164,6 @@ const createNavigationGroups = (hasFeature: (key: string) => boolean, isAdminLev
       nameKey: 'sidebar.financial',
       icon: Wallet,
       items: [
-        ...(isAdminLevel ? [{ nameKey: 'sidebar.clientBilling', href: '/admin/client-billing', icon: DollarSign }] : []),
         { nameKey: 'sidebar.budgeting', href: '/admin/budgeting', icon: Calculator, featureKey: 'basic_budgeting' },
       ]
     },
