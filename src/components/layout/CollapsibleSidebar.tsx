@@ -623,10 +623,10 @@ export const CollapsibleSidebar = ({ isOpen, onClose, supportUnreadCount, liveCh
             {!collapsed && (
               <div className="flex items-center gap-2 px-2 py-2 mb-2">
                 <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-medium shrink-0">
-                  {user?.email?.charAt(0).toUpperCase()}
+                  {(companyData?.name || user?.email)?.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium truncate">{user?.email}</p>
+                  <p className="text-xs font-medium truncate">{companyData?.name || user?.email}</p>
                   <div className="flex gap-1 mt-0.5">
                     {isSuperAdmin && (
                       <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 bg-primary/10 text-primary border-primary/30">
