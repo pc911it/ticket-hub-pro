@@ -282,9 +282,11 @@ serve(async (req) => {
         }
       }
 
-      // Create agent record if requested (for employees)
-      console.log(`Checking agent creation: createAgent=${createAgent}, role=${role}`);
-      if (createAgent && role === "staff") {
+      // Create agent record for staff - ALWAYS create for staff role (createAgent defaults to true for staff)
+      const shouldCreateAgent = createAgent === true || (createAgent !== false && role === "staff");
+      console.log(`Checking agent creation: createAgent=${createAgent}, role=${role}, shouldCreateAgent=${shouldCreateAgent}`);
+      
+      if (shouldCreateAgent && role === "staff") {
         console.log(`Creating agent record for user ${userId} in company ${targetCompanyId}`);
         const { error: agentError } = await adminClient
           .from("agents")
@@ -302,7 +304,7 @@ serve(async (req) => {
           console.log(`Agent record created for user: ${userId}`);
         }
       } else {
-        console.log(`Skipping agent creation: createAgent=${createAgent}, role=${role}`);
+        console.log(`Skipping agent creation: shouldCreateAgent=${shouldCreateAgent}, role=${role}`);
       }
     } else {
       console.log(`User created without company membership (super admin creating for new company)`);
