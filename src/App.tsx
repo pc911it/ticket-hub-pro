@@ -8,6 +8,7 @@ import { SuperAdminCompanyProvider } from "@/contexts/SuperAdminCompanyContext";
 import { FloatingWidgetsProvider } from "@/contexts/FloatingWidgetsContext";
 import { SubscriptionGuard } from "@/components/SubscriptionGuard";
 import { ApprovalGuard } from "@/components/ApprovalGuard";
+import { EmployeeRouteGuard } from "@/components/EmployeeRouteGuard";
 import { AIAssistantProvider } from "@/components/ai";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -102,12 +103,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return (
     <SubscriptionGuard>
       <ApprovalGuard>
-        {children}
+        <EmployeeRouteGuard>
+          {children}
+        </EmployeeRouteGuard>
       </ApprovalGuard>
     </SubscriptionGuard>
   );
 };
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <FloatingWidgetsProvider>

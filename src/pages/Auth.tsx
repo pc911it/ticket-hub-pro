@@ -50,6 +50,19 @@ const Auth = () => {
     const checkUserRoleAndRedirect = async () => {
       if (!user) return;
       
+      // First check if user is super_admin or support_admin
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (roleData?.role === "super_admin" || roleData?.role === "support_admin") {
+        navigate('/admin');
+        return;
+      }
+      
+      // Then check company membership role
       const { data: memberData } = await supabase
         .from("company_members")
         .select("role")
@@ -58,7 +71,11 @@ const Auth = () => {
       
       if (memberData?.role === "client") {
         navigate('/client');
+      } else if (memberData?.role === "staff" || memberData?.role === "user") {
+        // Employees go to the employee portal
+        navigate('/employee');
       } else {
+        // Admins, dispatchers, owners go to admin
         navigate('/admin');
       }
     };
