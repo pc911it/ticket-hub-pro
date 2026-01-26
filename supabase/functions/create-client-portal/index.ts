@@ -187,6 +187,24 @@ serve(async (req: Request): Promise<Response> => {
           });
       }
 
+      // Ensure company_members entry exists for client
+      const { data: existingMember } = await supabaseAdmin
+        .from("company_members")
+        .select("id")
+        .eq("user_id", existingUserId)
+        .eq("company_id", client.company_id)
+        .maybeSingle();
+
+      if (!existingMember) {
+        await supabaseAdmin
+          .from("company_members")
+          .insert({
+            user_id: existingUserId,
+            company_id: client.company_id,
+            role: "client",
+          });
+      }
+
       // Update client record
       await supabaseAdmin
         .from("clients")
@@ -250,6 +268,15 @@ serve(async (req: Request): Promise<Response> => {
       .from("user_roles")
       .insert({
         user_id: newUser.user.id,
+        role: "client",
+      });
+
+    // Add to company_members with client role
+    await supabaseAdmin
+      .from("company_members")
+      .insert({
+        user_id: newUser.user.id,
+        company_id: client.company_id,
         role: "client",
       });
 

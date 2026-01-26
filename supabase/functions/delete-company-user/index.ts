@@ -100,6 +100,17 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Remove from agents table first (if exists)
+    const { error: agentError } = await adminClient
+      .from("agents")
+      .delete()
+      .eq("user_id", userId)
+      .eq("company_id", companyId);
+
+    if (agentError) {
+      console.log("Note: Could not delete agent record (may not exist):", agentError.message);
+    }
+
     // Remove from company_members
     const { error: memberError } = await adminClient
       .from("company_members")
