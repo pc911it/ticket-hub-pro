@@ -125,7 +125,8 @@ const Dashboard = () => {
       const recentProjectsQuery = supabase.from('projects').select('id, name, status, updated_at').is('deleted_at', null).order('updated_at', { ascending: false }).limit(5);
       const recentInvoicesQuery = supabase.from('client_invoices').select('id, invoice_number, amount, status, created_at, clients(full_name)').order('created_at', { ascending: false }).limit(5);
       const recentTicketsQuery = supabase.from('tickets').select('id, title, status, created_at, clients(full_name)').is('deleted_at', null).order('created_at', { ascending: false }).limit(5);
-      const employeeCountQuery = supabase.from('company_members').select('*', { count: 'exact', head: true });
+      // Count agents (actual employees) instead of all company_members
+      const employeeCountQuery = supabase.from('agents').select('*', { count: 'exact', head: true });
 
       // Apply company filter if not in platform view
       if (effectiveCompanyId) {
