@@ -167,12 +167,44 @@ serve(async (req) => {
       }
 
       if (existingMember) {
-        // User already in company - just return success since we updated their password
-        console.log(`User ${email} already in company, password updated`);
+        // User already in company - but still need to ensure agent record exists if requested
+        console.log(`User ${email} already in company, checking agent record...`);
+        
+        // Check if agent record already exists
+        if (createAgent && role === "staff" && targetCompanyId) {
+          const { data: existingAgent } = await adminClient
+            .from("agents")
+            .select("id")
+            .eq("user_id", existingUser.id)
+            .eq("company_id", targetCompanyId)
+            .maybeSingle();
+
+          if (!existingAgent) {
+            // Create agent record for existing user
+            const { error: agentError } = await adminClient
+              .from("agents")
+              .insert({
+                company_id: targetCompanyId,
+                user_id: existingUser.id,
+                full_name: fullName,
+                phone: phone || null,
+                vehicle_info: vehicleInfo || null,
+              });
+
+            if (agentError) {
+              console.log("Failed to create agent record for existing user:", agentError.message);
+            } else {
+              console.log(`Agent record created for existing user: ${existingUser.id}`);
+            }
+          } else {
+            console.log(`Agent record already exists for user: ${existingUser.id}`);
+          }
+        }
+        
         return new Response(
           JSON.stringify({ 
             success: true, 
-            message: "Password updated for existing user",
+            message: "User already exists, agent record ensured",
             user: { 
               id: existingUser.id, 
               email: email 
