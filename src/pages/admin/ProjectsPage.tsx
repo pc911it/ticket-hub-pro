@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
+import { useRealtimeDataSync } from '@/hooks/useRealtimeDataSync';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -82,6 +83,19 @@ const ProjectsPage = () => {
       fetchUserCompany();
     }
   }, [user]);
+
+  // Memoize fetch for real-time callbacks
+  const handleProjectRefresh = useCallback(() => {
+    console.log('[ProjectsPage] Real-time update triggered, refreshing data...');
+    fetchData();
+  }, []);
+
+  // Enable real-time data sync
+  useRealtimeDataSync({
+    companyId: effectiveCompanyId,
+    onProjectChange: handleProjectRefresh,
+    onClientChange: handleProjectRefresh,
+  });
 
   useEffect(() => {
     if (userCompanyId || isSuperAdmin) {

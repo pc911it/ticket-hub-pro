@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
+import { useRealtimeDataSync } from '@/hooks/useRealtimeDataSync';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -80,6 +81,23 @@ const Dashboard = () => {
   const [projectStatusData, setProjectStatusData] = useState<ProjectStatus[]>([]);
   const [monthlyRevenue, setMonthlyRevenue] = useState<{ month: string; revenue: number }[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Memoize the fetch function for real-time callbacks
+  const handleDashboardRefresh = useCallback(() => {
+    console.log('[Dashboard] Real-time update triggered, refreshing data...');
+    fetchDashboardData();
+  }, []);
+
+  // Enable real-time data sync for dashboard
+  useRealtimeDataSync({
+    companyId: effectiveCompanyId,
+    onDashboardChange: handleDashboardRefresh,
+    onTicketChange: handleDashboardRefresh,
+    onProjectChange: handleDashboardRefresh,
+    onClientChange: handleDashboardRefresh,
+    onInventoryChange: handleDashboardRefresh,
+    onInvoiceChange: handleDashboardRefresh,
+  });
 
   useEffect(() => {
     console.log('[Dashboard] effectiveCompanyId changed:', effectiveCompanyId, 'isPlatformView:', isPlatformView);

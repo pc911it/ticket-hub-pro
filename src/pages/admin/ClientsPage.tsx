@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { format } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
+import { useRealtimeDataSync } from '@/hooks/useRealtimeDataSync';
 import { DeleteConfirmationDialog } from '@/components/DeleteConfirmationDialog';
 import { VesselManagement } from '@/components/VesselManagement';
 
@@ -70,6 +71,18 @@ const ClientsPage = () => {
   // Company admins, owners, and super admins can delete
   const canDelete = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
   const canCreateLogin = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
+
+  // Memoize fetch for real-time callbacks
+  const handleClientRefresh = useCallback(() => {
+    console.log('[ClientsPage] Real-time update triggered, refreshing data...');
+    fetchClients();
+  }, []);
+
+  // Enable real-time data sync
+  useRealtimeDataSync({
+    companyId: effectiveCompanyId,
+    onClientChange: handleClientRefresh,
+  });
 
   useEffect(() => {
     if (effectiveCompanyId) {
