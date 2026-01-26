@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
+import { useRealtimeDataSync } from '@/hooks/useRealtimeDataSync';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -97,6 +98,18 @@ const EmployeesPage = () => {
     full_name: '',
     phone: '',
     vehicle_info: '',
+  });
+
+  // Memoize fetch for real-time callbacks
+  const handleAgentRefresh = useCallback(() => {
+    console.log('[EmployeesPage] Real-time update triggered, refreshing data...');
+    fetchCompanyAndAgents();
+  }, []);
+
+  // Enable real-time data sync
+  useRealtimeDataSync({
+    companyId: effectiveCompanyId,
+    onAgentChange: handleAgentRefresh,
   });
 
   useEffect(() => {

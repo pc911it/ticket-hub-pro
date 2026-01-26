@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffectiveCompanyId } from "@/hooks/useEffectiveCompanyId";
+import { useRealtimeDataSync } from "@/hooks/useRealtimeDataSync";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +58,15 @@ export default function InventoryPage() {
   const canDelete = isCompanyOwner || isSuperAdmin || isCompanyAdmin;
   const [deleteItem, setDeleteItem] = useState<InventoryItem | null>(null);
   const queryClient = useQueryClient();
+
+  // Enable real-time data sync for inventory
+  useRealtimeDataSync({
+    companyId: effectiveCompanyId,
+    onInventoryChange: useCallback(() => {
+      console.log('[InventoryPage] Real-time update triggered, invalidating queries...');
+      queryClient.invalidateQueries({ queryKey: ["inventory-items", effectiveCompanyId] });
+    }, [queryClient, effectiveCompanyId]),
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [isAddOpen, setIsAddOpen] = useState(false);
