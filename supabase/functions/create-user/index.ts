@@ -252,7 +252,9 @@ serve(async (req) => {
       }
 
       // Create agent record if requested (for employees)
+      console.log(`Checking agent creation: createAgent=${createAgent}, role=${role}`);
       if (createAgent && role === "staff") {
+        console.log(`Creating agent record for user ${userId} in company ${targetCompanyId}`);
         const { error: agentError } = await adminClient
           .from("agents")
           .insert({
@@ -268,6 +270,8 @@ serve(async (req) => {
         } else {
           console.log(`Agent record created for user: ${userId}`);
         }
+      } else {
+        console.log(`Skipping agent creation: createAgent=${createAgent}, role=${role}`);
       }
     } else {
       console.log(`User created without company membership (super admin creating for new company)`);
