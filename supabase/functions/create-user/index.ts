@@ -72,7 +72,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { email, password, fullName, role, companyId } = await req.json();
+    const { email, password, fullName, role, companyId, phone, vehicleInfo, createAgent } = await req.json();
 
     if (!email || !password || !fullName) {
       console.log("Missing required fields");
@@ -285,6 +285,25 @@ serve(async (req) => {
           console.log("Failed to update user_roles:", updateRoleError.message);
         } else {
           console.log(`user_roles updated to: ${role}`);
+        }
+      }
+
+      // Create agent record if requested (for employees)
+      if (createAgent && role === "staff") {
+        const { error: agentError } = await adminClient
+          .from("agents")
+          .insert({
+            company_id: targetCompanyId,
+            user_id: userId,
+            full_name: fullName,
+            phone: phone || null,
+            vehicle_info: vehicleInfo || null,
+          });
+
+        if (agentError) {
+          console.log("Failed to create agent record:", agentError.message);
+        } else {
+          console.log(`Agent record created for user: ${userId}`);
         }
       }
     } else {

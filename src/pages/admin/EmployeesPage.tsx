@@ -318,7 +318,7 @@ const EmployeesPage = () => {
         .eq('id', effectiveCompanyId)
         .single();
 
-      // Create user account via edge function
+      // Create user account AND agent record via edge function (bypasses RLS)
       const { data, error } = await supabase.functions.invoke('create-user', {
         body: {
           email: createFormData.email.toLowerCase().trim(),
@@ -326,6 +326,9 @@ const EmployeesPage = () => {
           fullName: createFormData.full_name,
           role: 'staff',
           companyId: effectiveCompanyId,
+          phone: createFormData.phone || null,
+          vehicleInfo: createFormData.vehicle_info || null,
+          createAgent: true, // Tell edge function to create agent record
         },
       });
 
@@ -342,17 +345,6 @@ const EmployeesPage = () => {
         throw new Error('No user ID returned');
       }
 
-      // Create agent record
-      const { error: agentError } = await supabase
-        .from('agents')
-        .insert({
-          company_id: effectiveCompanyId,
-          user_id: userId,
-          full_name: createFormData.full_name,
-          phone: createFormData.phone || null,
-          vehicle_info: createFormData.vehicle_info || null,
-        });
-
       // Send welcome email
       try {
         await supabase.functions.invoke('send-employee-welcome', {
@@ -368,18 +360,10 @@ const EmployeesPage = () => {
         console.warn('Failed to send welcome email:', emailError);
       }
 
-      if (agentError) {
-        console.error('Agent creation error:', agentError);
-        toast({ 
-          title: 'Partial Success', 
-          description: `User account created for ${createFormData.email}. Welcome email sent. You may need to add them as an agent separately.` 
-        });
-      } else {
-        toast({ 
-          title: 'Employee Created', 
-          description: `${createFormData.full_name} has been created and a welcome email has been sent.` 
-        });
-      }
+      toast({ 
+        title: 'Employee Created', 
+        description: `${createFormData.full_name} has been created and a welcome email has been sent.` 
+      });
 
       fetchCompanyAndAgents();
       setIsCreateDialogOpen(false);
