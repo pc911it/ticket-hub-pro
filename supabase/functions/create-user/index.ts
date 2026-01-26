@@ -142,6 +142,37 @@ serve(async (req) => {
     let userId: string;
 
     if (existingUser) {
+      // If we're creating a user for a new company (no targetCompanyId), allow using existing user
+      if (skipCompanyMembership) {
+        console.log(`User ${email} already exists - returning existing user for new company creation`);
+        
+        // Update their password
+        if (password) {
+          await adminClient.auth.admin.updateUserById(existingUser.id, { password });
+          console.log(`Password updated for existing user: ${email}`);
+        }
+        
+        // Update/create profile
+        await adminClient
+          .from("profiles")
+          .upsert({
+            user_id: existingUser.id,
+            full_name: fullName,
+            email: email,
+          }, { onConflict: 'user_id' });
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            user: { 
+              id: existingUser.id, 
+              email: email 
+            } 
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       console.log(`User ${email} already exists`);
       return new Response(
         JSON.stringify({ error: "A user with this email already exists" }),
