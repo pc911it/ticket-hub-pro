@@ -142,102 +142,33 @@ serve(async (req) => {
     let userId: string;
 
     if (existingUser) {
-      console.log(`User ${email} already exists, checking if already in company...`);
-      
-      // Check if user is already a member of this company
-      const { data: existingMember } = await adminClient
-        .from("company_members")
-        .select("id")
-        .eq("user_id", existingUser.id)
-        .eq("company_id", targetCompanyId)
-        .maybeSingle();
-
-      // Update the existing user's password if provided
-      if (password) {
-        const { error: updatePasswordError } = await adminClient.auth.admin.updateUserById(
-          existingUser.id,
-          { password }
-        );
-        
-        if (updatePasswordError) {
-          console.log("Failed to update password:", updatePasswordError.message);
-        } else {
-          console.log(`Password updated for existing user: ${email}`);
-        }
-      }
-
-      if (existingMember) {
-        // User already in company - but still need to ensure agent record exists if requested
-        console.log(`User ${email} already in company, checking agent record...`);
-        
-        // Check if agent record already exists
-        if (createAgent && role === "staff" && targetCompanyId) {
-          const { data: existingAgent } = await adminClient
-            .from("agents")
-            .select("id")
-            .eq("user_id", existingUser.id)
-            .eq("company_id", targetCompanyId)
-            .maybeSingle();
-
-          if (!existingAgent) {
-            // Create agent record for existing user
-            const { error: agentError } = await adminClient
-              .from("agents")
-              .insert({
-                company_id: targetCompanyId,
-                user_id: existingUser.id,
-                full_name: fullName,
-                phone: phone || null,
-                vehicle_info: vehicleInfo || null,
-              });
-
-            if (agentError) {
-              console.log("Failed to create agent record for existing user:", agentError.message);
-            } else {
-              console.log(`Agent record created for existing user: ${existingUser.id}`);
-            }
-          } else {
-            console.log(`Agent record already exists for user: ${existingUser.id}`);
-          }
-        }
-        
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            message: "User already exists, agent record ensured",
-            user: { 
-              id: existingUser.id, 
-              email: email 
-            } 
-          }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      userId = existingUser.id;
-      console.log(`Adding existing user ${email} to company ${targetCompanyId}`);
-    } else {
-      // Create the user using admin API
-      const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: {
-          full_name: fullName,
-        },
-      });
-
-      if (createError) {
-        console.log("Failed to create user:", createError.message);
-        return new Response(
-          JSON.stringify({ error: createError.message }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      userId = newUser.user.id;
-      console.log(`User created successfully: ${userId}`);
+      console.log(`User ${email} already exists`);
+      return new Response(
+        JSON.stringify({ error: "A user with this email already exists" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    // Create the user using admin API
+    const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        full_name: fullName,
+      },
+    });
+
+    if (createError) {
+      console.log("Failed to create user:", createError.message);
+      return new Response(
+        JSON.stringify({ error: createError.message }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    userId = newUser.user.id;
+    console.log(`User created successfully: ${userId}`);
 
     // Create or update the user's profile
     const { error: profileError } = await adminClient
