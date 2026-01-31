@@ -37,7 +37,7 @@ import {
   FolderOpen,
   Settings,
   Star,
-  Play
+  
 } from 'lucide-react';
 
 const Index = () => {
@@ -234,10 +234,6 @@ const Index = () => {
                   <ArrowRight className="h-5 w-5" />
                 </Button>
               </Link>
-              <Button variant="heroOutline" size="xl" className="gap-2">
-                <Play className="h-5 w-5" />
-                {t('hero.watchDemo')}
-              </Button>
             </div>
 
             {/* Quick Feature Pills */}
