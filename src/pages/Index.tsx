@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
@@ -43,7 +44,9 @@ import {
 const Index = () => {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
+  const openSupportChat = () => setIsChatOpen(true);
   const heroFeatures = [
     t('features.projectManagement'),
     t('features.clientPortal'),
@@ -490,18 +493,15 @@ const Index = () => {
             <div>
               <h4 className="font-semibold mb-4">{t('footer.company')}</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground transition-colors">{t('footer.about')}</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">{t('footer.careers')}</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">{t('footer.blog')}</a></li>
+                <li><Link to="/about" className="hover:text-foreground transition-colors">{t('footer.about')}</Link></li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-semibold mb-4">{t('footer.support')}</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground transition-colors">{t('footer.helpCenter')}</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">{t('footer.contact')}</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">{t('footer.status')}</a></li>
+                <li><button onClick={openSupportChat} className="hover:text-foreground transition-colors">{t('footer.helpCenter')}</button></li>
+                <li><button onClick={openSupportChat} className="hover:text-foreground transition-colors">{t('footer.contact')}</button></li>
               </ul>
             </div>
           </div>
@@ -517,7 +517,7 @@ const Index = () => {
         </div>
       </footer>
 
-      <SupportChatWidget />
+      <SupportChatWidget externalOpen={isChatOpen} onExternalClose={() => setIsChatOpen(false)} />
     </div>
   );
 };

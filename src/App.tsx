@@ -82,6 +82,8 @@ import CompanyFeaturesPage from "./pages/admin/CompanyFeaturesPage";
 import IntegrationsPage from "./pages/admin/IntegrationsPage";
 import ImportExportPage from "./pages/admin/ImportExportPage";
 import AIToolsPage from "./pages/admin/AIToolsPage";
+import AboutPage from "./pages/AboutPage";
+import { SupportChatProvider } from "./contexts/SupportChatContext";
 
 const queryClient = new QueryClient();
 
@@ -118,10 +120,12 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <SupportChatProvider>
           <AIAssistantProvider>
           <SuperAdminCompanyProvider>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/about" element={<AboutPage />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/register-company" element={<CompanyRegister />} />
             <Route path="/upgrade" element={<UpgradePage />} />
@@ -577,6 +581,7 @@ const App = () => (
           </Routes>
           </SuperAdminCompanyProvider>
           </AIAssistantProvider>
+          </SupportChatProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
