@@ -123,9 +123,26 @@ const DEPARTMENT_KEYS = [
   { value: 'general', key: 'chat.departments.general' },
 ];
 
-export function SupportChatWidget() {
+interface SupportChatWidgetProps {
+  externalOpen?: boolean;
+  onExternalClose?: () => void;
+}
+
+export function SupportChatWidget({ externalOpen, onExternalClose }: SupportChatWidgetProps = {}) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+
+  // Handle external open control
+  useEffect(() => {
+    if (externalOpen !== undefined) {
+      setIsOpen(externalOpen);
+    }
+  }, [externalOpen]);
+
+  const handleClose = () => {
+    setIsOpen(false);
+    onExternalClose?.();
+  };
   const [showContactOptions, setShowContactOptions] = useState(false);
   const [contactMode, setContactMode] = useState<ContactMode | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -715,7 +732,7 @@ export function SupportChatWidget() {
             variant="ghost"
             size="icon"
             className="text-primary-foreground hover:bg-primary-foreground/10"
-            onClick={() => setIsOpen(false)}
+            onClick={handleClose}
           >
             <X className="h-5 w-5" />
           </Button>
