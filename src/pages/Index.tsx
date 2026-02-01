@@ -457,9 +457,6 @@ const Index = () => {
                 <ArrowRight className="h-5 w-5" />
               </Button>
             </Link>
-            <Button variant="heroOutline" size="xl">
-              {t('cta.scheduleDemo')}
-            </Button>
           </div>
         </div>
       </section>
