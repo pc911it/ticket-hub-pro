@@ -2883,6 +2883,13 @@ export type Database = {
             referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "inventory_items_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       inventory_usage: {
@@ -4009,6 +4016,13 @@ export type Database = {
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_items_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -7525,6 +7539,63 @@ export type Database = {
           },
         ]
       }
+      suppliers_safe: {
+        Row: {
+          address: string | null
+          company_id: string | null
+          contact_name: string | null
+          created_at: string | null
+          deleted_at: string | null
+          email: string | null
+          id: string | null
+          name: string | null
+          notes: string | null
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: never
+          company_id?: string | null
+          contact_name?: never
+          created_at?: string | null
+          deleted_at?: string | null
+          email?: never
+          id?: string | null
+          name?: string | null
+          notes?: string | null
+          phone?: never
+          updated_at?: string | null
+        }
+        Update: {
+          address?: never
+          company_id?: string | null
+          contact_name?: never
+          created_at?: string | null
+          deleted_at?: string | null
+          email?: never
+          id?: string | null
+          name?: string | null
+          notes?: string | null
+          phone?: never
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suppliers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_chats_anonymized: {
         Row: {
           assigned_agent_id: string | null
@@ -7575,6 +7646,10 @@ export type Database = {
         Returns: boolean
       }
       can_view_company_payment_details: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_view_supplier_contacts: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
