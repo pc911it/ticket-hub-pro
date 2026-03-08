@@ -16,7 +16,7 @@ interface WelcomeTourStep {
 const welcomeSteps: WelcomeTourStep[] = [
   {
     target: 'body',
-    title: '🎉 Welcome to TicketPro!',
+    title: '🎉 Welcome to BuilderFlow!',
     content: "We're excited to have you here! Let us give you a quick tour of the platform to help you get started.",
     position: 'bottom',
     spotlight: false,
