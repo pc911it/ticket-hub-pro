@@ -180,7 +180,7 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             <p style="color: #6b7280; font-size: 14px; margin-bottom: 0;">
               Welcome to the team!<br>
-              <strong>The TicketPro Team</strong>
+              <strong>The BuilderFlow Team</strong>
             </p>
           </div>
         </body>
