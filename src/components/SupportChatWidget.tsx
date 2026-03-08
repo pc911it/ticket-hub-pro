@@ -523,7 +523,7 @@ export function SupportChatWidget({ externalOpen, onExternalClose }: SupportChat
   };
 
   const openWhatsApp = () => {
-    const message = encodeURIComponent("Hi! I have a question about TicketPro.");
+    const message = encodeURIComponent("Hi! I have a question about BuilderFlow.");
     window.open(`https://wa.me/${whatsappNumber}?text=${message}`, '_blank');
   };
 

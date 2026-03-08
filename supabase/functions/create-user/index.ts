@@ -308,6 +308,20 @@ serve(async (req) => {
       }
     } else {
       console.log(`User created without company membership (super admin creating for new company)`);
+      
+      // Update user_roles if a specific role was requested (e.g., 'admin' for company owners)
+      if (role && role !== "user") {
+        const { error: updateRoleError } = await adminClient
+          .from("user_roles")
+          .update({ role })
+          .eq("user_id", userId);
+
+        if (updateRoleError) {
+          console.log("Failed to update user_roles for new company owner:", updateRoleError.message);
+        } else {
+          console.log(`user_roles updated to: ${role} for new company owner`);
+        }
+      }
     }
 
     return new Response(
