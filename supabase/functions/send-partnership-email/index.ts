@@ -188,7 +188,7 @@ const handler = async (req: Request): Promise<Response> => {
               </p>
               <p style="color: #6b7280; font-size: 14px; margin-bottom: 0;">
                 Best regards,<br>
-                <strong>The TicketPro Team</strong>
+                <strong>The BuilderFlow Team</strong>
               </p>
             </div>
           </body>
