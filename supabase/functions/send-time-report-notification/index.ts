@@ -100,7 +100,7 @@ const handler = async (req: Request): Promise<Response> => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "TicketPro <onboarding@resend.dev>",
+        from: "BuilderFlow <onboarding@resend.dev>",
         to: adminEmails,
         subject: `Time Report Submitted - ${agentName}`,
         html: `
