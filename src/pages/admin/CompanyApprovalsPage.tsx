@@ -8,8 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2, CheckCircle, XCircle, Clock, Users, Mail, MapPin, Pencil, Send, Loader2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Building2, CheckCircle, XCircle, Clock, Users, Mail, MapPin, Pencil, Send, Loader2, Trash2, Ban, Power, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Navigate } from "react-router-dom";
@@ -28,6 +30,8 @@ interface Company {
   owner_id: string | null;
   subscription_plan: string | null;
   subscription_status: string | null;
+  is_active: boolean | null;
+  deleted_at: string | null;
 }
 
 interface CompanyWithOwner extends Company {
@@ -57,12 +61,22 @@ export default function CompanyApprovalsPage() {
   });
   const [resendingEmail, setResendingEmail] = useState<string | null>(null);
 
+  // Delete confirmation state
+  const [deleteTarget, setDeleteTarget] = useState<CompanyWithOwner | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Disable confirmation state
+  const [disableTarget, setDisableTarget] = useState<CompanyWithOwner | null>(null);
+  const [isTogglingActive, setIsTogglingActive] = useState(false);
+
   const { data: companies, isLoading } = useQuery({
     queryKey: ["pending-companies"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("companies")
         .select("*")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
 
@@ -78,7 +92,7 @@ export default function CompanyApprovalsPage() {
           const { count } = await supabase
             .from("company_members").select("*", { count: "exact", head: true }).eq("company_id", company.id);
           member_count = count || 0;
-          return { ...company, owner_email, member_count };
+          return { ...company, owner_email, member_count } as CompanyWithOwner;
         })
       );
       return companiesWithDetails;
@@ -178,6 +192,56 @@ export default function CompanyApprovalsPage() {
     }
   };
 
+  // Delete company (soft delete via edge function with cancellation fee)
+  const handleDeleteCompany = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-company', {
+        body: { company_id: deleteTarget.id, reason: deleteReason || 'Super Admin deletion' },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      const feeMsg = data?.fee_charged 
+        ? `Cancellation fee of $${data.fee_amount} charged.` 
+        : data?.charge_error 
+          ? `Note: ${data.charge_error}` 
+          : '';
+      
+      toast.success(`Company "${deleteTarget.name}" deleted. ${feeMsg}`);
+      queryClient.invalidateQueries({ queryKey: ["pending-companies"] });
+    } catch (error: any) {
+      toast.error("Failed to delete: " + (error.message || "Unknown error"));
+    } finally {
+      setIsDeleting(false);
+      setDeleteTarget(null);
+      setDeleteReason('');
+    }
+  };
+
+  // Disable/Enable company (toggle is_active)
+  const handleToggleActive = async () => {
+    if (!disableTarget) return;
+    setIsTogglingActive(true);
+    const newActive = !(disableTarget.is_active ?? true);
+    try {
+      const updates: Record<string, any> = { is_active: newActive };
+      if (!newActive) {
+        updates.subscription_status = 'suspended';
+      }
+      const { error } = await supabase.from("companies").update(updates).eq("id", disableTarget.id);
+      if (error) throw error;
+      toast.success(`Company "${disableTarget.name}" ${newActive ? 'enabled' : 'disabled'} successfully.`);
+      queryClient.invalidateQueries({ queryKey: ["pending-companies"] });
+    } catch (error: any) {
+      toast.error("Failed to update: " + (error.message || "Unknown error"));
+    } finally {
+      setIsTogglingActive(false);
+      setDisableTarget(null);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "approved": return <Badge className="bg-success/10 text-success border-success/30">Approved</Badge>;
@@ -193,66 +257,90 @@ export default function CompanyApprovalsPage() {
   const approvedCompanies = companies?.filter(c => c.approval_status === "approved") || [];
   const rejectedCompanies = companies?.filter(c => c.approval_status === "rejected") || [];
 
-  const CompanyCard = ({ company, showApproveReject = false }: { company: CompanyWithOwner; showApproveReject?: boolean }) => (
-    <div className="border rounded-lg p-4 space-y-3">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-2 min-w-0">
-          <Building2 className="h-5 w-5 text-primary shrink-0" />
-          <div className="min-w-0">
-            <p className="font-semibold truncate">{company.name}</p>
-            <p className="text-sm text-muted-foreground truncate">{company.email}</p>
+  const CompanyCard = ({ company, showApproveReject = false }: { company: CompanyWithOwner; showApproveReject?: boolean }) => {
+    const isActive = company.is_active ?? true;
+    
+    return (
+      <div className={`border rounded-lg p-4 space-y-3 ${!isActive ? 'opacity-60 bg-muted/30' : ''}`}>
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2 min-w-0">
+            <Building2 className="h-5 w-5 text-primary shrink-0" />
+            <div className="min-w-0">
+              <p className="font-semibold truncate">{company.name}</p>
+              <p className="text-sm text-muted-foreground truncate">{company.email}</p>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            {getStatusBadge(company.approval_status)}
+            {!isActive && <Badge variant="outline" className="text-destructive border-destructive/30 text-xs">Disabled</Badge>}
           </div>
         </div>
-        {getStatusBadge(company.approval_status)}
-      </div>
 
-      <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-        <div className="flex items-center gap-1">
-          <Mail className="h-3 w-3 shrink-0" />
-          <span className="truncate">{company.owner_email || "No owner"}</span>
+        <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <Mail className="h-3 w-3 shrink-0" />
+            <span className="truncate">{company.owner_email || "No owner"}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <MapPin className="h-3 w-3 shrink-0" />
+            <span className="truncate">{company.city && company.state ? `${company.city}, ${company.state}` : "N/A"}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Users className="h-3 w-3 shrink-0" />
+            <span>{company.member_count} members</span>
+          </div>
+          <div className="text-xs">
+            {format(new Date(company.created_at), "MMM d, yyyy")}
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <MapPin className="h-3 w-3 shrink-0" />
-          <span className="truncate">{company.city && company.state ? `${company.city}, ${company.state}` : "N/A"}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Users className="h-3 w-3 shrink-0" />
-          <span>{company.member_count} members</span>
-        </div>
-        <div className="text-xs">
-          {format(new Date(company.created_at), "MMM d, yyyy")}
-        </div>
-      </div>
 
-      <div className="flex flex-wrap gap-2 pt-1">
-        <Button size="sm" variant="outline" onClick={() => openEditDialog(company)}>
-          <Pencil className="h-4 w-4 mr-1" />
-          Edit
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => handleResendWelcomeEmail(company)}
-          disabled={resendingEmail === company.id}
-        >
-          {resendingEmail === company.id ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
-          Resend Email
-        </Button>
-        {showApproveReject && company.approval_status !== 'approved' && (
-          <Button size="sm" onClick={() => approveMutation.mutate(company.id)} disabled={approveMutation.isPending} className="bg-success hover:bg-success/90">
-            <CheckCircle className="h-4 w-4 mr-1" />
-            Approve
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button size="sm" variant="outline" onClick={() => openEditDialog(company)}>
+            <Pencil className="h-4 w-4 mr-1" />
+            Edit
           </Button>
-        )}
-        {showApproveReject && company.approval_status !== 'rejected' && company.approval_status === 'pending' && (
-          <Button size="sm" variant="destructive" onClick={() => rejectMutation.mutate(company.id)} disabled={rejectMutation.isPending}>
-            <XCircle className="h-4 w-4 mr-1" />
-            Reject
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleResendWelcomeEmail(company)}
+            disabled={resendingEmail === company.id}
+          >
+            {resendingEmail === company.id ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
+            Resend Email
           </Button>
-        )}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setDisableTarget(company)}
+            className={isActive ? "text-warning border-warning/30 hover:bg-warning/10" : "text-success border-success/30 hover:bg-success/10"}
+          >
+            {isActive ? <Ban className="h-4 w-4 mr-1" /> : <Power className="h-4 w-4 mr-1" />}
+            {isActive ? 'Disable' : 'Enable'}
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => { setDeleteTarget(company); setDeleteReason(''); }}
+          >
+            <Trash2 className="h-4 w-4 mr-1" />
+            Delete
+          </Button>
+          {showApproveReject && company.approval_status !== 'approved' && (
+            <Button size="sm" onClick={() => approveMutation.mutate(company.id)} disabled={approveMutation.isPending} className="bg-success hover:bg-success/90">
+              <CheckCircle className="h-4 w-4 mr-1" />
+              Approve
+            </Button>
+          )}
+          {showApproveReject && company.approval_status !== 'rejected' && company.approval_status === 'pending' && (
+            <Button size="sm" variant="destructive" onClick={() => rejectMutation.mutate(company.id)} disabled={rejectMutation.isPending}>
+              <XCircle className="h-4 w-4 mr-1" />
+              Reject
+            </Button>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -317,7 +405,7 @@ export default function CompanyApprovalsPage() {
             <Building2 className="h-5 w-5" />
             All Companies
           </CardTitle>
-          <CardDescription>Tap Edit to modify any company, or Resend Email to re-send credentials</CardDescription>
+          <CardDescription>Tap Edit to modify, Disable to suspend, or Delete to remove a company</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -425,6 +513,96 @@ export default function CompanyApprovalsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Company Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-destructive/10 rounded-full">
+                <AlertTriangle className="h-6 w-6 text-destructive" />
+              </div>
+              <AlertDialogTitle className="text-xl">Delete Company?</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="sr-only">
+              Confirm deletion of {deleteTarget?.name}
+            </AlertDialogDescription>
+            <div className="pt-4 space-y-3">
+              <div className="p-3 bg-muted rounded-lg border">
+                <p className="text-sm text-muted-foreground">You are about to delete:</p>
+                <p className="font-semibold text-foreground mt-1">{deleteTarget?.name}</p>
+                <p className="text-xs text-muted-foreground mt-1">{deleteTarget?.email}</p>
+              </div>
+              <p className="text-destructive font-medium text-sm">
+                This will soft-delete the company, deactivate all accounts, and attempt to charge a cancellation fee if a payment method is on file. Data will be permanently purged after 30 days.
+              </p>
+              <div>
+                <Label htmlFor="delete-reason">Reason (optional)</Label>
+                <Textarea
+                  id="delete-reason"
+                  placeholder="Why is this company being deleted?"
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  className="mt-1"
+                  rows={2}
+                />
+              </div>
+            </div>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDeleteCompany(); }}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              {isDeleting ? 'Deleting...' : 'Delete Company'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Disable/Enable Company Confirmation */}
+      <AlertDialog open={!!disableTarget} onOpenChange={(open) => !open && setDisableTarget(null)}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className={`p-3 rounded-full ${(disableTarget?.is_active ?? true) ? 'bg-warning/10' : 'bg-success/10'}`}>
+                {(disableTarget?.is_active ?? true) ? <Ban className="h-6 w-6 text-warning" /> : <Power className="h-6 w-6 text-success" />}
+              </div>
+              <AlertDialogTitle className="text-xl">
+                {(disableTarget?.is_active ?? true) ? 'Disable' : 'Enable'} Company?
+              </AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="sr-only">
+              Confirm {(disableTarget?.is_active ?? true) ? 'disabling' : 'enabling'} {disableTarget?.name}
+            </AlertDialogDescription>
+            <div className="pt-4 space-y-3">
+              <div className="p-3 bg-muted rounded-lg border">
+                <p className="text-sm text-muted-foreground">Company:</p>
+                <p className="font-semibold text-foreground mt-1">{disableTarget?.name}</p>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {(disableTarget?.is_active ?? true)
+                  ? 'Disabling will suspend the company\'s subscription and prevent users from accessing the platform. No data will be deleted.'
+                  : 'Enabling will reactivate the company and allow users to access the platform again.'}
+              </p>
+            </div>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel disabled={isTogglingActive}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleToggleActive(); }}
+              disabled={isTogglingActive}
+              className={(disableTarget?.is_active ?? true) ? "bg-warning text-warning-foreground hover:bg-warning/90" : "bg-success text-success-foreground hover:bg-success/90"}
+            >
+              {isTogglingActive ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {isTogglingActive ? 'Processing...' : (disableTarget?.is_active ?? true) ? 'Disable Company' : 'Enable Company'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
