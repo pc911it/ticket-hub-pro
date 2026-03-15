@@ -302,12 +302,17 @@ const CompanyRegister = () => {
   const handleResendEmailCode = async () => {
     setSendingEmailCode(true);
     try {
-      const { error } = await supabase.functions.invoke('send-verification-code', {
+      const { data: resendData, error } = await supabase.functions.invoke('send-verification-code', {
         body: { email: email.toLowerCase(), type: 'email' }
       });
 
       if (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to resend code.' });
+        return;
+      }
+
+      if (resendData && resendData.success === false) {
+        toast({ variant: 'destructive', title: 'Error', description: resendData.error || 'Failed to resend code.' });
         return;
       }
 

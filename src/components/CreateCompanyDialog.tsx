@@ -257,6 +257,17 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
           full_name: ownerName,
         });
 
+      // Send welcome email with credentials to the new owner (fire and forget)
+      supabase.functions.invoke('send-employee-welcome', {
+        body: {
+          employeeEmail: ownerEmail,
+          employeeName: ownerName,
+          companyName: companyName,
+          temporaryPassword: tempPassword || 'TempPass123!',
+          portalUrl: `${window.location.origin}/auth`,
+        }
+      }).catch(err => console.log('Welcome email send failed (non-critical):', err));
+
       // Notify super admin of new company creation (fire and forget)
       supabase.functions.invoke('notify-new-registration', {
         body: {
@@ -275,7 +286,7 @@ export function CreateCompanyDialog({ open, onOpenChange, onSuccess }: CreateCom
       }).catch(err => console.log('Notification send failed (non-critical):', err));
 
       toast.success("Company created successfully!", {
-        description: `${companyName} has been set up with ${ownerEmail} as the owner.`
+        description: `${companyName} has been set up with ${ownerEmail} as the owner. A welcome email with login credentials has been sent.`
       });
 
       resetForm();
