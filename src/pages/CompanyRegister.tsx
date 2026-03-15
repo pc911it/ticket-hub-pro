@@ -239,13 +239,24 @@ const CompanyRegister = () => {
 
       // Send email verification code
       setSendingEmailCode(true);
-      const { error: sendError } = await supabase.functions.invoke('send-verification-code', {
+      const { data: sendData, error: sendError } = await supabase.functions.invoke('send-verification-code', {
         body: { email: email.toLowerCase(), type: 'email' }
       });
 
       if (sendError) {
         console.error('Error sending verification code:', sendError);
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to send verification code. Please try again.' });
+        return;
+      }
+
+      // Check if response indicates failure (e.g., domain not verified)
+      if (sendData && sendData.success === false) {
+        console.error('Verification code send failed:', sendData.error);
+        if (sendData.requiresDomainVerification) {
+          toast({ variant: 'destructive', title: 'Email Configuration Required', description: 'The email system is not yet configured. Please contact support.' });
+        } else {
+          toast({ variant: 'destructive', title: 'Error', description: sendData.error || 'Failed to send verification code.' });
+        }
         return;
       }
 
@@ -291,12 +302,17 @@ const CompanyRegister = () => {
   const handleResendEmailCode = async () => {
     setSendingEmailCode(true);
     try {
-      const { error } = await supabase.functions.invoke('send-verification-code', {
+      const { data: resendData, error } = await supabase.functions.invoke('send-verification-code', {
         body: { email: email.toLowerCase(), type: 'email' }
       });
 
       if (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to resend code.' });
+        return;
+      }
+
+      if (resendData && resendData.success === false) {
+        toast({ variant: 'destructive', title: 'Error', description: resendData.error || 'Failed to resend code.' });
         return;
       }
 
